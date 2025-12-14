@@ -5,7 +5,7 @@ from typing import Any
 from openai import OpenAI
 
 from app.config import settings
-from planning.coach_prompt import SYSTEM_PROMPT, user_prompt
+from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 

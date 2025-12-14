@@ -22,7 +22,8 @@ dev = ["black", "pre-commit", "ruff"]
 
 # Hatch configuration
 [tool.hatch.build]
-include = ["src/**"]
+# Include the app/ directory directly (no src/ layout)
+include = ["app/**"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
@@ -80,6 +81,8 @@ name = "ty"
 entry = "ty check"
 language = "system"
 pass_filenames = false
+
+
 # Docstring conventions: Google style
 [tool.ruff.lint.pydocstyle]
 convention = "google"
