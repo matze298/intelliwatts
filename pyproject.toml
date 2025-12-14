@@ -1,0 +1,85 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "intelliwatts"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "openai",
+    "pandas",
+    "pydantic",
+    "pydantic-settings",
+    "requests",
+    "uvicorn",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+dev = ["black", "pre-commit", "ruff"]
+
+# Hatch configuration
+[tool.hatch.build]
+include = ["src/**"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+# uv configuration (dependency locking handled via uv.lock)
+[tool.uv]
+managed = true
+
+# Ruff configuration
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+fix = true
+
+# Google Python Style Guide alignment
+preview = true
+
+[tool.ruff.lint]
+# Core Google-style rule set
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import order)
+    "N",   # pep8-naming (Google naming conventions)
+    "D",   # pydocstyle (docstrings)
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "RET", # flake8-return
+]
+
+# Google-specific relaxations
+ignore = [
+    "E501", # Line length handled by formatter guidance
+    "D203", # One blank line before class (Google prefers no extra line)
+    "D213", # Multi-line docstring summary on first line
+]
+
+
+# Pre-commit hook definitions (used by pre-commit)
+[tool.pre-commit]
+
+[[tool.pre-commit.hooks]]
+id = "ruff"
+name = "ruff"
+entry = "ruff check . --fix"
+language = "system"
+pass_filenames = false
+
+[[tool.pre-commit.hooks]]
+id = "ty"
+name = "ty"
+entry = "ty check"
+language = "system"
+pass_filenames = false
+# Docstring conventions: Google style
+[tool.ruff.lint.pydocstyle]
+convention = "google"
