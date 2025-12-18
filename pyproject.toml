@@ -65,24 +65,6 @@ ignore = [
 ]
 
 
-# Pre-commit hook definitions (used by pre-commit)
-[tool.pre-commit]
-
-[[tool.pre-commit.hooks]]
-id = "ruff"
-name = "ruff"
-entry = "ruff check . --fix"
-language = "system"
-pass_filenames = false
-
-[[tool.pre-commit.hooks]]
-id = "ty"
-name = "ty"
-entry = "ty check"
-language = "system"
-pass_filenames = false
-
-
 # Docstring conventions: Google style
 [tool.ruff.lint.pydocstyle]
 convention = "google"
