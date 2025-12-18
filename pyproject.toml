@@ -18,7 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest"]
-dev = ["black", "pre-commit", "ruff"]
+dev = ["black", "pre-commit", "ruff", "ty"]
 
 # Hatch configuration
 [tool.hatch.build]
