@@ -1,14 +1,29 @@
 """Compute the training load."""
 
-from typing import Any
+from dataclasses import dataclass
 
 import pandas as pd
+
+from app.intervals.parser import ParsedActivity
 
 CTL_TAU = 42
 ATL_TAU = 7
 
 
-def compute_load(activities: list[dict[str, Any]]) -> dict[str, Any]:
+@dataclass
+class TrainingLoad:
+    """Training load."""
+
+    chronic: float
+    acute: float
+
+    @property
+    def training_stress_balance(self) -> float:
+        """Compute the training stress balance."""
+        return self.chronic - self.acute
+
+
+def compute_load(activities: list[ParsedActivity]) -> TrainingLoad:
     """Compute the training load.
 
     Returns:
@@ -21,8 +36,4 @@ def compute_load(activities: list[dict[str, Any]]) -> dict[str, Any]:
     ctl = daily.ewm(span=CTL_TAU).mean().iloc[-1]
     atl = daily.ewm(span=ATL_TAU).mean().iloc[-1]
 
-    return {
-        "ctl": round(float(ctl), 1),
-        "atl": round(float(atl), 1),
-        "tsb": round(float(ctl - atl), 1),
-    }
+    return TrainingLoad(chronic=ctl, acute=atl)
