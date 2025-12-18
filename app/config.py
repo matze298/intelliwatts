@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     """Settings for the FastAPI app."""
 
     DATABASE_URL: str
+    INTERVALS_ATHLETE_ID: str
     INTERVALS_API_KEY: str
     OPENAI_API_KEY: str
 

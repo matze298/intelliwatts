@@ -9,6 +9,7 @@ def parse_activity(a: dict[str, Any]) -> dict[str, Any]:
     Returns:
         The activity data as dict.
     """
+    print(a.keys())
     return {
         "date": a["start_date_local"][:10],
         "duration_h": a["moving_time"] / 3600,

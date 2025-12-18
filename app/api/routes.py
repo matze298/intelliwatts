@@ -21,7 +21,7 @@ def generate_week() -> dict[str, Any]:
     Returns:
         The weekly plan and summary.
     """
-    client = IntervalsClient(settings.INTERVALS_API_KEY)
+    client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID)
     raw = client.activities()
 
     activities = [parse_activity(a) for a in raw]
@@ -30,3 +30,8 @@ def generate_week() -> dict[str, Any]:
 
     plan = generate_plan(summary)
     return {"plan": plan, "summary": summary}
+
+
+def main() -> None:
+    """Run the app without FastAPI."""
+    generate_week()
