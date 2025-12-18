@@ -23,11 +23,9 @@ def generate_week() -> dict[str, Any]:
     """
     client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID)
     raw = client.activities()
-
     activities = [parse_activity(a) for a in raw]
     load = compute_load(activities)
     summary = build_weekly_summary(activities, load)
-
     plan = generate_plan(summary)
     return {"plan": plan, "summary": summary}
 

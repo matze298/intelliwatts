@@ -1,13 +1,15 @@
 """Compute the training load."""
 
 from dataclasses import dataclass
+from logging import getLogger
 
 import pandas as pd
 
 from app.intervals.parser import ParsedActivity
 
-CTL_TAU = 42
-ATL_TAU = 7
+_LOGGER = getLogger(__name__)
+CHRONIC_TRAINING_LOAD_DAYS = 42
+ACUTE_TRAINING_LOAD_DAYS = 7
 
 
 @dataclass
@@ -31,9 +33,11 @@ def compute_load(activities: list[ParsedActivity]) -> TrainingLoad:
     """
     df = pd.DataFrame(activities)
     df["date"] = pd.to_datetime(df["date"])
-    daily = df.groupby("date")["tss"].sum().asfreq("D", fill_value=0)
+    _LOGGER.debug("Head of Activities: %s", df.head())
+    _LOGGER.debug("Available columns: %s", df.columns)
+    daily = df.groupby("date")["training_stress"].sum().asfreq("D", fill_value=0)
 
-    ctl = daily.ewm(span=CTL_TAU).mean().iloc[-1]
-    atl = daily.ewm(span=ATL_TAU).mean().iloc[-1]
+    ctl = daily.ewm(span=CHRONIC_TRAINING_LOAD_DAYS).mean().iloc[-1]
+    atl = daily.ewm(span=ACUTE_TRAINING_LOAD_DAYS).mean().iloc[-1]
 
     return TrainingLoad(chronic=ctl, acute=atl)

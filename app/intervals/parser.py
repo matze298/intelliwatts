@@ -1,19 +1,11 @@
 """Parse an activity from intervals.icu."""
 
-from dataclasses import dataclass
+import logging
 from typing import Any
 
+from app.intervals.definitions import ParsedActivity
 
-@dataclass
-class ParsedActivity:
-    """Dataclass for parsed activities."""
-
-    date: str
-    duration_h: float
-    training_stress: float
-    normalized_power: float | None
-    avg_power: float | None
-    type: str | None
+_LOGGER = logging.getLogger(__name__)
 
 
 def parse_activity(a: dict[str, Any]) -> ParsedActivity:
@@ -22,12 +14,12 @@ def parse_activity(a: dict[str, Any]) -> ParsedActivity:
     Returns:
         The activity data as dict.
     """
-    print(a.keys())
     return ParsedActivity(
         date=a["start_date_local"][:10],
-        duration_h=a["moving_time"] / 3600,
-        training_stress=a.get("tss", 0),
-        normalized_power=a.get("np"),
-        avg_power=a.get("avg_power"),
-        type=a.get("type"),
+        duration_h=a.get("moving_time", 0) / 3600,
+        training_stress=a.get("icu_training_load", 0),
+        normalized_power=0,
+        avg_power=a.get("icu_average_watts", 0),
+        type=a.get("type", ""),
+        calories=a.get("calories", 0),
     )

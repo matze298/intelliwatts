@@ -1,11 +1,13 @@
 """Client for intervals.icu."""
 
+import logging
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import requests
 
+_LOGGER = logging.getLogger(__name__)
 BASE_URL = "https://intervals.icu/api/v1"
 
 
@@ -26,13 +28,10 @@ class IntervalsClient:
             The activities.
         """
         # Check if cache exists and is not expired
-        if (
-            self.cache_file.exists()
-            and self.cache_file.stat().st_mtime > datetime.now(tz=UTC).timestamp()
-        ):
-            with open(self.cache_file) as f:
-                return eval(f.read())
-        # Compute oldest as Local ISO-8601 date
+        if (cached_content := self.read_cache()) is not None:
+            return cached_content
+
+        # If not, fetch from intervals.icu
         r = requests.get(
             f"{BASE_URL}/athlete/{self.athlete_id}/activities",
             auth=("API_KEY", self.api_key),
@@ -52,11 +51,23 @@ class IntervalsClient:
         """
         if not self.cache_file.exists():
             return None
-        if (
-            self.cache_file.stat().st_mtime
-            < datetime.now(tz=UTC).timestamp() - self.expiration_hours * 60 * 60
-        ):
+        cache_age_hours = (
+            datetime.now(tz=UTC).timestamp() - self.cache_file.stat().st_mtime
+        ) / 3600
+
+        if cache_age_hours > self.expiration_hours:
+            _LOGGER.debug(
+                "Cache expired. Age: %.2f hours >= expiration time of %.2f hours.",
+                cache_age_hours,
+                self.expiration_hours,
+            )
             return None
+
+        _LOGGER.debug(
+            "Cache hit. Age %.2f hours < expiration time of %.2f hours.",
+            cache_age_hours,
+            self.expiration_hours,
+        )
 
         with self.cache_file.open("r") as f:
             return eval(f.read())
