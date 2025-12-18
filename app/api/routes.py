@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
+from app.config import settings
 from app.intervals.client import IntervalsClient
 from app.intervals.load import compute_load
 from app.intervals.parser import parse_activity
@@ -14,13 +15,13 @@ router = APIRouter()
 
 
 @router.post("/generate-plan")
-def generate_week(access_token: str) -> dict[str, Any]:
+def generate_week() -> dict[str, Any]:
     """Generates the weekly plan.
 
     Returns:
         The weekly plan and summary.
     """
-    client = IntervalsClient(access_token)
+    client = IntervalsClient(settings.INTERVALS_API_KEY)
     raw = client.activities()
 
     activities = [parse_activity(a) for a in raw]

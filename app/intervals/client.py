@@ -10,9 +10,9 @@ BASE_URL = "https://intervals.icu/api/v1"
 class IntervalsClient:
     """Client for intervals.icu."""
 
-    def __init__(self, access_token: str) -> None:
+    def __init__(self, api_key: str) -> None:
         """Initialise the client."""
-        self.headers = {"Authorization": f"Bearer {access_token}"}
+        self.headers = {"Authorization": api_key}
 
     def activities(self, days: int = 28) -> list[dict[str, Any]]:
         """Get the activities for the last days.

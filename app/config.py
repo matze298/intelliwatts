@@ -7,9 +7,7 @@ class Settings(BaseSettings):
     """Settings for the FastAPI app."""
 
     DATABASE_URL: str
-    INTERVALS_CLIENT_ID: str
-    INTERVALS_CLIENT_SECRET: str
-    INTERVALS_REDIRECT_URI: str
+    INTERVALS_API_KEY: str
     OPENAI_API_KEY: str
 
     class Config:
