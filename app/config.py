@@ -15,13 +15,12 @@ class LanguageModel(StrEnum):
 class Settings(BaseSettings):
     """Settings for the FastAPI app."""
 
-    DATABASE_URL: str
     INTERVALS_ATHLETE_ID: str
     INTERVALS_API_KEY: str
     OPENAI_API_KEY: str | None
     GEMINI_API_KEY: str | None
     LANGUAGE_MODEL: LanguageModel
-    CACHE_INTERVALS_HOURS: int = 1
+    CACHE_INTERVALS_HOURS: int = 0
 
     class Config:
         """Config for pydantic_settings."""
