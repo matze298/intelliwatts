@@ -44,9 +44,15 @@ The API key for the language model selected in `.env` must be set (defaults to G
 
 
 # Usage
+## Via WebApp
+1. Run `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` to start the FastAPI server.
+2. Open a web browser and navigate to `http://localhost:8000/`
+3. Click "Generate Plan"
+4. The plan and summary will be displayed in the web browser.
+
 ## Via FastAPI
 1. Run `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` to start the FastAPI server.
-2. Call `curl -X POST http://localhost:8000/generate-plan` to retrieve the request.
+2. Call `curl -X POST http://localhost:8000/api/generate-plan` to retrieve the request.
 
 ## Via Python
 1. Run `python app/main.py` to generate the training plan.
