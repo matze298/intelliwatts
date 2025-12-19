@@ -1,0 +1,27 @@
+body {
+    font-family: system-ui, sans-serif;
+    background: #f7f7f9;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 12px;
+}
+
+.plan table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.plan th,
+.plan td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.plan th {
+    background: #f0f0f0;
+}
