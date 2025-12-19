@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>AI Training Plan</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚴 AI Training Plan</h1>
+
+        <form method="post" action="/generate">
+            <button type="submit">Generate Plan</button>
+        </form>
+
+        {% if plan_html %}
+        <div class="plan">
+            {{ plan_html | safe }}
+        </div>
+        {% endif %}
+    </div>
+</body>
+
+</html>

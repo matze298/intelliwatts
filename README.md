@@ -12,6 +12,10 @@ Current supported LLMs:
 - OpenAI ChatGPT (requires subscription!)
 - Google Gemini (free tier available!)
 
+🔗 **Preview:**  
+https://matze298.github.io/intelliwatts/example_output.html
+
+
 > [!IMPORTANT] 
 > The app is currently limited to personal usage as it uses the athlete ID and personal API-Token to parse intervals.icu.
 
