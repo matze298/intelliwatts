@@ -51,9 +51,7 @@ class IntervalsClient:
         """
         if not self.cache_file.exists():
             return None
-        cache_age_hours = (
-            datetime.now(tz=UTC).timestamp() - self.cache_file.stat().st_mtime
-        ) / 3600
+        cache_age_hours = (datetime.now(tz=UTC).timestamp() - self.cache_file.stat().st_mtime) / 3600
 
         if cache_age_hours > self.cache_expiration_hours:
             _LOGGER.debug(

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from app.config import GLOBAL_SETTINGS
 from app.services.planner import generate_weekly_plan
 
 router = APIRouter(tags=["web"])
@@ -21,18 +22,27 @@ def home(request: Request) -> HTMLResponse:
     """
     return templates.TemplateResponse(
         "plan.html",
-        {"request": request, "plan_html": None},
+        {"request": request, "plan_html": None, "settings": request.app.state.settings},
     )
 
 
 @router.post("/generate", response_class=HTMLResponse)
-def generate(request: Request) -> HTMLResponse:
+async def generate(request: Request) -> HTMLResponse:
     """Generates the weekly plan for the athlete.
 
     Returns:
         The weekly plan and summary as HTML.
     """
-    result = generate_weekly_plan()
+    input_data = await request.form()
+    GLOBAL_SETTINGS.update(
+        LANGUAGE_MODEL=str(input_data.get("language_model", GLOBAL_SETTINGS.LANGUAGE_MODEL)),
+        SYSTEM_PROMPT=str(input_data.get("language_model", GLOBAL_SETTINGS.LANGUAGE_MODEL)),
+        USER_PROMPT=str(input_data.get("language_model", GLOBAL_SETTINGS.LANGUAGE_MODEL)),
+        weekly_hours=input_data.get("max_hours", GLOBAL_SETTINGS.weekly_hours),
+        weekly_sessions=input_data.get("max_sessions", GLOBAL_SETTINGS.weekly_sessions),
+    )
+
+    result = generate_weekly_plan(settings=GLOBAL_SETTINGS)
 
     plan_html = markdown.markdown(
         result["plan"],
@@ -45,5 +55,6 @@ def generate(request: Request) -> HTMLResponse:
             "request": request,
             "plan_html": plan_html,
             "summary": result["summary"],
+            "settings": request.app.state.settings,
         },
     )

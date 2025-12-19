@@ -36,9 +36,7 @@ def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
         )
     except KeyError:
         _LOGGER.exception("Unable to parse activity: %s", a)
-        _LOGGER.warning(
-            "Available keys: %s. Required keys: %s", a.keys(), ParsedActivity.__annotations__.keys()
-        )
+        _LOGGER.warning("Available keys: %s. Required keys: %s", a.keys(), ParsedActivity.__annotations__.keys())
         parsed_activity = None
 
     return parsed_activity

@@ -7,7 +7,13 @@ from app.intervals.load import TrainingLoad
 from app.intervals.parser.activity import ParsedActivity
 
 
-def build_weekly_summary(activities: list[ParsedActivity], load: TrainingLoad) -> dict[str, Any]:
+def build_weekly_summary(
+    activities: list[ParsedActivity],
+    load: TrainingLoad,
+    weekly_hours: float,
+    weekly_sessions: int,
+    primary_goal: str = "increase_ftp",
+) -> dict[str, Any]:
     """Builds the weekly summary of the intervals.icu activities used for the LLM prompt.
 
     Returns:
@@ -24,10 +30,10 @@ def build_weekly_summary(activities: list[ParsedActivity], load: TrainingLoad) -
             "last_28d": load,
         },
         "constraints": {
-            "max_hours_week": 8,
-            "sessions_per_week": 4,
+            "max_hours_week": weekly_hours,
+            "sessions_per_week": weekly_sessions,
         },
         "goals": {
-            "primary": "increase_ftp",
+            "primary": primary_goal,
         },
     }

@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
-from app.config import settings
+from app.config import GLOBAL_SETTINGS
 from app.intervals.client import IntervalsClient
 from app.intervals.load import compute_load
 from app.intervals.parser.activity import parse_activities
@@ -22,12 +22,16 @@ def generate_week() -> dict[str, Any]:
         The weekly plan and summary.
     """
     client = IntervalsClient(
-        settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, settings.CACHE_INTERVALS_HOURS
+        GLOBAL_SETTINGS.INTERVALS_API_KEY,
+        GLOBAL_SETTINGS.INTERVALS_ATHLETE_ID,
+        GLOBAL_SETTINGS.CACHE_INTERVALS_HOURS,
     )
     raw = client.activities()
     activities = parse_activities(raw)
     load = compute_load(activities)
-    summary = build_weekly_summary(activities, load)
+    summary = build_weekly_summary(
+        activities, load, weekly_hours=GLOBAL_SETTINGS.weekly_hours, weekly_sessions=GLOBAL_SETTINGS.weekly_sessions
+    )
     plan = generate_plan(summary)
     return {"plan": plan, "summary": summary}
 

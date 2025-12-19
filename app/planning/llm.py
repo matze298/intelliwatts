@@ -11,27 +11,28 @@ from google.genai.types import (
 )
 from openai import OpenAI
 
-from app.config import LanguageModel, settings
+from app.config import LanguageModel, GLOBAL_SETTINGS, Settings
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
 
 
-def generate_plan(summary: dict[str, Any]) -> str:
+def generate_plan(summary: dict[str, Any], settings: Settings = GLOBAL_SETTINGS) -> str:
     """Generates the training plan based on the summary by using ChatGPT.
+
+    Args:
+        summary: The athlete summary of the intervals.icu activities.
+        settings: The settings for the app.
 
     Returns:
         The training plan.
     """
     if "gpt" in settings.LANGUAGE_MODEL:
-        return call_gpt(
-            user_prompt(summary), api_key=settings.OPENAI_API_KEY, model=settings.LANGUAGE_MODEL
-        )
+        return call_gpt(user_prompt(summary), api_key=settings.OPENAI_API_KEY, model=settings.LANGUAGE_MODEL)
 
     if "gemini" in settings.LANGUAGE_MODEL:
-        return call_gemini(
-            user_prompt(summary), api_key=settings.GEMINI_API_KEY, model=settings.LANGUAGE_MODEL
-        )
+        return call_gemini(user_prompt(summary), api_key=settings.GEMINI_API_KEY, model=settings.LANGUAGE_MODEL)
 
-    raise NotImplementedError(f"Unknown model: {settings.LANGUAGE_MODEL}")
+    msg = "Unknown model: " + settings.LANGUAGE_MODEL
+    raise NotImplementedError(msg)
 
 
 def call_gpt(prompt: str, api_key: str | None, model: LanguageModel) -> str:
