@@ -36,8 +36,8 @@ async def generate(request: Request) -> HTMLResponse:
     input_data = await request.form()
     GLOBAL_SETTINGS.update(
         LANGUAGE_MODEL=str(input_data.get("language_model", GLOBAL_SETTINGS.LANGUAGE_MODEL)),
-        SYSTEM_PROMPT=str(input_data.get("language_model", GLOBAL_SETTINGS.LANGUAGE_MODEL)),
-        USER_PROMPT=str(input_data.get("language_model", GLOBAL_SETTINGS.LANGUAGE_MODEL)),
+        SYSTEM_PROMPT=str(input_data.get("system_prompt", GLOBAL_SETTINGS.SYSTEM_PROMPT)),
+        USER_PROMPT=str(input_data.get("user_prompt", GLOBAL_SETTINGS.USER_PROMPT)),
         weekly_hours=input_data.get("max_hours", GLOBAL_SETTINGS.weekly_hours),
         weekly_sessions=input_data.get("max_sessions", GLOBAL_SETTINGS.weekly_sessions),
     )

@@ -12,6 +12,7 @@ class LanguageModel(StrEnum):
 
     GPT_5_MINI = "gpt-5-mini-2025-08-07"
     GEMINI_FLASH = "gemini-flash-latest"
+    GEMINI_2_0_FLASH = "gemini-2.0-flash"
 
 
 class Settings(BaseSettings):
