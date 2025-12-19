@@ -14,12 +14,12 @@ BASE_URL = "https://intervals.icu/api/v1"
 class IntervalsClient:
     """Client for intervals.icu."""
 
-    def __init__(self, api_key: str, athlete_id: str) -> None:
+    def __init__(self, api_key: str, athlete_id: str, cache_expiration_hours: int) -> None:
         """Initialise the client."""
         self.api_key = api_key
         self.athlete_id = athlete_id
         self.cache_file = Path("cache/activities.json")
-        self.expiration_hours = 1
+        self.cache_expiration_hours = cache_expiration_hours
 
     def activities(self, days: int = 28) -> list[dict[str, Any]]:
         """Get the activities for the last days.
@@ -55,18 +55,18 @@ class IntervalsClient:
             datetime.now(tz=UTC).timestamp() - self.cache_file.stat().st_mtime
         ) / 3600
 
-        if cache_age_hours > self.expiration_hours:
+        if cache_age_hours > self.cache_expiration_hours:
             _LOGGER.debug(
                 "Cache expired. Age: %.2f hours >= expiration time of %.2f hours.",
                 cache_age_hours,
-                self.expiration_hours,
+                self.cache_expiration_hours,
             )
             return None
 
         _LOGGER.debug(
             "Cache hit. Age %.2f hours < expiration time of %.2f hours.",
             cache_age_hours,
-            self.expiration_hours,
+            self.cache_expiration_hours,
         )
 
         with self.cache_file.open("r") as f:

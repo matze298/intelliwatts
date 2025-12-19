@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from app.config import settings
 from app.intervals.client import IntervalsClient
 from app.intervals.load import compute_load
-from app.intervals.parser import parse_activity
+from app.intervals.parser.activity import parse_activities
 from app.planning.llm import generate_plan
 from app.planning.summary import build_weekly_summary
 
@@ -21,9 +21,11 @@ def generate_week() -> dict[str, Any]:
     Returns:
         The weekly plan and summary.
     """
-    client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID)
+    client = IntervalsClient(
+        settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, settings.CACHE_INTERVALS_HOURS
+    )
     raw = client.activities()
-    activities = [parse_activity(a) for a in raw]
+    activities = parse_activities(raw)
     load = compute_load(activities)
     summary = build_weekly_summary(activities, load)
     plan = generate_plan(summary)
@@ -32,4 +34,7 @@ def generate_week() -> dict[str, Any]:
 
 def main() -> None:
     """Run the app without FastAPI."""
-    generate_week()
+    content = generate_week()
+    print("Training plan: \n 10*'=' \n", content["plan"])
+    print(3 * "\n")
+    print("Weekly Summary: \n 10*'=' \n", content["summary"])

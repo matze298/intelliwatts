@@ -31,4 +31,5 @@ Include:
 - duration
 - power targets (%FTP)
 - rationale
+- nutrition tips
 """

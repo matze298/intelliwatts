@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from app.intervals.load import TrainingLoad
-from app.intervals.parser import ParsedActivity
+from app.intervals.parser.activity import ParsedActivity
 
 
 def build_weekly_summary(activities: list[ParsedActivity], load: TrainingLoad) -> dict[str, Any]:

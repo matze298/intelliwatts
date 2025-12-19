@@ -5,7 +5,7 @@ from logging import getLogger
 
 import pandas as pd
 
-from app.intervals.parser import ParsedActivity
+from app.intervals.parser.activity import ParsedActivity
 
 _LOGGER = getLogger(__name__)
 CHRONIC_TRAINING_LOAD_DAYS = 42
