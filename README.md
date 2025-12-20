@@ -12,15 +12,20 @@ Current supported LLMs:
 - OpenAI ChatGPT (requires subscription!)
 - Google Gemini (free tier available!)
 
-🔗 **Preview:**  
-https://matze298.github.io/intelliwatts/example_output.html
+## 🌐 Live Demo
+https://intelliwatts.onrender.com
+
+## 🩺 Health Check
+https://intelliwatts.onrender.com/health
 
 
 > [!IMPORTANT] 
 > The app is currently limited to personal usage as it uses the athlete ID and personal API-Token to parse intervals.icu.
 
 # Initial SetUp
-API Tokens are used to authenticate with the respective APIs (Intervals.icu, OpenAI, Google Gemini). They are stored in the `.env` file for security reasons, which is ignored from version control systems and must not be shared publicly.
+API Tokens are used to authenticate with the respective APIs (Intervals.icu, OpenAI, Google Gemini). Locally, they are stored in the `.env` file. For security reasons, `.env` is ignored from version control systems and must not be shared publicly. For all required keys, checkout the `env.example` file.
+
+On prod (render), the env variables are currently managed via Environment variables, i.e., they cannot yet be customized for different users.
 
 > [!WARNING]  
 > Never share your tokens with anyone or commit them to version control systems!
@@ -44,24 +49,25 @@ The API key for the language model selected in `.env` must be set (defaults to G
 
 
 # Usage
-## Via WebApp
+## Via Deployed WebApp (Prod)
+1. Go to https://intelliwatts.onrender.com
+
+## Via Local WebApp (Dev)
 1. Run `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` to start the FastAPI server.
 2. Open a web browser and navigate to `http://localhost:8000/`
 3. Click "Generate Plan"
 4. The plan and summary will be displayed in the web browser.
 
-## Via FastAPI
+## Via FastAPI (Dev)
 1. Run `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` to start the FastAPI server.
 2. Call `curl -X POST http://localhost:8000/api/generate-plan` to retrieve the request.
 
-## Via Python
+## Via Python (Dev)
 1. Run `python app/main.py` to generate the training plan.
 
 # Settings
-The following settings are available via `.env`:
-- `INTERVALS_API_KEY`: The API key for Intervals.icu.
-- `INTERVALS_ATHLETE_ID`: The athlete ID for Intervals.icu.
-- `OPENAI_API_KEY`: The API key for OpenAI.
-- `GEMINI_API_KEY`: The API key for Google Gemini.
-- `LANGUAGE_MODEL`: The type of Language Model to use.
-- `CACHE_INTERVALS_HOURS`: The number of hours to cache the Intervals.icu data for. Defaults to 0 (no caching is used).
+The settings for the app are defined in `app/config.py`. There are three types of settings:
+
+1. Settings that can be updated via the App interface (e.g., `SYSTEM_PROMPT`, `USER_PROMPT`, `weekly_hours`, `weekly_sessions`).
+2. Settings that are managed via `.env` or Env variables (e.g., `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
+3. Settings that are hardcoded and cannot be changed (e.g., `CACHE_INTERVALS_HOURS`).
