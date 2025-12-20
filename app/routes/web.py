@@ -22,7 +22,7 @@ def home(request: Request) -> HTMLResponse:
     """
     return templates.TemplateResponse(
         "plan.html",
-        {"request": request, "plan_html": None, "settings": request.app.state.settings},
+        {"request": request, "plan_html": None, "summary": None, "settings": request.app.state.settings},
     )
 
 
@@ -49,12 +49,18 @@ async def generate(request: Request) -> HTMLResponse:
         extensions=["tables", "fenced_code"],
     )
 
+    summary_html = markdown.markdown(
+        # Pretty print the dict
+        f"""{result["summary"]}""",
+        extensions=["tables", "fenced_code"],
+    )
+
     return templates.TemplateResponse(
         "plan.html",
         {
             "request": request,
             "plan_html": plan_html,
-            "summary": result["summary"],
+            "summary": summary_html,
             "settings": request.app.state.settings,
         },
     )

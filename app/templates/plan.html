@@ -33,8 +33,6 @@
             <input type="number" id="max_hours" name="max_hours" value="8">
             <label for="max_sessions">Weekly max sessions:</label>
             <input type="number" id="max_sessions" name="max_sessions" value="4">
-            <label for="show_summary">Show Summary</label>
-            <input type="checkbox" id="show_summary" name="show_summary">
             <br>
             <button type="submit">Generate Plan</button>
         </form>
@@ -48,7 +46,7 @@
         <p>No plan generated yet.</p>
         {% endif %}
 
-        {% if show_summary %}
+        {% if summary %}
         <h2>Weekly Summary</h2>
         <div class="summary">
             {{ summary | safe }}

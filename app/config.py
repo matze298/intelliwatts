@@ -1,8 +1,9 @@
 """Config for the FastAPI app."""
 
 from enum import StrEnum
+from typing import Any
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from app.planning.coach_prompt import SYSTEM_PROMPT as DEFAULT_SYSTEM_PROMPT, USER_PROMPT as DEFAULT_USER_PROMPT
 
@@ -20,25 +21,34 @@ class Settings(BaseSettings):
 
     INTERVALS_ATHLETE_ID: str
     INTERVALS_API_KEY: str
-    OPENAI_API_KEY: str | None
-    GEMINI_API_KEY: str | None
+    OPENAI_API_KEY: str | None = None
+    GEMINI_API_KEY: str | None = None
+
+    # App configuration
     LANGUAGE_MODEL: LanguageModel
     CACHE_INTERVALS_HOURS: int = 0
+
+    # Prompt configuration
     SYSTEM_PROMPT: str = Field(DEFAULT_SYSTEM_PROMPT)
     USER_PROMPT: str = Field(DEFAULT_USER_PROMPT)
+
+    # Training constraints
     weekly_hours: float = 8
     weekly_sessions: int = 4
 
-    class Config:
-        """Config for pydantic_settings."""
+    # Pydantic v2 config
+    model_config = SettingsConfigDict(
+        env_file=".env",  # Only used locally, on prod env vars are used
+        env_file_encoding="utf-8",
+        validate_assignment=True,
+        extra="ignore",
+    )
 
-        env_file = ".env"
-        validate_assignment = True
-
-    def update(self, **kwargs) -> None:
-        """Update the settings based on kwargs."""
+    def update(self, **kwargs: Any) -> None:  # noqa:ANN401
+        """Update the settings at runtime with validation."""
         for key, value in kwargs.items():
-            setattr(self, key, value)
+            if value is not None:
+                setattr(self, key, value)
 
 
 GLOBAL_SETTINGS = Settings()  # type: ignore[missing-argument]

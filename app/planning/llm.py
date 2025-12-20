@@ -10,6 +10,7 @@ from google.genai.types import (
     SafetySetting,
 )
 from openai import OpenAI
+from functools import lru_cache
 
 from app.config import LanguageModel, GLOBAL_SETTINGS, Settings
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
@@ -35,6 +36,7 @@ def generate_plan(summary: dict[str, Any], settings: Settings = GLOBAL_SETTINGS)
     raise NotImplementedError(msg)
 
 
+@lru_cache
 def call_gpt(prompt: str, api_key: str | None, model: LanguageModel) -> str:
     """Sends a prompt to the GPT model.
 
@@ -60,6 +62,7 @@ def call_gpt(prompt: str, api_key: str | None, model: LanguageModel) -> str:
     return response.choices[0].message.content
 
 
+@lru_cache
 def call_gemini(
     prompt: str,
     api_key: str | None,
