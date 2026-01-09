@@ -2,11 +2,13 @@
 
 from dataclasses import asdict
 from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
+
 from app.auth.deps import get_current_user
-from app.models.user import UserSecrets, User, load_user_secrets
 from app.db import engine
+from app.models.user import User, UserSecrets, load_user_secrets
 from app.security.crypto import encrypt
 
 router = APIRouter(prefix="/secrets")

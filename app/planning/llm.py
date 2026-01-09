@@ -1,5 +1,6 @@
 """Generates the training plan based on the summary by using an LLM."""
 
+from functools import lru_cache
 from typing import Any
 
 from google import genai
@@ -10,10 +11,9 @@ from google.genai.types import (
     SafetySetting,
 )
 from openai import OpenAI
-from functools import lru_cache
 
-from app.models.user import User, load_user_secrets
 from app.config import LanguageModel
+from app.models.user import User, load_user_secrets
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
 
 

@@ -1,15 +1,16 @@
 """Web routes for the app."""
 
 from typing import Annotated
+
 import markdown
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from app.config import GLOBAL_SETTINGS
-from app.services.planner import generate_weekly_plan
-from app.models.user import User
 from app.auth.deps import get_current_user
+from app.config import GLOBAL_SETTINGS
+from app.models.user import User
+from app.services.planner import generate_weekly_plan
 
 router = APIRouter(tags=["web"])
 

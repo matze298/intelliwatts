@@ -1,15 +1,15 @@
 """Routes for the app API."""
 
-from typing import Any, Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
 from app.auth.deps import get_current_user
-from app.models.user import load_user_secrets, User
 from app.config import GLOBAL_SETTINGS
 from app.intervals.client import IntervalsClient
 from app.intervals.load import compute_load
 from app.intervals.parser.activity import parse_activities
+from app.models.user import User, load_user_secrets
 from app.planning.llm import generate_plan
 from app.planning.summary import build_weekly_summary
 

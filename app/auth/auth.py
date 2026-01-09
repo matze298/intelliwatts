@@ -1,10 +1,10 @@
 """Authentication functions."""
 
-from datetime import datetime, timedelta, UTC
-from jose import jwt, JWTError
-from passlib.context import CryptContext
 import os
+from datetime import UTC, datetime, timedelta
 
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"])
 SECRET_KEY = os.environ["JWT_SECRET_KEY"]

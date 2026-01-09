@@ -1,7 +1,10 @@
-from dataclasses import dataclass
+"""Defines the User and UserSecrets models."""
+
 import uuid
-from sqlmodel import Field, SQLModel, Session, select
+from dataclasses import dataclass
+
 from fastapi import HTTPException
+from sqlmodel import Field, Session, SQLModel, select
 
 from app.db import engine
 from app.security.crypto import decrypt

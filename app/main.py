@@ -6,11 +6,11 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.db import init_db
-from app.routes import api, web, auth, secrets
-from app.services.planner import generate_weekly_plan
 from app.config import GLOBAL_SETTINGS, LanguageModel
+from app.db import init_db
 from app.models.user import User
+from app.routes import api, auth, secrets, web
+from app.services.planner import generate_weekly_plan
 
 app = FastAPI(title="Intervals Coach", version="0.1.0")
 templates = Jinja2Templates(directory="app/templates")
