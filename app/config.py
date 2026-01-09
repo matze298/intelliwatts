@@ -21,10 +21,11 @@ class LanguageModel(StrEnum):
 class Settings(BaseSettings):
     """Settings for the FastAPI app."""
 
-    ENVIRONMENT: str = "development"
+    # Dev settings
     DEV_USER: str | None = None
     DEV_PASSWORD: str | None = None
 
+    # Secret keys
     INTERVALS_ATHLETE_ID: str
     INTERVALS_API_KEY: str
     OPENAI_API_KEY: str | None = None
