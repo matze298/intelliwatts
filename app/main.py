@@ -1,6 +1,8 @@
 """Main entrypoint for the IntelliWatts app."""
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -8,11 +10,24 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import GLOBAL_SETTINGS, LanguageModel
 from app.db import init_db
+from app.dev.bootstrap import bootstrap_dev_user
 from app.models.user import User
 from app.routes import api, auth, secrets, web
 from app.services.planner import generate_weekly_plan
 
-app = FastAPI(title="Intervals Coach", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app_: FastAPI) -> AsyncIterator[None]:  # noqa: RUF029
+    """Lifespan for the FastAPI app.
+
+    Yields:
+        None
+    """
+    bootstrap_dev_user()
+    yield
+
+
+app = FastAPI(title="Intervals Coach", version="0.1.0", lifespan=lifespan)
 templates = Jinja2Templates(directory="app/templates")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
