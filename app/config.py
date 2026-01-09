@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     # Secret keys
     INTERVALS_ATHLETE_ID: str
     INTERVALS_API_KEY: str
+    JWT_SECRET_KEY: str
+    APP_SECRET_KEY: str
     OPENAI_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
 
