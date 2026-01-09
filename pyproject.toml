@@ -40,6 +40,7 @@ allow-direct-references = true
 # uv configuration (dependency locking handled via uv.lock)
 [tool.uv]
 managed = true
+constraint-dependencies = ["bcrypt==4.3.0"]
 
 # Ruff configuration
 [tool.ruff]

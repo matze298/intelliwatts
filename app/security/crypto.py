@@ -1,10 +1,10 @@
 """Cryptography functions."""
 
-import os
-
 from cryptography.fernet import Fernet
 
-fernet = Fernet(os.environ["APP_SECRET_KEY"])
+from app.config import GLOBAL_SETTINGS
+
+fernet = Fernet(GLOBAL_SETTINGS.APP_SECRET_KEY)
 
 
 def encrypt(secret: str) -> bytes:

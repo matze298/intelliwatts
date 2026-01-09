@@ -1,13 +1,14 @@
 """Authentication functions."""
 
-import os
 from datetime import UTC, datetime, timedelta
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
+from app.config import GLOBAL_SETTINGS
+
 pwd_context = CryptContext(schemes=["bcrypt"])
-SECRET_KEY = os.environ["JWT_SECRET_KEY"]
+SECRET_KEY = GLOBAL_SETTINGS.JWT_SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
