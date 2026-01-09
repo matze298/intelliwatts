@@ -1,6 +1,5 @@
 """Routes to store and retrieve secrets."""
 
-from dataclasses import asdict
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -8,21 +7,19 @@ from sqlmodel import Session
 
 from app.auth.deps import get_current_user
 from app.db import engine
-from app.models.user import User, UserSecrets, load_user_secrets
+from app.models.user import User, UserSecrets
 from app.security.crypto import encrypt
 
 router = APIRouter(prefix="/secrets")
-
-user_dependency = Depends(get_current_user)
 
 
 @router.post("/store")
 def store(
     athlete_id: str,
     intervals_api_key: str,
+    user: Annotated[User, Depends(get_current_user)],
     openai_api_key: str | None = None,
     gemini_api_key: str | None = None,
-    user=user_dependency,  # noqa:ANN001
 ) -> dict[str, bool]:
     """Store the secrets for the user.
 
@@ -47,17 +44,3 @@ def store(
         session.add(item)
         session.commit()
         return {"stored": True}
-
-
-@router.get("/get")
-def get_secrets(user: Annotated[User, Depends(get_current_user)]) -> dict[str, str | None]:
-    """Retrieve the secrets for the user.
-
-    Args:
-        user: The current user. Resolved via dependency injection.
-
-    Returns:
-        A dictionary with the secrets.
-    """
-    secrets = load_user_secrets(user.id)  # Verify secrets exist
-    return asdict(secrets)
