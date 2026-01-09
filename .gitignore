@@ -9,6 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .ruff_cache
+node_modules/
 
 # Env file
 .env
