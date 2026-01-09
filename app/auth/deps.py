@@ -1,33 +1,37 @@
 """Authentication dependencies."""
 
-from fastapi import Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Request
 from sqlmodel import Session
 
 from app.auth.auth import decode_token
 from app.db import engine
 from app.models.user import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-
-def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
-    """Get the current user.
+def get_current_user(request: Request) -> User | None:
+    """Get the current user from the access token cookie.
 
     Args:
-        token: The access token.
+        request: The FastAPI request object.
 
     Returns:
-        The user.
-
-    Raises:
-        HTTPException: If the token is invalid or the user is not found.
+        The user or None if not authenticated.
     """
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+
+    # The token is expected to be in the format "Bearer <token>"
+    try:
+        _, token = token.split()
+    except ValueError:
+        return None
+
     user_id = decode_token(token)
     if not user_id:
-        raise HTTPException(401, "Invalid token")
+        return None
     with Session(engine) as session:
         user = session.get(User, user_id)
         if not user:
-            raise HTTPException(401, "User not found")
+            return None
         return user

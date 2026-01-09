@@ -8,6 +8,16 @@
 
 <body>
     <div class="container">
+        <div class="nav">
+            <a href="/">Home</a>
+            {% if user %}
+            <a href="/secrets">Secrets</a>
+            <a href="/logout">Logout</a>
+            {% else %}
+            <a href="/login">Login</a>
+            <a href="/register">Register</a>
+            {% endif %}
+        </div>
         <h1>🚴 AI Training Plan</h1>
 
         <h2> Settings</h2>

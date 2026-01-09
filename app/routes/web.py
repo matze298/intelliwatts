@@ -4,7 +4,7 @@ from typing import Annotated
 
 import markdown
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.auth.deps import get_current_user
@@ -18,7 +18,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/", response_class=HTMLResponse)
-def home(request: Request) -> HTMLResponse:
+def home(request: Request, user: User | None = Depends(get_current_user)) -> HTMLResponse:
     """Home page for the app.
 
     Returns:
@@ -26,8 +26,56 @@ def home(request: Request) -> HTMLResponse:
     """
     return templates.TemplateResponse(
         "plan.html",
-        {"request": request, "plan_html": None, "summary": None, "settings": request.app.state.settings},
+        {
+            "request": request,
+            "plan_html": None,
+            "summary": None,
+            "settings": request.app.state.settings,
+            "user": user,
+        },
     )
+
+
+@router.get("/register", response_class=HTMLResponse)
+def register(request: Request) -> HTMLResponse:
+    """Register page for the app.
+
+    Returns:
+        The register page as HTML.
+    """
+    return templates.TemplateResponse("register.html", {"request": request, "user": None})
+
+
+@router.get("/login", response_class=HTMLResponse)
+def login(request: Request) -> HTMLResponse:
+    """Login page for the app.
+
+    Returns:
+        The login page as HTML.
+    """
+    return templates.TemplateResponse("login.html", {"request": request, "user": None})
+
+
+@router.get("/logout")
+def logout() -> RedirectResponse:
+    """Logout the user.
+
+    Returns:
+        The logout response.
+    """
+    response = RedirectResponse(url="/")
+    response.delete_cookie(key="access_token")
+    return response
+
+
+@router.get("/secrets", response_class=HTMLResponse)
+def secrets(request: Request, user: Annotated[User, Depends(get_current_user)]) -> HTMLResponse:
+    """Secrets page for the app.
+
+    Returns:
+        The secrets page as HTML.
+    """
+    return templates.TemplateResponse("secrets.html", {"request": request, "user": user})
 
 
 @router.post("/generate", response_class=HTMLResponse)

@@ -34,7 +34,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(api.router)
 app.include_router(web.router)
 app.include_router(auth.router)
-app.include_router(secrets.router, prefix="/users")
+app.include_router(secrets.router)
 init_db()
 
 # Add settings to the App state
