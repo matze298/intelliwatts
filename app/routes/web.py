@@ -3,12 +3,15 @@
 from typing import Annotated
 
 import markdown
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlmodel import Session, select
 
+from app.auth.auth import create_access_token, hash_password, verify_password
 from app.auth.deps import get_current_user
 from app.config import GLOBAL_SETTINGS
+from app.db import engine
 from app.models.user import User
 from app.services.planner import generate_weekly_plan
 
@@ -46,6 +49,34 @@ def register(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("register.html", {"request": request, "user": None})
 
 
+# TODO(mr): Extract common code between web.py and auth.py
+@router.post("/register", response_class=Response)
+async def register_post(request: Request) -> Response:
+    """Handle register form submission."""
+    form = await request.form()
+    email = form.get("email")
+    password = form.get("password")
+
+    if not isinstance(email, str) or not isinstance(password, str):
+        msg = "Email and password must be strings."
+        return templates.TemplateResponse("register.html", {"request": request, "user": None, "error": msg})
+
+    try:
+        with Session(engine) as session:
+            existing = session.exec(select(User).where(User.email == email)).first()
+            if existing:
+                raise HTTPException(400, "User exists")
+
+            user = User(email=email, password_hash=hash_password(password))
+            session.add(user)
+            session.commit()
+
+    except Exception as e:
+        return templates.TemplateResponse("register.html", {"request": request, "user": None, "error": str(e)})
+
+    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @router.get("/login", response_class=HTMLResponse)
 def login(request: Request) -> HTMLResponse:
     """Login page for the app.
@@ -54,6 +85,34 @@ def login(request: Request) -> HTMLResponse:
         The login page as HTML.
     """
     return templates.TemplateResponse("login.html", {"request": request, "user": None})
+
+
+# TODO(mr): Extract common code between web.py and auth.py
+@router.post("/login", response_class=Response)
+async def login_post(request: Request) -> Response:
+    """Handle login form submission."""
+    form = await request.form()
+    email = form.get("email")
+    password = form.get("password")
+
+    if not isinstance(email, str) or not isinstance(password, str):
+        msg = "Email and password must be strings."
+        return templates.TemplateResponse("login.html", {"request": request, "user": None, "error": msg})
+
+    with Session(engine) as session:
+        user = session.exec(select(User).where(User.email == email)).first()
+        if not user or not verify_password(password, user.password_hash):
+            raise HTTPException(401, "Invalid credentials")
+
+    token = create_access_token({"sub": str(user.id)})
+    response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {token}",
+        httponly=True,
+        samesite="lax",
+    )
+    return response
 
 
 @router.get("/logout")

@@ -18,12 +18,12 @@ def bootstrap_dev_user() -> None:
         user = session.exec(select(User).where(User.email == GLOBAL_SETTINGS.DEV_USER)).first()
 
         if not user:
-            if not GLOBAL_SETTINGS.DEV_PASSWORD:
+            if GLOBAL_SETTINGS.DEV_PASSWORD is None:
                 msg = "DEV_PASSWORD must be set if DEV_USER is set!"
                 raise ValueError(msg)
             user = User(
                 email=GLOBAL_SETTINGS.DEV_USER,
-                hashed_password=hash_password(GLOBAL_SETTINGS.DEV_PASSWORD),
+                password_hash=hash_password(GLOBAL_SETTINGS.DEV_PASSWORD),
             )
             session.add(user)
             session.commit()
@@ -41,3 +41,7 @@ def bootstrap_dev_user() -> None:
             )
             session.add(secrets)
             session.commit()
+
+
+if __name__ == "__main__":
+    bootstrap_dev_user()

@@ -1,22 +1,24 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Login</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
     <div class="container">
         <div class="nav">
             <a href="/">Home</a>
             {% if user %}
-                <a href="/secrets">Secrets</a>
-                <a href="/logout">Logout</a>
+            <a href="/secrets">Secrets</a>
+            <a href="/logout">Logout</a>
             {% else %}
-                <a href="/login">Login</a>
+            <a href="/login">Login</a>
             {% endif %}
         </div>
         <h1>🚴 Login</h1>
-        <form id="loginForm">
+        <form action="/login" method="post">
             <label for="email">Email:</label>
             <input type="email" id="email" name="email" required>
             <br>
@@ -25,30 +27,11 @@
             <br>
             <button type="submit">Login</button>
         </form>
-        <p id="error" style="color: red;"></p>
+        {% if error %}
+        <p style="color: red;">{{ error }}</p>
+        {% endif %}
         <p>Don't have an account? <a href="/register">Register here</a>.</p>
     </div>
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = e.target.email.value;
-            const password = e.target.password.value;
-            const errorElement = document.getElementById('error');
-
-            const response = await fetch('/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
-            });
-
-            if (response.ok) {
-                window.location.href = '/';
-            } else {
-                errorElement.textContent = 'Invalid credentials';
-            }
-        });
-    </script>
 </body>
+
 </html>
