@@ -1,5 +1,7 @@
 """Authentication dependencies."""
 
+from uuid import UUID
+
 from fastapi import Request
 from sqlmodel import Session
 
@@ -31,7 +33,7 @@ def get_current_user(request: Request) -> User | None:
     if not user_id:
         return None
     with Session(engine) as session:
-        user = session.get(User, user_id)
+        user = session.get(User, UUID(user_id))
         if not user:
             return None
         return user
