@@ -27,7 +27,7 @@ def build_weekly_summary(
                 "tss": sum(a.training_stress for a in last_7d),
                 "hours": round(sum(a.duration_h for a in last_7d), 1),
             },
-            "last_28d": load,
+            "last_42d": load,
         },
         "constraints": {
             "max_hours_week": weekly_hours,

@@ -7,6 +7,7 @@ name = "intelliwatts"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "cryptography",
     "fastapi",
     "google-genai",
     "gunicorn",
@@ -14,10 +15,13 @@ dependencies = [
     "openai",
     "markdown",
     "pandas",
+    "passlib[bcrypt]",
     "pydantic",
     "pydantic-settings",
+    "python-jose[cryptography]",
     "python-multipart",
     "requests",
+    "sqlmodel",
     "uvicorn",
 ]
 

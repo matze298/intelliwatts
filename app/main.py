@@ -6,9 +6,11 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.routes import api, web
+from app.db import init_db
+from app.routes import api, web, auth, secrets
 from app.services.planner import generate_weekly_plan
 from app.config import GLOBAL_SETTINGS, LanguageModel
+from app.models.user import User
 
 app = FastAPI(title="Intervals Coach", version="0.1.0")
 templates = Jinja2Templates(directory="app/templates")
@@ -16,6 +18,9 @@ templates = Jinja2Templates(directory="app/templates")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(api.router)
 app.include_router(web.router)
+app.include_router(auth.router)
+app.include_router(secrets.router, prefix="/users")
+init_db()
 
 # Add settings to the App state
 app.state.settings = {"settings": GLOBAL_SETTINGS, "models": LanguageModel}
@@ -34,7 +39,7 @@ def health_check() -> dict[str, str]:
 if __name__ == "__main__":
     # Run code without FastAPI
     logging.basicConfig(level=logging.DEBUG)
-    content = generate_weekly_plan()
+    content = generate_weekly_plan(user=User(id=1, email="test", password_hash="hash"))
     print("Training plan:")
     print(10 * "=")
     print(content["plan"])

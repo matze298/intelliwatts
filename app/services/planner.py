@@ -8,9 +8,10 @@ from app.intervals.load import compute_load
 from app.intervals.parser.activity import parse_activities
 from app.planning.llm import generate_plan
 from app.planning.summary import build_weekly_summary
+from app.models.user import User
 
 
-def generate_weekly_plan(settings: Settings = GLOBAL_SETTINGS) -> dict[str, Any]:
+def generate_weekly_plan(user: User, settings: Settings = GLOBAL_SETTINGS) -> dict[str, Any]:
     """Generates the weekly plan.
 
     Returns:
@@ -23,5 +24,5 @@ def generate_weekly_plan(settings: Settings = GLOBAL_SETTINGS) -> dict[str, Any]
     summary = build_weekly_summary(
         activities, load, weekly_sessions=settings.weekly_sessions, weekly_hours=settings.weekly_hours
     )
-    plan = generate_plan(summary)
+    plan = generate_plan(summary=summary, language_model=settings.LANGUAGE_MODEL, user=user)
     return {"plan": plan, "summary": summary}

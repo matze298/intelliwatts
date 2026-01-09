@@ -1,12 +1,15 @@
 """Web routes for the app."""
 
+from typing import Annotated
 import markdown
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import GLOBAL_SETTINGS
 from app.services.planner import generate_weekly_plan
+from app.models.user import User
+from app.auth.deps import get_current_user
 
 router = APIRouter(tags=["web"])
 
@@ -27,7 +30,7 @@ def home(request: Request) -> HTMLResponse:
 
 
 @router.post("/generate", response_class=HTMLResponse)
-async def generate(request: Request) -> HTMLResponse:
+async def generate(request: Request, user: Annotated[User, Depends(get_current_user)]) -> HTMLResponse:
     """Generates the weekly plan for the athlete.
 
     Returns:
@@ -42,7 +45,7 @@ async def generate(request: Request) -> HTMLResponse:
         weekly_sessions=input_data.get("max_sessions", GLOBAL_SETTINGS.weekly_sessions),
     )
 
-    result = generate_weekly_plan(settings=GLOBAL_SETTINGS)
+    result = generate_weekly_plan(settings=GLOBAL_SETTINGS, user=user)
 
     plan_html = markdown.markdown(
         result["plan"],
