@@ -3,9 +3,11 @@
 from enum import StrEnum
 from typing import Any
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
-from app.planning.coach_prompt import SYSTEM_PROMPT as DEFAULT_SYSTEM_PROMPT, USER_PROMPT as DEFAULT_USER_PROMPT
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.planning.coach_prompt import SYSTEM_PROMPT as DEFAULT_SYSTEM_PROMPT
+from app.planning.coach_prompt import USER_PROMPT as DEFAULT_USER_PROMPT
 
 
 class LanguageModel(StrEnum):
@@ -18,6 +20,10 @@ class LanguageModel(StrEnum):
 
 class Settings(BaseSettings):
     """Settings for the FastAPI app."""
+
+    ENVIRONMENT: str = "development"
+    DEV_USER: str | None = None
+    DEV_PASSWORD: str | None = None
 
     INTERVALS_ATHLETE_ID: str
     INTERVALS_API_KEY: str

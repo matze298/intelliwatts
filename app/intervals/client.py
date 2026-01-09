@@ -21,7 +21,7 @@ class IntervalsClient:
         self.cache_file = Path("cache/activities.json")
         self.cache_expiration_hours = cache_expiration_hours
 
-    def activities(self, days: int = 28) -> list[dict[str, Any]]:
+    def activities(self, days: int = 42) -> list[dict[str, Any]]:
         """Get the activities for the last days.
 
         Returns:
