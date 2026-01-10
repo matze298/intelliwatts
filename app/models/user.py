@@ -7,15 +7,7 @@ from fastapi import HTTPException
 from sqlmodel import Field, Session, SQLModel, select
 
 from app.db import engine
-from app.security.crypto import decrypt
-
-
-class User(SQLModel, table=True):
-    """Defines a user."""
-
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    email: str
-    password_hash: str
+from app.security.crypto import decrypt, encrypt
 
 
 class UserSecrets(SQLModel, table=True):
@@ -27,6 +19,40 @@ class UserSecrets(SQLModel, table=True):
     intervals_api_key: bytes
     openai_api_key: bytes | None = None
     gemini_api_key: bytes | None = None
+
+
+class User(SQLModel, table=True):
+    """Defines a user."""
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    email: str
+    password_hash: str
+
+    def create_secrets(
+        self,
+        intervals_athlete_id: str,
+        intervals_api_key: str,
+        openai_api_key: str | None,
+        gemini_api_key: str | None,
+    ) -> UserSecrets:
+        """Create empty secrets for the user.
+
+        Args:
+            intervals_athlete_id: The intervals.icu athlete id.
+            intervals_api_key: The intervals.icu api key.
+            openai_api_key: Optional openai api key.
+            gemini_api_key: Optional gemini api key.
+
+        Returns:
+            The created UserSecrets object.
+        """
+        return UserSecrets(
+            user_id=self.id,
+            intervals_athlete_id=intervals_athlete_id,
+            intervals_api_key=encrypt(intervals_api_key),
+            openai_api_key=encrypt(openai_api_key) if openai_api_key else None,
+            gemini_api_key=encrypt(gemini_api_key) if gemini_api_key else None,
+        )
 
 
 @dataclass

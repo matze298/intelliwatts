@@ -8,7 +8,6 @@ from sqlmodel import Session, select
 from app.auth.auth import get_current_user_from_token
 from app.db import engine
 from app.models.user import User, UserSecrets
-from app.security.crypto import encrypt
 
 router = APIRouter(prefix="/secrets")
 
@@ -41,20 +40,19 @@ def store(
             existing_secrets = session.exec(select(UserSecrets).where(UserSecrets.user_id == user.id)).first()
 
             if existing_secrets:
-                existing_secrets.intervals_athlete_id = athlete_id
-                existing_secrets.intervals_api_key = encrypt(intervals_api_key)
-                if openai_api_key:
-                    existing_secrets.openai_api_key = encrypt(openai_api_key)
-                if gemini_api_key:
-                    existing_secrets.gemini_api_key = encrypt(gemini_api_key)
+                existing_secrets = user.create_secrets(
+                    intervals_athlete_id=athlete_id,
+                    intervals_api_key=intervals_api_key,
+                    openai_api_key=openai_api_key,
+                    gemini_api_key=gemini_api_key,
+                )
                 session.add(existing_secrets)
             else:
-                new_secrets = UserSecrets(
-                    user_id=user.id,
+                new_secrets = user.create_secrets(
                     intervals_athlete_id=athlete_id,
-                    intervals_api_key=encrypt(intervals_api_key),
-                    openai_api_key=encrypt(openai_api_key) if openai_api_key else None,
-                    gemini_api_key=encrypt(gemini_api_key) if gemini_api_key else None,
+                    intervals_api_key=intervals_api_key,
+                    openai_api_key=openai_api_key,
+                    gemini_api_key=gemini_api_key,
                 )
                 session.add(new_secrets)
             session.commit()

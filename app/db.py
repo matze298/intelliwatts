@@ -1,4 +1,4 @@
-"""Database used for the app."""
+"""SQL Database used for the app."""
 
 from sqlmodel import SQLModel, create_engine
 
