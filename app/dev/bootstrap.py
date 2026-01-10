@@ -6,11 +6,10 @@ from app.auth.auth import hash_password
 from app.config import GLOBAL_SETTINGS
 from app.db import engine
 from app.models.user import User, UserSecrets
-from app.security.crypto import encrypt
 
 
 def bootstrap_dev_user() -> None:
-    """Fills the database with a dev user and secrets for local debugging."""
+    """Fills the SQL database with a dev user and secrets for local debugging."""
     if not GLOBAL_SETTINGS.DEV_USER or not GLOBAL_SETTINGS.DEV_PASSWORD:
         return
 
@@ -29,12 +28,11 @@ def bootstrap_dev_user() -> None:
         secrets = session.exec(select(UserSecrets).where(UserSecrets.user_id == user.id)).first()
 
         if not secrets:
-            secrets = UserSecrets(
-                user_id=user.id,
+            secrets = user.create_secrets(
                 intervals_athlete_id=GLOBAL_SETTINGS.INTERVALS_ATHLETE_ID,
-                intervals_api_key=encrypt(GLOBAL_SETTINGS.INTERVALS_API_KEY),
-                openai_api_key=encrypt(GLOBAL_SETTINGS.OPENAI_API_KEY) if GLOBAL_SETTINGS.OPENAI_API_KEY else None,
-                gemini_api_key=encrypt(GLOBAL_SETTINGS.GEMINI_API_KEY) if GLOBAL_SETTINGS.GEMINI_API_KEY else None,
+                intervals_api_key=GLOBAL_SETTINGS.INTERVALS_API_KEY,
+                openai_api_key=GLOBAL_SETTINGS.OPENAI_API_KEY,
+                gemini_api_key=GLOBAL_SETTINGS.GEMINI_API_KEY,
             )
             session.add(secrets)
             session.commit()
