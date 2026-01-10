@@ -2,6 +2,7 @@
 
 import uuid
 from dataclasses import dataclass
+from typing import Self
 
 from fastapi import HTTPException
 from sqlmodel import Field, Session, SQLModel, select
@@ -64,6 +65,23 @@ class DecryptedUserSecrets:
     openai_api_key: str | None = None
     gemini_api_key: str | None = None
 
+    @classmethod
+    def from_secrets(cls, secrets: UserSecrets) -> Self:
+        """Create a DecryptedUserSecrets instance from a UserSecrets object.
+
+        Args:
+            secrets: The UserSecrets object.
+
+        Returns:
+            The decrypted user secrets.
+        """
+        return cls(
+            intervals_athlete_id=secrets.intervals_athlete_id,
+            intervals_api_key=decrypt(secrets.intervals_api_key),
+            openai_api_key=decrypt(secrets.openai_api_key) if secrets.openai_api_key else None,
+            gemini_api_key=decrypt(secrets.gemini_api_key) if secrets.gemini_api_key else None,
+        )
+
 
 def load_user_secrets(user_id: uuid.UUID) -> DecryptedUserSecrets:
     """Load and decrypt secrets for a user.
@@ -84,10 +102,4 @@ def load_user_secrets(user_id: uuid.UUID) -> DecryptedUserSecrets:
                 status_code=404,
                 detail="No API secrets configured for this user",
             )
-
-        return DecryptedUserSecrets(
-            intervals_athlete_id=secrets.intervals_athlete_id,
-            intervals_api_key=decrypt(secrets.intervals_api_key),
-            openai_api_key=decrypt(secrets.openai_api_key) if secrets.openai_api_key else None,
-            gemini_api_key=decrypt(secrets.gemini_api_key) if secrets.gemini_api_key else None,
-        )
+        return DecryptedUserSecrets.from_secrets(secrets)
