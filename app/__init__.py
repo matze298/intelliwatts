@@ -1,0 +1,1 @@
+"""Contains the app functionality."""

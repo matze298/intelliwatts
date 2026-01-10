@@ -1,10 +1,11 @@
 """Routes for the app API."""
 
+import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
-from app.auth.deps import get_current_user
+from app.auth.auth import get_current_user_from_token, hash_password
 from app.config import GLOBAL_SETTINGS
 from app.intervals.client import IntervalsClient
 from app.intervals.load import compute_load
@@ -14,10 +15,11 @@ from app.planning.llm import generate_plan
 from app.planning.summary import build_weekly_summary
 
 router = APIRouter()
+_LOGGER = logging.getLogger(__name__)
 
 
 @router.post("/generate-plan")
-def generate_week(user: Annotated[User, Depends(get_current_user)]) -> dict[str, Any]:
+def generate_week(user: Annotated[User, Depends(get_current_user_from_token)]) -> dict[str, Any]:
     """Generates the weekly plan.
 
     Returns:
@@ -44,8 +46,19 @@ def generate_week(user: Annotated[User, Depends(get_current_user)]) -> dict[str,
 
 
 def main() -> None:
-    """Run the app without FastAPI."""
-    content = generate_week(user=User(id=1, email="test", password_hash="hash"))
-    print("Training plan: \n 10*'=' \n", content["plan"])
-    print(3 * "\n")
-    print("Weekly Summary: \n 10*'=' \n", content["summary"])
+    """Run the app without FastAPI.
+
+    Raises:
+        ValueError: If DEV_USER or DEV_PASSWORD is not set.
+    """
+    if GLOBAL_SETTINGS.DEV_USER is None or GLOBAL_SETTINGS.DEV_PASSWORD is None:
+        msg = "DEV_USER and DEV_PASSWORD must be set to run main()"
+        raise ValueError(msg)
+    content = generate_week(
+        user=User(email=GLOBAL_SETTINGS.DEV_USER, password_hash=hash_password(GLOBAL_SETTINGS.DEV_PASSWORD)),
+    )
+    _LOGGER.info("Training plan: \n 10*'=' \n)")
+    _LOGGER.info(content["plan"])
+    _LOGGER.info(3 * "\n")
+    _LOGGER.info("Weekly Summary: \n 10*'=' \n")
+    _LOGGER.info(content["summary"])

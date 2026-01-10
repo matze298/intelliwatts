@@ -8,8 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
-from app.auth.auth import create_access_token, hash_password, verify_password
-from app.auth.deps import get_current_user
+from app.auth.auth import create_access_token, get_current_user_from_token, hash_password, verify_password
 from app.config import GLOBAL_SETTINGS
 from app.db import engine
 from app.models.user import User
@@ -21,7 +20,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/", response_class=HTMLResponse)
-def home(request: Request, user: User | None = Depends(get_current_user)) -> HTMLResponse:
+def home(request: Request, user: Annotated[User | None, Depends(get_current_user_from_token)]) -> HTMLResponse:
     """Home page for the app.
 
     Returns:
@@ -49,10 +48,20 @@ def register(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("register.html", {"request": request, "user": None})
 
 
-# TODO(mr): Extract common code between web.py and auth.py
+# TODO(mr): Extract common code between web.py and auth.py #noqa: TD003
 @router.post("/register", response_class=Response)
 async def register_post(request: Request) -> Response:
-    """Handle register form submission."""
+    """Handle register form submission.
+
+    Args:
+        request: The FastAPI request object.
+
+    Returns:
+        The response after registration.
+
+    Raises:
+        HTTPException: If the user already exists.
+    """
     form = await request.form()
     email = form.get("email")
     password = form.get("password")
@@ -71,7 +80,7 @@ async def register_post(request: Request) -> Response:
             session.add(user)
             session.commit()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return templates.TemplateResponse("register.html", {"request": request, "user": None, "error": str(e)})
 
     return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
@@ -87,10 +96,20 @@ def login(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("login.html", {"request": request, "user": None})
 
 
-# TODO(mr): Extract common code between web.py and auth.py
+# TODO(mr): Extract common code between web.py and auth.py #noqa: TD003
 @router.post("/login", response_class=Response)
 async def login_post(request: Request) -> Response:
-    """Handle login form submission."""
+    """Handle login form submission.
+
+    Args:
+        request: The FastAPI request object.
+
+    Returns:
+        The response after login.
+
+    Raises:
+        HTTPException: If the user does not exist or the password is incorrect.
+    """
     form = await request.form()
     email = form.get("email")
     password = form.get("password")
@@ -128,7 +147,7 @@ def logout() -> RedirectResponse:
 
 
 @router.get("/secrets", response_class=HTMLResponse)
-def secrets(request: Request, user: Annotated[User, Depends(get_current_user)]) -> HTMLResponse:
+def secrets(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
     """Secrets page for the app.
 
     Returns:
@@ -138,7 +157,7 @@ def secrets(request: Request, user: Annotated[User, Depends(get_current_user)]) 
 
 
 @router.post("/generate", response_class=HTMLResponse)
-async def generate(request: Request, user: Annotated[User, Depends(get_current_user)]) -> HTMLResponse:
+async def generate(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
     """Generates the weekly plan for the athlete.
 
     Returns:

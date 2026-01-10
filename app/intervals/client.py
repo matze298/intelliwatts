@@ -68,7 +68,7 @@ class IntervalsClient:
         )
 
         with self.cache_file.open("r") as f:
-            return eval(f.read())
+            return eval(f.read())  # noqa:S307
 
     def cache_activities(self, activities: list[dict[str, Any]]) -> None:
         """Cache the activities locally.

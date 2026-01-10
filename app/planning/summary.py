@@ -1,6 +1,6 @@
 """Builds the weekly summary of the intervals.icu activities."""
 
-from datetime import date, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.intervals.load import TrainingLoad
@@ -19,7 +19,7 @@ def build_weekly_summary(
     Returns:
         The weekly summary.
     """
-    last_7d = [a for a in activities if a.date >= str(date.today() - timedelta(days=7))]
+    last_7d = [a for a in activities if a.date >= str(datetime.now(tz=UTC).date() - timedelta(days=7))]
 
     return {
         "recent_metrics": {

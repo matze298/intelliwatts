@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
-from app.auth.deps import get_current_user
+from app.auth.auth import get_current_user_from_token
 from app.db import engine
 from app.models.user import User, UserSecrets
 from app.security.crypto import encrypt
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/secrets")
 def store(
     athlete_id: str,
     intervals_api_key: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_current_user_from_token)],
     openai_api_key: str | None = None,
     gemini_api_key: str | None = None,
 ) -> dict[str, bool]:
@@ -57,10 +57,9 @@ def store(
                     gemini_api_key=encrypt(gemini_api_key) if gemini_api_key else None,
                 )
                 session.add(new_secrets)
-
             session.commit()
-            return {"stored": True}
-
         except Exception as e:
             session.rollback()
             raise HTTPException(status_code=500, detail=f"Failed to store secrets: {e}") from e
+        else:
+            return {"stored": True}

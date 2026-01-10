@@ -22,7 +22,10 @@ def generate_weekly_plan(user: User, settings: Settings = GLOBAL_SETTINGS) -> di
     activities = parse_activities(raw)
     load = compute_load(activities)
     summary = build_weekly_summary(
-        activities, load, weekly_sessions=settings.weekly_sessions, weekly_hours=settings.weekly_hours
+        activities,
+        load,
+        weekly_sessions=settings.weekly_sessions,
+        weekly_hours=settings.weekly_hours,
     )
     plan = generate_plan(summary=summary, language_model=settings.LANGUAGE_MODEL, user=user)
     return {"plan": plan, "summary": summary}

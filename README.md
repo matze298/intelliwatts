@@ -12,6 +12,10 @@ Current supported LLMs:
 - OpenAI ChatGPT (requires subscription!)
 - Google Gemini (free tier available!)
 
+## Build Status
+[![Gatekeeper](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml/badge.svg?branch=main)](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml)
+
+
 ## 🌐 Live Demo
 https://intelliwatts.onrender.com
 

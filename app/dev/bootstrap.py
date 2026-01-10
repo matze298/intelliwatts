@@ -11,16 +11,13 @@ from app.security.crypto import encrypt
 
 def bootstrap_dev_user() -> None:
     """Fills the database with a dev user and secrets for local debugging."""
-    if not GLOBAL_SETTINGS.DEV_USER:
+    if not GLOBAL_SETTINGS.DEV_USER or not GLOBAL_SETTINGS.DEV_PASSWORD:
         return
 
     with Session(engine) as session:
         user = session.exec(select(User).where(User.email == GLOBAL_SETTINGS.DEV_USER)).first()
 
         if not user:
-            if GLOBAL_SETTINGS.DEV_PASSWORD is None:
-                msg = "DEV_PASSWORD must be set if DEV_USER is set!"
-                raise ValueError(msg)
             user = User(
                 email=GLOBAL_SETTINGS.DEV_USER,
                 password_hash=hash_password(GLOBAL_SETTINGS.DEV_PASSWORD),
