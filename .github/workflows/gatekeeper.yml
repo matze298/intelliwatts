@@ -55,6 +55,8 @@ jobs:
   gatekeeper:
     needs: [githooks, unittests]
     runs-on: ubuntu-latest
+    if: always()
     steps:
-      - name: Finalize Gatekeeper
-        run: echo "All jobs completed."
+      - name: Check status
+        if: needs.githooks.result != 'success' || needs.unittests.result != 'success'
+        run: exit 1
