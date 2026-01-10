@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str | None = None
 
     # App configuration
-    LANGUAGE_MODEL: LanguageModel
+    LANGUAGE_MODEL: LanguageModel = LanguageModel.GEMINI_FLASH
     CACHE_INTERVALS_HOURS: int = 0
 
     # Prompt configuration
