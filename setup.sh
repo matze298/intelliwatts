@@ -29,10 +29,10 @@ fi
 # Sync dependencies from uv.lock
 if [ -f "uv.lock" ]; then
   echo "Syncing dependencies via uv.lock"
-  uv sync
+  uv sync --extra dev --extra test
 else
   echo "No uv.lock found. Running uv sync anyway (will resolve dependencies)"
-  uv sync
+  uv sync --extra dev --extra test
 fi
 
 # Ensure pre-commit is installed

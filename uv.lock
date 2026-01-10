@@ -2,6 +2,9 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 
+[manifest]
+constraints = [{ name = "bcrypt", specifier = "==4.3.0" }]
+
 [[package]]
 name = "annotated-doc"
 version = "0.0.4"
@@ -537,7 +540,6 @@ name = "intelliwatts"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "bcrypt" },
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "google-genai" },
@@ -569,7 +571,6 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bcrypt", specifier = "==4.3.0" },
     { name = "black", marker = "extra == 'dev'" },
     { name = "cryptography" },
     { name = "fastapi" },
