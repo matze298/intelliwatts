@@ -14,7 +14,7 @@ Current supported LLMs:
 
 ## Build Status
 [![Gatekeeper](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml/badge.svg?branch=main)](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml)
-[![codecov](https://codecov.io/gh/matze298/intelliwatts/graph/badge.svg)](https://codecov.io/gh/matze298/intelliwatts)
+[![codecov](https://codecov.io/github/matze298/intelliwatts/graph/badge.svg?token=HC93HLOWOB)](https://codecov.io/github/matze298/intelliwatts)
 
 
 
