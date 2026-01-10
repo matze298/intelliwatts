@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from app.auth.auth import hash_password
 from app.config import GLOBAL_SETTINGS, LanguageModel
 from app.db import init_db
 from app.dev.bootstrap import bootstrap_dev_user
@@ -17,7 +18,7 @@ from app.services.planner import generate_weekly_plan
 
 
 @asynccontextmanager
-async def lifespan(app_: FastAPI) -> AsyncIterator[None]:  # noqa: RUF029
+async def lifespan(app_: FastAPI) -> AsyncIterator[None]:  # noqa: RUF029, ARG001
     """Lifespan for the FastAPI app.
 
     Yields:
@@ -54,11 +55,9 @@ def health_check() -> dict[str, str]:
 if __name__ == "__main__":
     # Run code without FastAPI
     logging.basicConfig(level=logging.DEBUG)
-    content = generate_weekly_plan(user=User(id=1, email="test", password_hash="hash"))
-    print("Training plan:")
-    print(10 * "=")
-    print(content["plan"])
-    print(3 * "\n")
-    print("Weekly Summary:")
-    print(10 * "=")
-    print(content["summary"])
+    if GLOBAL_SETTINGS.DEV_USER is None or GLOBAL_SETTINGS.DEV_PASSWORD is None:
+        msg = "DEV_USER and DEV_PASSWORD must be set to run main()"
+        raise ValueError(msg)
+    content = generate_weekly_plan(
+        user=User(email=GLOBAL_SETTINGS.DEV_USER, password_hash=hash_password(GLOBAL_SETTINGS.DEV_PASSWORD)),
+    )
