@@ -40,21 +40,15 @@ def store(
             existing_secrets = session.exec(select(UserSecrets).where(UserSecrets.user_id == user.id)).first()
 
             if existing_secrets:
-                existing_secrets = user.create_secrets(
-                    intervals_athlete_id=athlete_id,
-                    intervals_api_key=intervals_api_key,
-                    openai_api_key=openai_api_key,
-                    gemini_api_key=gemini_api_key,
-                )
-                session.add(existing_secrets)
-            else:
-                new_secrets = user.create_secrets(
-                    intervals_athlete_id=athlete_id,
-                    intervals_api_key=intervals_api_key,
-                    openai_api_key=openai_api_key,
-                    gemini_api_key=gemini_api_key,
-                )
-                session.add(new_secrets)
+                session.delete(existing_secrets)
+
+            new_secrets = user.create_secrets(
+                intervals_athlete_id=athlete_id,
+                intervals_api_key=intervals_api_key,
+                openai_api_key=openai_api_key,
+                gemini_api_key=gemini_api_key,
+            )
+            session.add(new_secrets)
             session.commit()
         except Exception as e:
             session.rollback()
