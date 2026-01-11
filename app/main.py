@@ -16,6 +16,8 @@ from app.models.user import User
 from app.routes import api, auth, secrets, web
 from app.services.planner import generate_weekly_plan
 
+_LOGGER = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app_: FastAPI) -> AsyncIterator[None]:  # noqa: RUF029, ARG001
@@ -61,3 +63,4 @@ if __name__ == "__main__":
     content = generate_weekly_plan(
         user=User(email=GLOBAL_SETTINGS.DEV_USER, password_hash=hash_password(GLOBAL_SETTINGS.DEV_PASSWORD)),
     )
+    _LOGGER.info("Generated plan:\n%s", content)
