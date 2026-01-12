@@ -8,6 +8,7 @@ from app.intervals.load import compute_load
 from app.intervals.parser.activity import parse_activities
 from app.models.user import User
 from app.planning.llm import generate_plan
+from app.planning.llm_to_icu import llm_json_to_icu_txt
 from app.planning.summary import build_weekly_summary
 
 
@@ -28,4 +29,7 @@ def generate_weekly_plan(user: User, settings: Settings = GLOBAL_SETTINGS) -> di
         weekly_hours=settings.weekly_hours,
     )
     plan = generate_plan(summary=summary, language_model=settings.LANGUAGE_MODEL, user=user)
+    plan_txt = llm_json_to_icu_txt(plan)
+
+    plan = plan + "\n\n" + "**intervals.icu workout file (txt):**\n" + plan_txt
     return {"plan": plan, "summary": summary}
