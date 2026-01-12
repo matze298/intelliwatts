@@ -31,5 +31,5 @@ def generate_weekly_plan(user: User, settings: Settings = GLOBAL_SETTINGS) -> di
     plan = generate_plan(summary=summary, language_model=settings.LANGUAGE_MODEL, user=user)
     plan_txt = llm_json_to_icu_txt(plan)
 
-    plan = plan + "\n\n" + "**intervals.icu workout file (txt):**\n" + plan_txt
+    plan = plan + "\n\n" + "## intervals.icu workout file (txt)\n\n```text\n\n" + plan_txt + "\n```"
     return {"plan": plan, "summary": summary}

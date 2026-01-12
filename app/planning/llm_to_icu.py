@@ -1,6 +1,9 @@
 """Converts the plan JSON to text format usable by intervals.icu."""
 
 import json
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def llm_json_to_icu_txt(ai_response: str) -> str:
@@ -17,11 +20,16 @@ def llm_json_to_icu_txt(ai_response: str) -> str:
     json_part = parts[1].strip() if len(parts) > 1 else "[]"
 
     # 2. Parse JSON
-    workouts = json.loads(json_part)
+    try:
+        workouts = json.loads(json_part)
+    except json.JSONDecodeError:
+        _LOGGER.warning("Failed to parse JSON from AI response.")
+        return "Failed to parse workout JSON."
 
     # 3. Generate .txt files from JSON
+    file_content = ""
     for workout in workouts:
-        file_content = f"{workout['workout_name']}\n{workout['description']}\n\n"
+        file_content += f"Title: {workout['workout_name']}\n\nDescription: {workout['description']}\n\n"
 
         for segment in workout["segments"]:
             # Format: <section_title> <num_intervals>x
@@ -36,5 +44,7 @@ def llm_json_to_icu_txt(ai_response: str) -> str:
                 if step.get("rpm"):
                     line += f" {step['rpm']}rpm"
                 file_content += f"{line}\n"
+            file_content += "\n"
+        file_content += "\n\n"
 
     return file_content

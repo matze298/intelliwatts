@@ -71,7 +71,7 @@ def call_gemini(
     api_key: str | None,
     model: LanguageModel,
     temperature: float = 0.4,
-    max_output_tokens: int = 4096,
+    max_output_tokens: int = 6144,
 ) -> str:
     """Sends a prompt to the Gemini model.
 
