@@ -15,6 +15,8 @@ class LanguageModel(StrEnum):
 
     GPT_5_MINI = "gpt-5-mini-2025-08-07"
     GEMINI_FLASH = "gemini-flash-latest"
+    GEMINI_2_5_PRO = "gemini-2.5-pro"
+    GEMINI_1_5_PRO = "gemini-1.5-pro"
     GEMINI_2_0_FLASH = "gemini-2.0-flash"
 
 
