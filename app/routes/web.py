@@ -32,6 +32,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_current_user
             "request": request,
             "plan_html": None,
             "summary": None,
+            "prompt": None,
             "settings": request.app.state.settings,
             "user": user,
         },
@@ -191,6 +192,7 @@ async def generate(request: Request, user: Annotated[User, Depends(get_current_u
             "request": request,
             "plan_html": plan_html,
             "summary": summary_html,
+            "prompt": result["prompt"],
             "settings": request.app.state.settings,
         },
     )

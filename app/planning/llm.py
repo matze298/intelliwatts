@@ -1,7 +1,7 @@
 """Generates the training plan based on the summary by using an LLM."""
 
 from functools import lru_cache
-from typing import Any
+from typing import Any, NamedTuple
 
 from google import genai
 from google.genai.types import (
@@ -17,7 +17,14 @@ from app.models.user import User, load_user_secrets
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
 
 
-def generate_plan(summary: dict[str, Any], language_model: LanguageModel, user: User) -> str:
+class LLMResponse(NamedTuple):
+    """Response from the LLM."""
+
+    plan: str
+    prompt: list[dict[str, str]]
+
+
+def generate_plan(summary: dict[str, Any], language_model: LanguageModel, user: User) -> LLMResponse:
     """Generates the training plan based on the summary by using ChatGPT.
 
     Args:
@@ -40,11 +47,11 @@ def generate_plan(summary: dict[str, Any], language_model: LanguageModel, user: 
 
 
 @lru_cache
-def call_gpt(prompt: str, api_key: str | None, model: LanguageModel) -> str:
+def call_gpt(prompt: str, api_key: str | None, model: LanguageModel) -> LLMResponse:
     """Sends a prompt to the GPT model.
 
     Returns:
-        The text response.
+        The text response and the prompt.
 
     Raises:
         RuntimeError: if the API key is not set
@@ -54,15 +61,16 @@ def call_gpt(prompt: str, api_key: str | None, model: LanguageModel) -> str:
         raise RuntimeError(msg)
 
     client = OpenAI(api_key=api_key)
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
     response = client.chat.completions.create(
         model=model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
+        messages=messages,  # type: ignore[invalid-argument-type]
         temperature=0.2,
     )
-    return response.choices[0].message.content
+    return LLMResponse(plan=response.choices[0].message.content, prompt=messages)
 
 
 @lru_cache
@@ -72,11 +80,11 @@ def call_gemini(
     model: LanguageModel,
     temperature: float = 0.4,
     max_output_tokens: int = 6144,
-) -> str:
+) -> LLMResponse:
     """Sends a prompt to the Gemini model.
 
     Returns:
-        The text response.
+        The text response and the prompt.
 
     Raises:
         RuntimeError: if the API key is not set
@@ -112,4 +120,8 @@ def call_gemini(
         msg = "Gemini returned no text output"
         raise RuntimeError(msg)
 
-    return response.text
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    return LLMResponse(plan=response.text, prompt=messages)

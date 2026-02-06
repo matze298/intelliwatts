@@ -62,6 +62,13 @@
             {{ summary | safe }}
         </div>
         {% endif %}
+
+        {% if prompt %}
+        <h2>LLM Prompt</h2>
+        <div class="prompt">
+            {{ prompt | safe }}
+        </div>
+        {% endif %}
     </div>
 </body>
 

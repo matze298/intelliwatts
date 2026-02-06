@@ -28,8 +28,8 @@ def generate_weekly_plan(user: User, settings: Settings = GLOBAL_SETTINGS) -> di
         weekly_sessions=settings.weekly_sessions,
         weekly_hours=settings.weekly_hours,
     )
-    plan = generate_plan(summary=summary, language_model=settings.LANGUAGE_MODEL, user=user)
-    plan_txt = llm_json_to_icu_txt(plan)
+    llm_response = generate_plan(summary=summary, language_model=settings.LANGUAGE_MODEL, user=user)
+    plan_txt = llm_json_to_icu_txt(llm_response.plan)
 
-    plan = plan + "\n\n" + "## intervals.icu workout file (txt)\n\n```text\n\n" + plan_txt + "\n```"
-    return {"plan": plan, "summary": summary}
+    plan = llm_response.plan + "\n\n" + "## intervals.icu workout file (txt)\n\n```text\n\n" + plan_txt + "\n```"
+    return {"plan": plan, "summary": summary, "prompt": llm_response.prompt}
