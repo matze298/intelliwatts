@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from app.models.user import User
+from app.planning.llm import LLMResponse
 from app.services.planner import generate_weekly_plan
 
 
@@ -51,7 +52,9 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_build_weekly_summary.return_value = mock_summary
 
     mock_plan_json = '{"plan": "test plan"}'
-    mock_generate_plan.return_value = mock_plan_json
+    mock_generate_plan.return_value = LLMResponse(
+        plan=mock_plan_json, prompt=[{"   role": "user", "content": "test prompt"}]
+    )
 
     mock_plan_txt = "icu workout"
     mock_llm_json_to_icu_txt.return_value = mock_plan_txt
