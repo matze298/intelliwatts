@@ -35,16 +35,15 @@ else
   uv sync --extra dev --extra test
 fi
 
-# Ensure pre-commit is installed
-if ! command -v pre-commit >/dev/null 2>&1; then
-  echo "Installing pre-commit"
-  uv pip install pre-commit
+# Ensure prek is installed
+if ! command -v prek >/dev/null 2>&1; then
+  echo "Installing prek"
 fi
 
 # Install pre-commit hooks
 if [ -f ".pre-commit-config.yaml" ]; then
   echo "Installing pre-commit hooks"
-  pre-commit install
+  prek install
 else
   echo "WARNING: .pre-commit-config.yaml not found. Skipping hook installation."
 fi
