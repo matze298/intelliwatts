@@ -49,4 +49,14 @@ else
   echo "WARNING: .pre-commit-config.yaml not found. Skipping hook installation."
 fi
 
+# Ensure the static directory exists for serving assets
+mkdir -p app/static
+
+if command -v npm >/dev/null 2>&1; then
+  echo "Building initial Tailwind CSS..."
+  npx @tailwindcss/cli -i ./app/static/style.css -o ./app/static/tailwind.css
+else
+  echo "WARNING: npm not found. Once installed, run: npx @tailwindcss/cli -i ./app/static/style.css -o ./app/static/tailwind.css"
+fi
+
 echo "Setup complete ✔"
