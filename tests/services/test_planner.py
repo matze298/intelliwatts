@@ -24,11 +24,9 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     """Test the generate_weekly_plan function."""
     # GIVEN a mock user and mocked settings
     mock_user = User(
-        id="1",
+        id=MagicMock(),
         email="test@example.com",
-        hashed_password="hashed_password",  # noqa: S106
-        iv="iv",
-        salt="salt",
+        password_hash="hashed_password",  # noqa: S106
     )
     mock_settings = MagicMock()
     mock_settings.INTERVALS_API_KEY = "test_api_key"
