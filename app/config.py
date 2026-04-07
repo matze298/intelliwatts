@@ -64,4 +64,4 @@ class Settings(BaseSettings):
                 setattr(self, key, value)
 
 
-GLOBAL_SETTINGS = Settings()  # type: ignore[missing-argument]
+GLOBAL_SETTINGS = Settings()  # ty: ignore[missing-argument]

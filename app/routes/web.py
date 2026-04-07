@@ -27,9 +27,9 @@ def home(request: Request, user: Annotated[User | None, Depends(get_current_user
         The home page as HTML.
     """
     return templates.TemplateResponse(
+        request,
         "plan.html",
         {
-            "request": request,
             "plan_html": None,
             "summary": None,
             "prompt": None,
@@ -46,7 +46,7 @@ def register(request: Request) -> HTMLResponse:
     Returns:
         The register page as HTML.
     """
-    return templates.TemplateResponse("register.html", {"request": request, "user": None})
+    return templates.TemplateResponse(request, "register.html", {"user": None})
 
 
 # TODO(mr): Extract common code between web.py and auth.py #noqa: TD003
@@ -69,7 +69,7 @@ async def register_post(request: Request) -> Response:
 
     if not isinstance(email, str) or not isinstance(password, str):
         msg = "Email and password must be strings."
-        return templates.TemplateResponse("register.html", {"request": request, "user": None, "error": msg})
+        return templates.TemplateResponse(request, "register.html", {"user": None, "error": msg})
 
     try:
         with Session(engine) as session:
@@ -82,7 +82,7 @@ async def register_post(request: Request) -> Response:
             session.commit()
 
     except Exception as e:  # noqa: BLE001
-        return templates.TemplateResponse("register.html", {"request": request, "user": None, "error": str(e)})
+        return templates.TemplateResponse(request, "register.html", {"user": None, "error": str(e)})
 
     return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -94,7 +94,7 @@ def login(request: Request) -> HTMLResponse:
     Returns:
         The login page as HTML.
     """
-    return templates.TemplateResponse("login.html", {"request": request, "user": None})
+    return templates.TemplateResponse(request, "login.html", {"user": None})
 
 
 # TODO(mr): Extract common code between web.py and auth.py #noqa: TD003
@@ -117,7 +117,7 @@ async def login_post(request: Request) -> Response:
 
     if not isinstance(email, str) or not isinstance(password, str):
         msg = "Email and password must be strings."
-        return templates.TemplateResponse("login.html", {"request": request, "user": None, "error": msg})
+        return templates.TemplateResponse(request, "login.html", {"user": None, "error": msg})
 
     with Session(engine) as session:
         user = session.exec(select(User).where(User.email == email)).first()
@@ -154,7 +154,7 @@ def secrets(request: Request, user: Annotated[User, Depends(get_current_user_fro
     Returns:
         The secrets page as HTML.
     """
-    return templates.TemplateResponse("secrets.html", {"request": request, "user": user})
+    return templates.TemplateResponse(request, "secrets.html", {"user": user})
 
 
 @router.post("/generate", response_class=HTMLResponse)
@@ -187,9 +187,9 @@ async def generate(request: Request, user: Annotated[User, Depends(get_current_u
     )
 
     return templates.TemplateResponse(
+        request,
         "plan.html",
         {
-            "request": request,
             "plan_html": plan_html,
             "summary": summary_html,
             "prompt": result["prompt"],
