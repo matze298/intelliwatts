@@ -53,10 +53,12 @@ fi
 mkdir -p app/static
 
 if command -v npm >/dev/null 2>&1; then
-  echo "Building initial Tailwind CSS..."
-  npx @tailwindcss/cli -i ./app/static/style.css -o ./app/static/tailwind.css
+  echo "Building initial Tailwind CSS for Retro theme..."
+  npx @tailwindcss/cli -i ./app/static/style-retro.css -o ./app/static/tailwind-retro.css
+  echo "Building initial Tailwind CSS for Minimal theme..."
+  npx @tailwindcss/cli -i ./app/static/style-minimal.css -o ./app/static/tailwind-minimal.css
 else
-  echo "WARNING: npm not found. Once installed, run: npx @tailwindcss/cli -i ./app/static/style.css -o ./app/static/tailwind.css"
+  echo "WARNING: npm not found. Once installed, run: npx @tailwindcss/cli -i ./app/static/style-retro.css -o ./app/static/tailwind-retro.css AND npx @tailwindcss/cli -i ./app/static/style-minimal.css -o ./app/static/tailwind-minimal.css"
 fi
 
 echo "Setup complete ✔"

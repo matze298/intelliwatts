@@ -3,7 +3,7 @@
 
 <head>
     <title>Login</title>
-    <link rel="stylesheet" href="/static/tailwind.css">
+    <link rel="stylesheet" id="theme-stylesheet" href="/static/tailwind-retro.css">
 </head>
 
 <body>
@@ -16,6 +16,10 @@
             {% else %}
             <a href="/login">Login</a>
             {% endif %}
+            <select id="theme-switcher" class="bg-gray-800 text-pink-500 border border-pink-500 rounded px-2 py-1 ml-4">
+                <option value="retro">Retro90s</option>
+                <option value="minimal">Minimalistic</option>
+            </select>
         </div>
         <h1>🚴 Login</h1>
         <form action="/login" method="post">
@@ -32,6 +36,31 @@
         {% endif %}
         <p>Don't have an account? <a href="/register">Register here</a>.</p>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const themeStylesheet = document.getElementById('theme-stylesheet');
+            const themeSwitcher = document.getElementById('theme-switcher');
+
+            // Load saved theme from localStorage, default to 'retro'
+            const savedTheme = localStorage.getItem('selectedTheme') || 'retro';
+            themeSwitcher.value = savedTheme;
+            updateTheme(savedTheme);
+
+            themeSwitcher.addEventListener('change', (event) => {
+                const selectedTheme = event.target.value;
+                localStorage.setItem('selectedTheme', selectedTheme);
+                updateTheme(selectedTheme);
+            });
+
+            function updateTheme(theme) {
+                if (theme === 'retro') {
+                    themeStylesheet.href = '/static/tailwind-retro.css';
+                } else if (theme === 'minimal') {
+                    themeStylesheet.href = '/static/tailwind-minimal.css';
+                }
+            }
+        });
+    </script>
 </body>
 
 </html>

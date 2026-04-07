@@ -14,7 +14,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:tailwind": "tailwindcss -i ./app/static/style.css -o ./app/static/tailwind.css --watch"
+    "build:tailwind-retro": "tailwindcss -i ./app/static/style-retro.css -o ./app/static/tailwind-retro.css --watch",
+    "build:tailwind-minimal": "tailwindcss -i ./app/static/style-minimal.css -o ./app/static/tailwind-minimal.css --watch"
   },
   "keywords": [],
   "author": "",
