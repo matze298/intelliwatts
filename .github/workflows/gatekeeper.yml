@@ -74,5 +74,5 @@ jobs:
     if: always()
     steps:
       - name: Check status
-        if: needs.githooks.result != 'success' || needs.unittests.result != 'success' || needs.css_build != 'success'
+        if: needs.githooks.result != 'success' || needs.unittests.result != 'success' || needs.css_build.result != 'success'
         run: exit 1
