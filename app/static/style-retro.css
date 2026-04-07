@@ -1,0 +1,107 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+/* Base styles for a retro terminal look */
+body {
+    background-color: #000000; /* Black background */
+    color: #ff00ff; /* Neon pink text */
+    font-family: 'VT323', monospace; /* Retro terminal font */
+    font-size: 1.2rem;
+    line-height: 1.4;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Align to the top */
+    min-height: 10vh;
+    box-sizing: border-box;
+}
+
+/* General text and heading styles */
+h1, h2, h3, h4, h5, h6 {
+    color: #ff00ff; /* Neon pink headings */
+    text-shadow: 0 0 5px #ff00ff; /* Glow effect */
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+/* Link styles */
+a {
+    color: #00ffff; /* Cyan/light blue links */
+    text-decoration: none;
+    text-shadow: 0 0 3px #00ffff; /* Subtle glow */
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #ff00ff; /* Pink on hover */
+    text-shadow: 0 0 5px #ff00ff;
+}
+
+/* Container for main content */
+.container {
+    background-color: #000000; /* Black for content area */
+    border: 2px solid #ff00ff; /* Neon pink border */
+    box-shadow: 0 0 15px #ff00ff, inset 0 0 10px #00ffff; /* Outer glow pink, inner glow light blue */
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 800px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Navigation styles (adjusting existing) */
+.nav {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #00ffff;
+}
+
+/* Form element styles */
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+    background-color: #0d0d0d; /* Even darker input background */
+    border: 1px solid #ff00ff;
+    color: #00ffff; /* Light blue text in inputs */
+    padding: 10px;
+    font-family: 'VT323', monospace;
+    font-size: 1.1rem;
+    width: 100%;
+    box-sizing: border-box;
+    text-shadow: 0 0 2px #00ffff;
+}
+
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="text"]:focus {
+    outline: none;
+    border-color: #ff00ff; /* Pink focus */
+    box-shadow: 0 0 8px #ff00ff;
+}
+
+button {
+    background-color: #ff00ff; /* Neon pink button */
+    color: #000000; /* Black text on button */
+    border: 2px solid #ff00ff;
+    padding: 10px 20px;
+    font-family: 'VT323', monospace;
+    font-size: 1.3rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    text-shadow: none; /* No text shadow on button text */
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    align-self: flex-start; /* Align button to the left */
+}
+
+button:hover {
+    background-color: #00ffff; /* Light blue hover */
+    color: #000000;
+    box-shadow: 0 0 10px #00ffff;
+}
+
+/* Ensure Tailwind base styles are still applied, but custom styles take precedence */
+/* You can add your custom CSS here if needed, it will be processed by PostCSS */

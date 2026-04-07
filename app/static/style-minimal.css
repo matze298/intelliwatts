@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/* Minimalistic styles */
+body {
+    background-color: #f0f2f5; /* Light gray background */
+    color: #333333; /* Dark gray text */
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; /* Standard sans-serif font */
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #222222;
+    text-shadow: none;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+h1 {
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 30px;
+    text-transform: none;
+}
+
+a {
+    color: #007bff; /* Blue links */
+    text-decoration: underline;
+    text-shadow: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #0056b3;
+}
+
+.container {
+    background-color: #ffffff; /* White background for content area */
+    border: 1px solid #e0e0e0; /* Light gray border */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    padding: 25px;
+    border-radius: 8px;
+    max-width: 600px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.nav {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #cccccc;
+}
+
+.nav a {
+    font-size: 1rem;
+    text-decoration: none;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    color: #333333;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+    background-color: #ffffff;
+    border: 1px solid #ced4da;
+    color: #495057;
+    padding: 8px 12px;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+    text-shadow: none;
+    border-radius: 4px;
+}
+
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="text"]:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+button {
+    background-color: #007bff;
+    color: #ffffff;
+    border: 1px solid #007bff;
+    padding: 10px 15px;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    font-size: 1rem;
+    cursor: pointer;
+    text-transform: none;
+    text-shadow: none;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    align-self: flex-start;
+    border-radius: 4px;
+}
+
+button:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+p[style*="color: red"] {
+    color: #dc3545 !important;
+    text-shadow: none;
+    margin-top: 15px;
+}
+
+p {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
