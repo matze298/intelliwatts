@@ -24,7 +24,7 @@ jobs:
         run: uv sync --extra dev --extra test
 
       - name: Run githooks
-        run: uv run pre-commit run --all-files --show-diff-on-failure
+        run: uv run prek run --all-files --show-diff-on-failure
     
   unittests:
     runs-on: ubuntu-latest
