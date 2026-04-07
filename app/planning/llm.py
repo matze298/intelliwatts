@@ -67,7 +67,7 @@ def call_gpt(prompt: str, api_key: str | None, model: LanguageModel) -> LLMRespo
     ]
     response = client.chat.completions.create(
         model=model,
-        messages=messages,  # type: ignore[invalid-argument-type]
+        messages=messages,  # ty: ignore[invalid-argument-type]
         temperature=0.2,
     )
     return LLMResponse(plan=response.choices[0].message.content, prompt=messages)
