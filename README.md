@@ -29,19 +29,15 @@ https://intelliwatts.onrender.com/health
 > The app is currently limited to personal usage as it uses the athlete ID and personal API-Token to parse intervals.icu.
 
 # Initial SetUp
-API Tokens are used to authenticate with the respective APIs (Intervals.icu, OpenAI, Google Gemini). Locally, they are stored in the `.env` file. For security reasons, `.env` is ignored from version control systems and must not be shared publicly. For all required keys, checkout the `env.example` file.
-
-On prod (render), the env variables are currently managed via Environment variables, i.e., they cannot yet be customized for different users.
-
-> [!WARNING]  
-> Never share your tokens with anyone or commit them to version control systems!
+API Tokens are used to authenticate with the respective APIs (Intervals.icu, OpenAI, Google Gemini). For local development, they are stored in the `.env` file which **must not be shared publicly**. For all required keys, checkout the `env.example` file.
+End users can manage their API keys via the Secrets page after login.
 
 ## Intervals.icu
-Authentication to intervals.icu is required for parsing your past workouts.
+Authentication to intervals.icu is required to parse past workouts.
 Go to https://intervals.icu/settings `Settings -> Dev --> API-Key` and set `INTERVALS_API_KEY` and `INTERVALS_ATHLETE_ID` in `./env`.
 
 ## Language Model
-The API key for the language model selected in `.env` must be set (defaults to Gemini for free usage)!
+The API key for the language model selected must be set correctly either via  `.env` or via the Secrets page after login. The default model is Gemini Flash which provides free usage.
 
 ### OpenAI (optional)
 1. Open https://platform.openai.com/api-keys
@@ -61,8 +57,8 @@ The API key for the language model selected in `.env` must be set (defaults to G
 ## Via Local WebApp (Dev)
 
 1.  **Set up the environment:** Run `./setup.sh` in the project root to install dependencies and build static assets (including Tailwind CSS themes).
-2.  **Start the development server:** Run `uvicorn app.main:app --host 0.0.0.0 --port 8000`. Restart the server if you make significant code changes.
-3.  **Access the application:** Open a web browser and navigate to `http://localhost:8000/`.
+2.  **Start the development server:** Run `uvicorn app.main:app --reload`.
+3.  **Access the application:** Open a web browser and navigate to the exposed link, e.g. `http://localhost:8000/`.
 4.  **Generate a plan:** Interact with the UI to generate training plans.
 
 ## Via FastAPI (Dev)
@@ -70,23 +66,19 @@ The API key for the language model selected in `.env` must be set (defaults to G
 2. Call `curl -X POST http://localhost:8000/api/generate-plan` to retrieve the request.
 
 ## Via Python (Dev)
-
-*Note: This section might describe a specific script for direct plan generation. For general plan generation, using the web app via `uvicorn` is recommended after running `./setup.sh`.*
-1. Run `python app/main.py` to generate the training plan (if this script is intended for direct execution).
+1. Run `python app/main.py` to generate the training plan.
 
 # Settings
 The settings for the app are defined in `app/config.py`. There are three types of settings:
 
 1. Settings that can be updated via the App interface (e.g., `SYSTEM_PROMPT`, `USER_PROMPT`, `weekly_hours`, `weekly_sessions`).
-2. Settings that are managed via `.env` or Env variables (e.g., `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
+2. Settings that are managed via `.env`, Env variables or the Secrets page (e.g., `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
 3. Settings that are hardcoded and cannot be changed (e.g., `CACHE_INTERVALS_HOURS`).
 
 
-# Development and Styling
+# Local Development Setup
 
-## Local Development Setup
-
-To set up the local development environment and ensure all necessary dependencies are installed and static assets are built, run the `setup.sh` script in your project's root directory:
+To set up the local DevEnv, run the `setup.sh` script in your project's root directory:
 
 ```bash
 ./setup.sh
@@ -96,32 +88,17 @@ This script will:
 - Create and activate a Python virtual environment.
 - Install Python dependencies using `uv`.
 - Install pre-commit hooks.
-- **Build Tailwind CSS for both themes**, generating `app/static/tailwind-retro.css` and `app/static/tailwind-minimal.css`. This script performs a one-time build of the CSS assets.
 
-## Styling and Theme Management
+# Web Page Style & Themes
+This application uses [Tailwind CSS](https://tailwindcss.com/) for its styling, processed via PostCSS.
+To generate the static css files, execute the `build_tailwind.sh` script. This script will **build Tailwind CSS assets for all available themes**, generating `app/static/tailwind-<theme>.css`
 
-This application uses [Tailwind CSS](https://tailwindcss.com/) for its styling, processed via PostCSS. Two distinct themes are available:
-
+Currently available themes are:
 1.  **Retro90s (Default)**: A nostalgic, terminal-inspired look with a dark background, neon pink text, and light blue accents.
 2.  **Minimalistic**: A clean, accessible design with a light background and subtle colors.
 
-**How Themes are Defined and Built:**
-
--   The input CSS for the **Retro90s** theme is located at `app/static/style-retro.css`.
--   The input CSS for the **Minimalistic** theme is located at `app/static/style-minimal.css`.
-
-These input files (which import Tailwind CSS) are compiled into their respective output files:
--   `app/static/tailwind-retro.css`
--   `app/static/tailwind-minimal.css`
-
-The compilation process is handled automatically by the `./setup.sh` script. The older `app/static/tailwind.css` file is no longer used.
-
-**Theme Switching (Client-Side):**
-
-Theme switching is managed entirely on the client-side using JavaScript.
--   A dropdown selector is available on all pages to allow users to choose their preferred theme. The default theme is Retro90s.
--   The selected theme preference is stored in your browser's `localStorage` to ensure persistence across different pages and future visits.
--   On page load, JavaScript checks for a saved preference and dynamically updates the `<link>` tag (with `id="theme-stylesheet"`) to load the appropriate stylesheet (`tailwind-retro.css` or `tailwind-minimal.css`).
+The themes are defined in `app/static/style-<theme>.css`.
+Switching themes is managed entirely on the client-side via a dropdown menu.
 
 
 

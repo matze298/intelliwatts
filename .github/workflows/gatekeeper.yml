@@ -51,12 +51,28 @@ jobs:
           files: ./coverage.xml
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_SECRET }}
+  
+  css_build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install npm
+        uses: actions/setup-node@v3
+        with:
+          node-version: 24
+      
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check build_tailwind.sh
+        run: ./build_tailwind.sh
 
   gatekeeper:
-    needs: [githooks, unittests]
+    needs: [githooks, unittests, css_build]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Check status
-        if: needs.githooks.result != 'success' || needs.unittests.result != 'success'
+        if: needs.githooks.result != 'success' || needs.unittests.result != 'success' || needs.css_build != 'success'
         run: exit 1
