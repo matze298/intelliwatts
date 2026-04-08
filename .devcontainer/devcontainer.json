@@ -1,0 +1,26 @@
+{
+  "name": "IntelliWatts Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".",
+    "args": {
+      "NODE_VERSION": "20"
+    }
+  },
+  "workspaceFolder": "/app",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash",
+    "remote.SSH.remotePlatform": "linux"
+  },
+  "extensions": [
+    "ms-python.python",
+    "ms-azuretools.vscode-docker",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "github.copilot",
+    "github.copilot-chat"
+  ],
+  "forwardPorts": [8000],
+  "postCreateCommand": "echo 'Setting up Gemini CLI and project dependencies...' && uv sync && npm install -g @google/gemini-cli && echo 'DevContainer setup complete!'"
+}

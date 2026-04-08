@@ -24,8 +24,7 @@
 - **Encryption**: Use `app.security.crypto` utilities for sensitive data in the database.
 
 ### 🛠️ Workflow & Environment
-- **Sandbox**: **MANDATORY**. All project-related executions (tests, builds, commands) must run inside the Docker sandbox:
-  `docker compose -f sandbox/docker-compose.yml run sandbox <command>`
+- **Development Environment**: **MANDATORY**. All project-related executions (tests, builds, commands) must be performed from within the project's configured DevContainer. The DevContainer must be set up with Docker and provide all necessary tools and isolation mechanisms (e.g., gVisor/runsc, if required for security) for secure and reproducible execution.
 - **Pre-commit**: Ensure pre-commit hooks are respected (managed via `prek`).
 - **Commit Messages**: Use **Freeform (Descriptive)** sentences. Focus on "why" rather than just "what".
 - **Documentation**: Always keep **`README.md`** updated when making changes that affect setup, usage, or features.

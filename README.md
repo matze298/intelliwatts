@@ -75,7 +75,6 @@ The settings for the app are defined in `app/config.py`. There are three types o
 2. Settings that are managed via `.env`, Env variables or the Secrets page (e.g., `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
 3. Settings that are hardcoded and cannot be changed (e.g., `CACHE_INTERVALS_HOURS`).
 
-
 # Local Development Setup
 
 To set up the local DevEnv, run the `setup.sh` script in your project's root directory:
@@ -89,6 +88,20 @@ This script will:
 - Install Python dependencies using `uv`.
 - Install pre-commit hooks.
 
+# DevContainer Setup
+
+For a fully isolated and reproducible development environment, you can use the provided DevContainer configuration. This setup ensures that all necessary tools and dependencies, including Docker itself, are available within the container.
+
+**To set up the DevContainer:**
+
+1.  **Open the project in VS Code.**
+2.  **Follow the prompt:** VS Code will detect the `.devcontainer` folder and typically prompt you to "Reopen in Container".
+3.  **Alternatively, use the Command Palette:** If not prompted, open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P` on macOS), search for "Dev Containers: Open Folder in Container", and select your project folder.
+4.  **Build and Start:** VS Code will build the Docker image and start the container. This may take a few minutes on the first run.
+5.  **Use the Integrated Terminal:** Once the container is ready, open a terminal within VS Code. You can now run all project commands, including the Gemini CLI and the project's sandbox commands (e.g., `docker compose -f sandbox/docker-compose.yml run sandbox <command>`), directly from this terminal.
+
+This DevContainer setup ensures consistency across different development machines and simplifies dependency management. **Note:** The `sandbox` directory is still required for running the application and tests, as mandated by the project's `GEMINI.md`. The DevContainer provides the environment to *execute* these sandbox commands.
+
 # Web Page Style & Themes
 This application uses [Tailwind CSS](https://tailwindcss.com/) for its styling, processed via PostCSS.
 To generate the static css files, execute the `build_tailwind.sh` script. This script will **build Tailwind CSS assets for all available themes**, generating `app/static/tailwind-<theme>.css`
@@ -99,6 +112,3 @@ Currently available themes are:
 
 The themes are defined in `app/static/style-<theme>.css`.
 Switching themes is managed entirely on the client-side via a dropdown menu.
-
-
-
