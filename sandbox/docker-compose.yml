@@ -1,0 +1,11 @@
+services:
+  sandbox:
+    build:
+      context: ..
+      dockerfile: sandbox/Dockerfile
+    runtime: runsc
+    volumes:
+      - ..:/app
+    environment:
+      - ENV=development
+    network_mode: bridge
