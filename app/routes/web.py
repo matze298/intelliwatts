@@ -11,6 +11,9 @@ from sqlmodel import Session, select
 from app.auth.auth import create_access_token, get_current_user_from_token, hash_password, verify_password
 from app.config import GLOBAL_SETTINGS
 from app.db import engine
+from app.intervals.analysis import compute_analysis
+from app.intervals.client import IntervalsClient
+from app.intervals.parser.activity import parse_activities
 from app.models.user import User
 from app.services.planner import generate_weekly_plan
 
@@ -35,6 +38,33 @@ def home(request: Request, user: Annotated[User | None, Depends(get_current_user
             "prompt": None,
             "settings": request.app.state.settings,
             "user": user,
+        },
+    )
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
+    """Dashboard page for the app.
+
+    Returns:
+        The dashboard page as HTML.
+    """
+    client = IntervalsClient(
+        GLOBAL_SETTINGS.INTERVALS_API_KEY,
+        GLOBAL_SETTINGS.INTERVALS_ATHLETE_ID,
+        GLOBAL_SETTINGS.CACHE_INTERVALS_HOURS,
+    )
+    raw = client.activities()
+    activities = parse_activities(raw)
+    analysis = compute_analysis(activities)
+
+    return templates.TemplateResponse(
+        request,
+        "dashboard.html",
+        {
+            "user": user,
+            "analysis": analysis.to_dict(),
+            "settings": request.app.state.settings,
         },
     )
 

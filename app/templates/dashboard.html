@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>IntelliWatts Dashboard</title>
+    <link rel="stylesheet" id="theme-stylesheet" href="/static/tailwind-retro.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="font-sans">
+    <div class="container max-w-5xl mx-auto p-8 rounded-lg shadow-md mt-10">
+        <nav class="flex justify-between items-center mb-6">
+            <div>
+                <a href="/" class="text-blue-600 hover:text-blue-800 mr-4">Home</a>
+                <a href="/dashboard" class="text-blue-600 hover:text-blue-800 font-bold">Dashboard</a>
+            </div>
+            <div>
+                {% if user %}
+                <a href="/secrets" class="text-blue-600 hover:text-blue-800 mr-4">Secrets</a>
+                <a href="/logout" class="text-blue-600 hover:text-blue-800">Logout</a>
+                {% endif %}
+                <select id="theme-switcher"
+                    class="bg-gray-800 text-pink-500 border border-pink-500 rounded px-2 py-1 ml-4">
+                    <option value="retro">Retro90s</option>
+                    <option value="minimal">Minimalistic</option>
+                </select>
+            </div>
+        </nav>
+
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">📊 Training Analytics (past 42 Days)</h1>
+
+        <!-- Summary Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="p-4 rounded shadow bg-opacity-10 bg-blue-500 border border-blue-500">
+                <p class="text-sm text-gray-600">Total Duration</p>
+                <p class="text-2xl font-bold">{{ "%.1f"|format(analysis.summary.total_duration_h) }}h</p>
+            </div>
+            <div class="p-4 rounded shadow bg-opacity-10 bg-green-500 border border-green-500">
+                <p class="text-sm text-gray-600">Total Distance</p>
+                <p class="text-2xl font-bold">{{ "%.0f"|format(analysis.summary.total_distance_km) }}km</p>
+            </div>
+            <div class="p-4 rounded shadow bg-opacity-10 bg-yellow-500 border border-yellow-500">
+                <p class="text-sm text-gray-600">Total TSS</p>
+                <p class="text-2xl font-bold">{{ "%.0f"|format(analysis.summary.total_training_stress) }}</p>
+            </div>
+            <div class="p-4 rounded shadow bg-opacity-10 bg-purple-500 border border-purple-500">
+                <p class="text-sm text-gray-600">Activities</p>
+                <p class="text-2xl font-bold">{{ analysis.summary.activity_count }}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-8">
+            <!-- PMC Chart -->
+            <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+                <h2 class="text-xl font-semibold mb-4">Fitness Trend</h2>
+                <canvas id="pmcChart" height="100"></canvas>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Weekly Load -->
+                <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+                    <h2 class="text-xl font-semibold mb-4">Weekly Training Stress</h2>
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+
+                <!-- Intensity Distribution -->
+                <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+                    <h2 class="text-xl font-semibold mb-4">HR Intensity Distribution</h2>
+                    <canvas id="intensityChartHR"></canvas>
+                </div>
+
+                <!-- Zone ntensity Distribution -->
+                <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+                    <h2 class="text-xl font-semibold mb-4">Power Zone Intensity Distribution</h2>
+                    <canvas id="intensityChartPower"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Theme Logic
+            const themeStylesheet = document.getElementById('theme-stylesheet');
+            const themeSwitcher = document.getElementById('theme-switcher');
+            const savedTheme = localStorage.getItem('selectedTheme') || 'retro';
+            themeSwitcher.value = savedTheme;
+            updateTheme(savedTheme);
+
+            themeSwitcher.addEventListener('change', (event) => {
+                const selectedTheme = event.target.value;
+                localStorage.setItem('selectedTheme', selectedTheme);
+                updateTheme(selectedTheme);
+                location.reload(); // Reload to refresh chart colors if needed
+            });
+
+            function updateTheme(theme) {
+                if (theme === 'retro') {
+                    themeStylesheet.href = '/static/tailwind-retro.css';
+                } else if (theme === 'minimal') {
+                    themeStylesheet.href = '/static/tailwind-minimal.css';
+                }
+            }
+
+            // Chart Data
+            const analysis = {{ analysis | tojson
+        }};
+
+        // PMC Chart
+        new Chart(document.getElementById('pmcChart'), {
+            type: 'line',
+            data: {
+                labels: analysis.daily_series.map(d => d.date),
+                datasets: [
+                    {
+                        label: 'Fitness (CTL)',
+                        data: analysis.daily_series.map(d => d.ctl),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Fatigue (ATL)',
+                        data: analysis.daily_series.map(d => d.atl),
+                        borderColor: '#ef4444',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Form (TSB)',
+                        data: analysis.daily_series.map(d => d.tsb),
+                        borderColor: '#eab308',
+                        type: 'line',
+                        fill: false,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: false }
+                }
+            }
+        });
+
+        // Weekly Chart
+        new Chart(document.getElementById('weeklyChart'), {
+            type: 'bar',
+            data: {
+                labels: analysis.weekly_series.map(w => w.week),
+                datasets: [{
+                    label: 'Weekly TSS',
+                    data: analysis.weekly_series.map(w => w.training_stress),
+                    backgroundColor: '#8b5cf6'
+                }]
+            }
+        });
+
+        // HR Intensity Distribution
+        new Chart(document.getElementById('intensityChartHR'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7'],
+                datasets: [{
+                    data: analysis.hr_intensity_distribution,
+                    backgroundColor: [
+                        '#94a3b8', '#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#7f1d1d'
+                    ]
+                }]
+            }
+        });
+
+        // Power Zone Intensity Distribution
+        new Chart(document.getElementById('intensityChartPower'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'SS'],
+                datasets: [{
+                    data: analysis.power_intensity_distribution,
+                    backgroundColor: [
+                        '#94a3b8', '#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#7f1d1d', '#627f1d'
+                    ]
+                }]
+            }
+        });
+        });
+    </script>
+</body>
+
+</html>

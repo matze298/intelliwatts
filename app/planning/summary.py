@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from app.intervals.load import TrainingLoad
+from app.intervals.analysis import TrainingLoad
 from app.intervals.parser.activity import ParsedActivity
 
 
