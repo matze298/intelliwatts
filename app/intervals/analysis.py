@@ -1,5 +1,6 @@
 """Calculate the sports science analysis."""
 
+import math
 from dataclasses import asdict, dataclass
 from logging import getLogger
 from typing import Any
@@ -175,8 +176,10 @@ def compute_pmc_values(df_daily: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFra
     Returns:
         Chronic Training Load (CTL), Acute Training Load (ATL) and Training Stress Balance (TSB).
     """
-    ctl: pd.DataFrame = df_daily.ewm(span=CHRONIC_TRAINING_LOAD_DAYS).mean()
-    atl: pd.DataFrame = df_daily.ewm(span=ACUTE_TRAINING_LOAD_DAYS).mean()
+    alpha_ctl = 1 - math.exp(-1 / CHRONIC_TRAINING_LOAD_DAYS)
+    alpha_atl = 1 - math.exp(-1 / ACUTE_TRAINING_LOAD_DAYS)
+    ctl: pd.DataFrame = df_daily.ewm(alpha=alpha_ctl, adjust=False).mean()
+    atl: pd.DataFrame = df_daily.ewm(alpha=alpha_atl, adjust=False).mean()
     tsb: pd.DataFrame = ctl - atl
     return ctl, atl, tsb
 
