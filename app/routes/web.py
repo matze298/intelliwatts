@@ -11,8 +11,8 @@ from sqlmodel import Session, select
 from app.auth.auth import create_access_token, get_current_user_from_token, hash_password, verify_password
 from app.config import GLOBAL_SETTINGS
 from app.db import engine
+from app.intervals.analysis import compute_analysis
 from app.intervals.client import IntervalsClient
-from app.intervals.load import compute_analysis
 from app.intervals.parser.activity import parse_activities
 from app.models.user import User
 from app.services.planner import generate_weekly_plan

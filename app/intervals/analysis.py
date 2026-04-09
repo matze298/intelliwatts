@@ -93,12 +93,10 @@ def compute_analysis(activities: list[ParsedActivity]) -> AnalysisResult:
     df = pd.DataFrame([vars(a) for a in activities])
     df["date"] = pd.to_datetime(df["date"])
 
-    # Daily aggregation for PMC
+    # Daily aggregation for Performance Management Chart (PMC)
     daily = df.groupby("date")["training_stress"].sum().asfreq("D", fill_value=0)
 
-    ctl = daily.ewm(span=CHRONIC_TRAINING_LOAD_DAYS).mean()
-    atl = daily.ewm(span=ACUTE_TRAINING_LOAD_DAYS).mean()
-    tsb = ctl - atl
+    ctl, atl, tsb = compute_pmc_values(daily)
 
     daily_series = pd.DataFrame({"ctl": ctl, "atl": atl, "tsb": tsb}).reset_index()
     daily_series["date"] = daily_series["date"].dt.strftime("%Y-%m-%d")
@@ -167,6 +165,20 @@ def _aggregate_hr_zones(df: pd.DataFrame, num_hr_zones: int = 7) -> list[float]:
                 zones[i] += val
     total: int = sum(zones)
     return [z / total if total > 0 else 0 for z in zones]
+
+
+def compute_pmc_values(df_daily: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Computes the Performance Management Chart values using an exponentially weighted moving average (EWMA).
+
+    Follows the definition from https://www.sciencetosport.com/monitoring-training-load/.
+
+    Returns:
+        Chronic Training Load (CTL), Acute Training Load (ATL) and Training Stress Balance (TSB).
+    """
+    ctl: pd.DataFrame = df_daily.ewm(span=CHRONIC_TRAINING_LOAD_DAYS).mean()
+    atl: pd.DataFrame = df_daily.ewm(span=ACUTE_TRAINING_LOAD_DAYS).mean()
+    tsb: pd.DataFrame = ctl - atl
+    return ctl, atl, tsb
 
 
 def compute_load(activities: list[ParsedActivity]) -> TrainingLoad:

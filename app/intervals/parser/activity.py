@@ -22,7 +22,7 @@ class ParsedActivity:
     distance_km: float | None
     elevation_gain: float | None
     hr_zone_times: list[int] | None
-    power_zone_times: list[int] | None
+    power_zone_times: list[dict[str, int]] | None
 
 
 def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
