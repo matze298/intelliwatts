@@ -17,6 +17,12 @@ class ParsedActivity:
     avg_power: float | None
     type: str
     calories: int | float
+    avg_hr: float | None
+    max_hr: float | None
+    distance_km: float | None
+    elevation_gain: float | None
+    hr_zone_times: list[int] | None
+    power_zone_times: list[int] | None
 
 
 def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
@@ -30,9 +36,15 @@ def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
             date=a["start_date_local"][:10],
             duration_h=a["moving_time"] / 3600,
             training_stress=a["icu_training_load"],
-            avg_power=a["icu_average_watts"],
+            avg_power=a.get("icu_average_watts"),
             type=a["type"],
             calories=a["calories"],
+            avg_hr=a.get("average_heartrate"),
+            max_hr=a.get("max_heartrate"),
+            distance_km=a.get("icu_distance", 0) / 1000,
+            elevation_gain=a.get("total_elevation_gain"),
+            hr_zone_times=a.get("icu_hr_zone_times"),
+            power_zone_times=a.get("icu_zone_times"),
         )
     except KeyError:
         _LOGGER.exception("Unable to parse activity: %s", a)
