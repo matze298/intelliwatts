@@ -16,7 +16,6 @@
 
 ### 🎨 Frontend & Styling
 - **Framework**: **Tailwind CSS**.
-- **Themes**: Support both "Retro90s" and "Minimalistic" themes.
 - **Build**: Run `./build_tailwind.sh` after any CSS or template changes to regenerate theme-specific assets.
 
 ### 🔒 Security & Data

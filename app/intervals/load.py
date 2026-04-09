@@ -1,6 +1,6 @@
 """Calculate the sports science analysis."""
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from logging import getLogger
 from typing import Any
 
@@ -13,7 +13,7 @@ CHRONIC_TRAINING_LOAD_DAYS = 42
 ACUTE_TRAINING_LOAD_DAYS = 7
 
 
-@dataclass
+@dataclass(frozen=True)
 class TrainingLoad:
     """Training load."""
 
@@ -25,8 +25,16 @@ class TrainingLoad:
         """Compute the training stress balance."""
         return self.chronic - self.acute
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the training load to a dictionary.
 
-@dataclass
+        Returns:
+            The training load as a serializable dictionary.
+        """
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class ActivitySummary:
     """Summary of activities."""
 
@@ -37,8 +45,16 @@ class ActivitySummary:
     total_training_stress: float
     activity_count: int
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the summary to a dictionary.
 
-@dataclass
+        Returns:
+            The summary as a serializable dictionary.
+        """
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class AnalysisResult:
     """Result of the sports science analysis."""
 
@@ -49,8 +65,13 @@ class AnalysisResult:
     power_intensity_distribution: list[float]
     activity_type_distribution: dict[str, int]
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the analysis result to a dictionary.
 
-NUM_ZONES = 7
+        Returns:
+            The analysis result as a serializable dictionary.
+        """
+        return asdict(self)
 
 
 def compute_analysis(activities: list[ParsedActivity]) -> AnalysisResult:
@@ -107,21 +128,11 @@ def compute_analysis(activities: list[ParsedActivity]) -> AnalysisResult:
         activity_count=len(df),
     )
 
-    # Intensity Distributions (Normalized)
-    def aggregate_zones(col_name: str) -> list[float]:
-        zones = [0] * NUM_ZONES
-        for z_list in df[col_name].dropna():
-            for i, val in enumerate(z_list):
-                if i < NUM_ZONES:
-                    zones[i] += val
-        total: int = sum(zones)
-        return [z / total if total > 0 else 0 for z in zones]
-
-    hr_dist = aggregate_zones("hr_zone_times")
-    power_dist = aggregate_zones("power_zone_times")
+    hr_dist = _aggregate_hr_zones(df)
+    power_dist = _aggregate_power_zones(df)
 
     # Activity types
-    type_dist = df["type"].value_counts().to_dict()
+    type_dist = {str(k): int(v) for k, v in df["type"].value_counts().items()}
 
     return AnalysisResult(
         daily_series=daily_series.to_dict(orient="records"),
@@ -131,6 +142,37 @@ def compute_analysis(activities: list[ParsedActivity]) -> AnalysisResult:
         power_intensity_distribution=power_dist,
         activity_type_distribution=type_dist,
     )
+
+
+def _aggregate_power_zones(df: pd.DataFrame) -> list[float]:
+    """Aggregate the power zones.
+
+    Returns:
+        The time in seconds spent in each power zone.
+    """
+    valid_zones = df["power_zone_times"].dropna()
+    num_zones = len(valid_zones.iloc[0])
+    zones = [0.0] * num_zones
+    for z_list in valid_zones:
+        for i, val in enumerate(z_list):
+            zones[i] += float(val["secs"])
+    total = sum(zones)
+    return [z / total if total > 0 else 0 for z in zones]
+
+
+def _aggregate_hr_zones(df: pd.DataFrame, num_hr_zones: int = 7) -> list[float]:
+    """Aggregate the HR zones.
+
+    Returns:
+        The time in seconds spent in each HR zone.
+    """
+    zones = [0] * num_hr_zones
+    for z_list in df["hr_zone_times"].dropna():
+        for i, val in enumerate(z_list):
+            if i < num_hr_zones:
+                zones[i] += val
+    total: int = sum(zones)
+    return [z / total if total > 0 else 0 for z in zones]
 
 
 def compute_load(activities: list[ParsedActivity]) -> TrainingLoad:

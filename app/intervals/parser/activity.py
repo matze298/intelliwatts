@@ -41,7 +41,7 @@ def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
             calories=a["calories"],
             avg_hr=a.get("average_heartrate"),
             max_hr=a.get("max_heartrate"),
-            distance_km=a.get("icu_distance", 0) / 1000,
+            distance_km=a.get("icu_distance", 0) / 1000 if a.get("icu_distance") else None,
             elevation_gain=a.get("total_elevation_gain"),
             hr_zone_times=a.get("icu_hr_zone_times"),
             power_zone_times=a.get("icu_zone_times"),

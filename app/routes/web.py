@@ -63,7 +63,7 @@ def dashboard(request: Request, user: Annotated[User, Depends(get_current_user_f
         "dashboard.html",
         {
             "user": user,
-            "analysis": analysis,
+            "analysis": analysis.to_dict(),
             "settings": request.app.state.settings,
         },
     )
