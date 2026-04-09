@@ -128,19 +128,13 @@ def compute_analysis(activities: list[ParsedActivity]) -> AnalysisResult:
         activity_count=len(df),
     )
 
-    hr_dist = _aggregate_hr_zones(df)
-    power_dist = _aggregate_power_zones(df)
-
-    # Activity types
-    type_dist = {str(k): int(v) for k, v in df["type"].value_counts().items()}
-
     return AnalysisResult(
         daily_series=daily_series.to_dict(orient="records"),
         weekly_series=weekly.to_dict(orient="records"),
         summary=summary,
-        hr_intensity_distribution=hr_dist,
-        power_intensity_distribution=power_dist,
-        activity_type_distribution=type_dist,
+        hr_intensity_distribution=_aggregate_hr_zones(df),
+        power_intensity_distribution=_aggregate_power_zones(df),
+        activity_type_distribution={str(k): int(v) for k, v in df["type"].value_counts().items()},
     )
 
 
