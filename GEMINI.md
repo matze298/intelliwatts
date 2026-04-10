@@ -24,6 +24,9 @@
 
 ### 🛠️ Workflow & Environment
 - **Development Environment**: **MANDATORY**. All project-related executions (tests, builds, commands) must be performed from within the project's configured DevContainer. The DevContainer must be set up with Docker and provide all necessary tools and isolation mechanisms (e.g., gVisor/runsc, if required for security) for secure and reproducible execution.
+- **Sandbox Execution**: When executing commands in the sandbox via Docker Compose, do **NOT** wrap the command in quotes. Pass arguments as individual strings.
+  - *Correct*: `docker compose -f sandbox/docker-compose.yml run sandbox pytest tests/intervals/test_analysis.py`
+  - *Incorrect*: `docker compose -f sandbox/docker-compose.yml run sandbox "pytest tests/intervals/test_analysis.py"`
 - **Pre-commit**: Ensure pre-commit hooks are respected (managed via `prek`).
 - **Commit Messages**: Use **Freeform (Descriptive)** sentences. Focus on "why" rather than just "what".
 - **Documentation**: Always keep **`README.md`** updated when making changes that affect setup, usage, or features.
