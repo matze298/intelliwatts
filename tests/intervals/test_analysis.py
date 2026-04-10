@@ -58,8 +58,8 @@ def test_compute_analysis(activities: list[ParsedActivity]) -> None:
     assert math.isclose(analysis.daily_series[0]["tsb"], 0.0, rel_tol=0.001)
     assert analysis.daily_series[1]["date"] == "2026-04-02"
     assert math.isclose(analysis.daily_series[1]["ctl"], 50.47, rel_tol=0.001)
-    assert math.isclose(analysis.daily_series[1]["atl"], 52.66, rel_tol=0.001)
-    assert math.isclose(analysis.daily_series[1]["tsb"], -2.192, rel_tol=0.001)
+    assert math.isclose(analysis.daily_series[1]["atl"], 52.86, rel_tol=0.001)
+    assert math.isclose(analysis.daily_series[1]["tsb"], -2.381, rel_tol=0.001)
 
     # THEN the weekly entries aggreagte as expected
     assert len(analysis.weekly_series) == 1
@@ -156,4 +156,4 @@ def test_compute_load(activities: list[ParsedActivity]) -> None:
 
     # THEN the load is the load of the last day
     assert math.isclose(load.chronic, 50.47, rel_tol=0.001)
-    assert math.isclose(load.acute, 52.66, rel_tol=0.001)
+    assert math.isclose(load.acute, 52.87, rel_tol=0.001)

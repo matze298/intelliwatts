@@ -1,6 +1,5 @@
 """Calculate the sports science analysis."""
 
-import math
 from dataclasses import asdict, dataclass
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, cast
@@ -11,7 +10,6 @@ from app.intervals.parser.activity import ParsedActivity
 
 if TYPE_CHECKING:
     from datetime import date
-
 
 _LOGGER = getLogger(__name__)
 CHRONIC_TRAINING_LOAD_DAYS = 42
@@ -101,9 +99,15 @@ def compute_analysis(activities: list[ParsedActivity]) -> AnalysisResult:
     # Daily aggregation for Performance Management Chart (PMC)
     daily = df.group_by("date").agg(pl.sum("training_stress")).sort("date")
     # Generate a complete date range
-    min_date = cast("date", daily["date"].min())
-    max_date = cast("date", daily["date"].max())
-    all_dates = pl.DataFrame({"date": pl.date_range(start=min_date, end=max_date, interval="1d", eager=True)})
+    min_date = daily["date"].min()
+    max_date = daily["date"].max()
+
+    if min_date is None or max_date is None:
+        return compute_analysis([])
+
+    all_dates = pl.DataFrame({
+        "date": pl.date_range(start=cast("date", min_date), end=cast("date", max_date), interval="1d", eager=True)
+    })
 
     # Join with all_dates to fill missing dates and then fill nulls
     daily = all_dates.join(daily, on="date", how="left").with_columns(pl.col("training_stress").fill_null(0))
@@ -190,8 +194,8 @@ def compute_pmc_values(df_daily: pl.DataFrame) -> tuple[pl.Series, pl.Series, pl
     Returns:
         Chronic Training Load (CTL), Acute Training Load (ATL) and Training Stress Balance (TSB).
     """
-    alpha_ctl = 1 - math.exp(-1 / CHRONIC_TRAINING_LOAD_DAYS)
-    alpha_atl = 1 - math.exp(-1 / ACUTE_TRAINING_LOAD_DAYS)
+    alpha_ctl = 1 / CHRONIC_TRAINING_LOAD_DAYS
+    alpha_atl = 1 / ACUTE_TRAINING_LOAD_DAYS
     ctl: pl.Series = df_daily.select(pl.col("training_stress").ewm_mean(alpha=alpha_ctl, adjust=False)).to_series()
     atl: pl.Series = df_daily.select(pl.col("training_stress").ewm_mean(alpha=alpha_atl, adjust=False)).to_series()
     tsb: pl.Series = ctl - atl
