@@ -19,7 +19,7 @@ def generate_weekly_plan(user: User, settings: Settings = GLOBAL_SETTINGS) -> di
         The weekly plan and summary.
     """
     client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, settings.CACHE_INTERVALS_HOURS)
-    raw = client.activities()
+    raw = client.activities(days=settings.ANALYSIS_DAYS)
     activities = parse_activities(raw)
     load = compute_load(activities)
     summary = build_weekly_summary(

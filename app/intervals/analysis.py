@@ -1,5 +1,6 @@
 """Calculate the sports science analysis."""
 
+import math
 from dataclasses import asdict, dataclass
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, cast
@@ -77,8 +78,14 @@ class AnalysisResult:
         return asdict(self)
 
 
-def compute_analysis(activities: list[ParsedActivity]) -> AnalysisResult:
+def compute_analysis(activities: list[ParsedActivity], display_days: int | None = None) -> AnalysisResult:
     """Compute a complete sports science analysis.
+
+    Args:
+        activities: The activities to analyze.
+        display_days: The number of days to include in the final analysis result.
+            If set, only the last `display_days` will be returned in the series and summaries.
+            However, the CTL/ATL calculation will still use all available activities for initialization.
 
     Returns:
         The analysis result including time series and summaries.
@@ -115,6 +122,15 @@ def compute_analysis(activities: list[ParsedActivity]) -> AnalysisResult:
     ctl, atl, tsb = compute_pmc_values(daily)
 
     daily_series = pl.DataFrame({"date": daily["date"], "ctl": ctl, "atl": atl, "tsb": tsb})
+
+    # Filter for display if requested
+    if display_days is not None:
+        daily_series = daily_series.tail(display_days)
+        # Also filter the activities dataframe for subsequent summaries and weekly aggregation
+        display_start_date = daily_series["date"].min()
+        if display_start_date:
+            df = df.filter(pl.col("date") >= display_start_date)
+
     daily_series = daily_series.with_columns(pl.col("date").dt.strftime("%Y-%m-%d"))
 
     # Weekly aggregation
@@ -194,11 +210,11 @@ def compute_pmc_values(df_daily: pl.DataFrame) -> tuple[pl.Series, pl.Series, pl
     Returns:
         Chronic Training Load (CTL), Acute Training Load (ATL) and Training Stress Balance (TSB).
     """
-    alpha_ctl = 1 / CHRONIC_TRAINING_LOAD_DAYS
-    alpha_atl = 1 / ACUTE_TRAINING_LOAD_DAYS
-    ctl: pl.Series = df_daily.select(pl.col("training_stress").ewm_mean(alpha=alpha_ctl, adjust=False)).to_series()
-    atl: pl.Series = df_daily.select(pl.col("training_stress").ewm_mean(alpha=alpha_atl, adjust=False)).to_series()
-    tsb: pl.Series = ctl - atl
+    alpha_ctl = 1 - math.exp(-1 / CHRONIC_TRAINING_LOAD_DAYS)
+    alpha_atl = 1 - math.exp(-1 / ACUTE_TRAINING_LOAD_DAYS)
+    ctl = df_daily.select(pl.col("training_stress").ewm_mean(alpha=alpha_ctl, adjust=False)).to_series()
+    atl = df_daily.select(pl.col("training_stress").ewm_mean(alpha=alpha_atl, adjust=False)).to_series()
+    tsb = ctl - atl
     return ctl, atl, tsb
 
 

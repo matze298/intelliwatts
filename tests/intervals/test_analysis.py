@@ -57,9 +57,9 @@ def test_compute_analysis(activities: list[ParsedActivity]) -> None:
     assert math.isclose(analysis.daily_series[0]["atl"], activities[0].training_stress, rel_tol=0.001)
     assert math.isclose(analysis.daily_series[0]["tsb"], 0.0, rel_tol=0.001)
     assert analysis.daily_series[1]["date"] == "2026-04-02"
-    assert math.isclose(analysis.daily_series[1]["ctl"], 50.47, rel_tol=0.001)
-    assert math.isclose(analysis.daily_series[1]["atl"], 52.86, rel_tol=0.001)
-    assert math.isclose(analysis.daily_series[1]["tsb"], -2.381, rel_tol=0.001)
+    assert math.isclose(analysis.daily_series[1]["ctl"], 50.471, rel_tol=0.001)
+    assert math.isclose(analysis.daily_series[1]["atl"], 52.662, rel_tol=0.001)
+    assert math.isclose(analysis.daily_series[1]["tsb"], -2.192, rel_tol=0.001)
 
     # THEN the weekly entries aggreagte as expected
     assert len(analysis.weekly_series) == 1
@@ -155,5 +155,24 @@ def test_compute_load(activities: list[ParsedActivity]) -> None:
     load = compute_load(activities)
 
     # THEN the load is the load of the last day
-    assert math.isclose(load.chronic, 50.47, rel_tol=0.001)
-    assert math.isclose(load.acute, 52.87, rel_tol=0.001)
+    assert math.isclose(load.chronic, 50.471, rel_tol=0.001)
+    assert math.isclose(load.acute, 52.662, rel_tol=0.001)
+
+
+def test_compute_analysis_display_days(activities: list[ParsedActivity]) -> None:
+    """Tests the compute_analysis function with display_days."""
+    # GIVEN activities over two days
+    # WHEN computing analysis with display_days=1
+    analysis = compute_analysis(activities, display_days=1)
+
+    # THEN only the last day is in the daily series
+    assert len(analysis.daily_series) == 1
+    assert analysis.daily_series[0]["date"] == "2026-04-02"
+
+    # AND summary only includes the last day
+    assert analysis.summary.activity_count == 1
+    assert math.isclose(analysis.summary.total_training_stress, 70.0, rel_tol=0.001)
+
+    # AND CTL/ATL are still computed correctly (using the previous day)
+    assert math.isclose(analysis.daily_series[0]["ctl"], 50.471, rel_tol=0.001)
+    assert math.isclose(analysis.daily_series[0]["atl"], 52.662, rel_tol=0.001)

@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     # App configuration
     LANGUAGE_MODEL: LanguageModel
     CACHE_INTERVALS_HOURS: int = 0
+    ANALYSIS_DAYS: int = 120
+    DASHBOARD_DAYS: int = 42
 
     # Prompt configuration
     SYSTEM_PROMPT: str = Field(DEFAULT_SYSTEM_PROMPT)
