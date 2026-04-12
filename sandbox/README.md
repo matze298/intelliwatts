@@ -25,6 +25,7 @@ This directory contains a containerized sandbox environment designed for secure 
 
 ## Usage
 - To run a specific command in the sandbox manually:
-  `docker compose -f sandbox/docker-compose.yml run sandbox <your_command>`
+  `docker compose -f sandbox/docker-compose.yml run sandbox <command> [args...]`
+  **Note**: Do not wrap the command and arguments in a single quoted string.
 - To build/rebuild the sandbox:
   `docker compose -f sandbox/docker-compose.yml build`

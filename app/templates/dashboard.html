@@ -27,7 +27,12 @@
             </div>
         </nav>
 
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">📊 Training Analytics (past 42 Days)</h1>
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">📊 Training Analytics</h1>
+
+        <div class="mb-6 p-4 rounded bg-white bg-opacity-5">
+            <label for="daysSlider" class="block text-sm font-medium text-gray-700">Days to visualize: <span id="daysValue">42</span></label>
+            <input type="range" id="daysSlider" min="7" max="90" value="42" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+        </div>
 
         <!-- Summary Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -101,6 +106,24 @@
                     themeStylesheet.href = '/static/tailwind-minimal.css';
                 }
             }
+
+            // Days Slider Logic
+            const daysSlider = document.getElementById('daysSlider');
+            const daysValue = document.getElementById('daysValue');
+            const urlParams = new URLSearchParams(window.location.search);
+            const savedDays = urlParams.get('days') || '42';
+
+            daysSlider.value = savedDays;
+            daysValue.textContent = savedDays;
+
+            daysSlider.addEventListener('input', (event) => {
+                daysValue.textContent = event.target.value;
+            });
+
+            daysSlider.addEventListener('change', (event) => {
+                const selectedDays = event.target.value;
+                window.location.href = `/dashboard?days=${selectedDays}`;
+            });
 
             // Chart Data
             const analysis = {{ analysis | tojson

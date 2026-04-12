@@ -43,7 +43,9 @@ def home(request: Request, user: Annotated[User | None, Depends(get_current_user
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
+def dashboard(
+    request: Request, user: Annotated[User, Depends(get_current_user_from_token)], days: int | None = None
+) -> HTMLResponse:
     """Dashboard page for the app.
 
     Returns:
@@ -54,9 +56,9 @@ def dashboard(request: Request, user: Annotated[User, Depends(get_current_user_f
         GLOBAL_SETTINGS.INTERVALS_ATHLETE_ID,
         GLOBAL_SETTINGS.CACHE_INTERVALS_HOURS,
     )
-    raw = client.activities()
+    raw = client.activities(days=GLOBAL_SETTINGS.ANALYSIS_DAYS)
     activities = parse_activities(raw)
-    analysis = compute_analysis(activities)
+    analysis = compute_analysis(activities, display_days=days or GLOBAL_SETTINGS.DASHBOARD_DAYS)
 
     return templates.TemplateResponse(
         request,

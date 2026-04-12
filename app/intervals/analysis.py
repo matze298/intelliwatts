@@ -1,12 +1,16 @@
 """Calculate the sports science analysis."""
 
+import math
 from dataclasses import asdict, dataclass
 from logging import getLogger
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
-import pandas as pd
+import polars as pl
 
 from app.intervals.parser.activity import ParsedActivity
+
+if TYPE_CHECKING:
+    from datetime import date
 
 _LOGGER = getLogger(__name__)
 CHRONIC_TRAINING_LOAD_DAYS = 42
@@ -74,8 +78,14 @@ class AnalysisResult:
         return asdict(self)
 
 
-def compute_analysis(activities: list[ParsedActivity]) -> AnalysisResult:
+def compute_analysis(activities: list[ParsedActivity], display_days: int | None = None) -> AnalysisResult:
     """Compute a complete sports science analysis.
+
+    Args:
+        activities: The activities to analyze.
+        display_days: The number of days to include in the final analysis result.
+            If set, only the last `display_days` will be returned in the series and summaries.
+            However, the CTL/ATL calculation will still use all available activities for initialization.
 
     Returns:
         The analysis result including time series and summaries.
@@ -90,31 +100,53 @@ def compute_analysis(activities: list[ParsedActivity]) -> AnalysisResult:
             activity_type_distribution={},
         )
 
-    df = pd.DataFrame([vars(a) for a in activities])
-    df["date"] = pd.to_datetime(df["date"])
+    df = pl.DataFrame([vars(a) for a in activities])
+    df = df.with_columns(pl.col("date").str.strptime(pl.Date, format="%Y-%m-%d"))
 
     # Daily aggregation for Performance Management Chart (PMC)
-    daily = df.groupby("date")["training_stress"].sum().asfreq("D", fill_value=0)
+    daily = df.group_by("date").agg(pl.sum("training_stress")).sort("date")
+    # Generate a complete date range
+    min_date = daily["date"].min()
+    max_date = daily["date"].max()
+
+    if min_date is None or max_date is None:
+        return compute_analysis([])
+
+    all_dates = pl.DataFrame({
+        "date": pl.date_range(start=cast("date", min_date), end=cast("date", max_date), interval="1d", eager=True)
+    })
+
+    # Join with all_dates to fill missing dates and then fill nulls
+    daily = all_dates.join(daily, on="date", how="left").with_columns(pl.col("training_stress").fill_null(0))
 
     ctl, atl, tsb = compute_pmc_values(daily)
 
-    daily_series = pd.DataFrame({"ctl": ctl, "atl": atl, "tsb": tsb}).reset_index()
-    daily_series["date"] = daily_series["date"].dt.strftime("%Y-%m-%d")
+    daily_series = pl.DataFrame({"date": daily["date"], "ctl": ctl, "atl": atl, "tsb": tsb})
+
+    # Filter for display if requested
+    if display_days is not None:
+        daily_series = daily_series.tail(display_days)
+        # Also filter the activities dataframe for subsequent summaries and weekly aggregation
+        display_start_date = daily_series["date"].min()
+        if display_start_date:
+            df = df.filter(pl.col("date") >= display_start_date)
+
+    daily_series = daily_series.with_columns(pl.col("date").dt.strftime("%Y-%m-%d"))
 
     # Weekly aggregation
-    df["week"] = df["date"].dt.to_period("W").dt.start_time
+    df = df.with_columns(pl.col("date").dt.truncate("1w").alias("week"))
     weekly = (
         df
-        .groupby("week")
-        .agg({
-            "duration_h": "sum",
-            "training_stress": "sum",
-            "distance_km": "sum",
-            "elevation_gain": "sum",
-        })
-        .reset_index()
+        .group_by("week")
+        .agg([
+            pl.sum("duration_h").alias("duration_h"),
+            pl.sum("training_stress").alias("training_stress"),
+            pl.sum("distance_km").alias("distance_km"),
+            pl.sum("elevation_gain").alias("elevation_gain"),
+        ])
+        .sort("week")
     )
-    weekly["week"] = weekly["week"].dt.strftime("%Y-%m-%d")
+    weekly = weekly.with_columns(pl.col("week").dt.strftime("%Y-%m-%d"))
 
     # Summary
     summary = ActivitySummary(
@@ -127,23 +159,26 @@ def compute_analysis(activities: list[ParsedActivity]) -> AnalysisResult:
     )
 
     return AnalysisResult(
-        daily_series=daily_series.to_dict(orient="records"),
-        weekly_series=weekly.to_dict(orient="records"),
+        daily_series=daily_series.to_dicts(),
+        weekly_series=weekly.to_dicts(),
         summary=summary,
         hr_intensity_distribution=_aggregate_hr_zones(df),
         power_intensity_distribution=_aggregate_power_zones(df),
-        activity_type_distribution={str(k): int(v) for k, v in df["type"].value_counts().items()},
+        activity_type_distribution={str(k): int(v) for k, v in df["type"].value_counts().rows()},
     )
 
 
-def _aggregate_power_zones(df: pd.DataFrame) -> list[float]:
+def _aggregate_power_zones(df: pl.DataFrame) -> list[float]:
     """Aggregate the power zones.
 
     Returns:
         The time in seconds spent in each power zone.
     """
-    valid_zones = df["power_zone_times"].dropna()
-    num_zones = len(valid_zones.iloc[0])
+    valid_zones = df["power_zone_times"].drop_nulls()
+    if not valid_zones.is_empty():
+        num_zones = len(valid_zones[0])
+    else:
+        return []
     zones = [0.0] * num_zones
     for z_list in valid_zones:
         for i, val in enumerate(z_list):
@@ -152,14 +187,14 @@ def _aggregate_power_zones(df: pd.DataFrame) -> list[float]:
     return [z / total if total > 0 else 0 for z in zones]
 
 
-def _aggregate_hr_zones(df: pd.DataFrame, num_hr_zones: int = 7) -> list[float]:
+def _aggregate_hr_zones(df: pl.DataFrame, num_hr_zones: int = 7) -> list[float]:
     """Aggregate the HR zones.
 
     Returns:
         The time in seconds spent in each HR zone.
     """
     zones = [0] * num_hr_zones
-    for z_list in df["hr_zone_times"].dropna():
+    for z_list in df["hr_zone_times"].drop_nulls():
         for i, val in enumerate(z_list):
             if i < num_hr_zones:
                 zones[i] += val
@@ -167,7 +202,7 @@ def _aggregate_hr_zones(df: pd.DataFrame, num_hr_zones: int = 7) -> list[float]:
     return [z / total if total > 0 else 0 for z in zones]
 
 
-def compute_pmc_values(df_daily: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def compute_pmc_values(df_daily: pl.DataFrame) -> tuple[pl.Series, pl.Series, pl.Series]:
     """Computes the Performance Management Chart values using an exponentially weighted moving average (EWMA).
 
     Follows the definition from https://www.sciencetosport.com/monitoring-training-load/.
@@ -175,9 +210,11 @@ def compute_pmc_values(df_daily: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFra
     Returns:
         Chronic Training Load (CTL), Acute Training Load (ATL) and Training Stress Balance (TSB).
     """
-    ctl: pd.DataFrame = df_daily.ewm(span=CHRONIC_TRAINING_LOAD_DAYS).mean()
-    atl: pd.DataFrame = df_daily.ewm(span=ACUTE_TRAINING_LOAD_DAYS).mean()
-    tsb: pd.DataFrame = ctl - atl
+    alpha_ctl = 1 - math.exp(-1 / CHRONIC_TRAINING_LOAD_DAYS)
+    alpha_atl = 1 - math.exp(-1 / ACUTE_TRAINING_LOAD_DAYS)
+    ctl = df_daily.select(pl.col("training_stress").ewm_mean(alpha=alpha_ctl, adjust=False)).to_series()
+    atl = df_daily.select(pl.col("training_stress").ewm_mean(alpha=alpha_atl, adjust=False)).to_series()
+    tsb = ctl - atl
     return ctl, atl, tsb
 
 
