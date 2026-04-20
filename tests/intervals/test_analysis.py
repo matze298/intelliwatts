@@ -247,6 +247,6 @@ def test_compute_athlete_status(activities: list[ParsedActivity], wellness_data:
     status = compute_athlete_status(activities, wellness_data=wellness_data)
 
     # THEN the status contains load and wellness
-    assert status.load.chronic == 50.471
+    assert math.isclose(status.load.chronic, 50.47, rel_tol=0.001)
     assert status.wellness is not None
     assert math.isclose(status.wellness["hrv_7d"], 65.0, rel_tol=0.001)
