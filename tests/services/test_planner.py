@@ -11,7 +11,7 @@ from app.services.planner import generate_weekly_plan
 @patch("app.services.planner.IntervalsClient")
 @patch("app.services.planner.parse_activities")
 @patch("app.services.planner.parse_wellness_list")
-@patch("app.services.planner.compute_analysis")
+@patch("app.services.planner.compute_athlete_status")
 @patch("app.services.planner.build_weekly_summary")
 @patch("app.services.planner.generate_plan")
 @patch("app.services.planner.llm_json_to_icu_txt")
@@ -19,7 +19,7 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_llm_json_to_icu_txt: MagicMock,
     mock_generate_plan: MagicMock,
     mock_build_weekly_summary: MagicMock,
-    mock_compute_analysis: MagicMock,
+    mock_compute_athlete_status: MagicMock,
     mock_parse_wellness_list: MagicMock,
     mock_parse_activities: MagicMock,
     mock_intervals_client: MagicMock,
@@ -51,11 +51,12 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_parsed_wellness = [MagicMock()]
     mock_parse_wellness_list.return_value = mock_parsed_wellness
 
-    # GIVEN mocked analysis result
-    mock_analysis = MagicMock()
-    mock_analysis.daily_series = [{"ctl": 50, "atl": 60}]
-    mock_analysis.wellness_summary = {"hrv_7d": 70}
-    mock_compute_analysis.return_value = mock_analysis
+    # GIVEN mocked athlete status
+    mock_status = MagicMock()
+    mock_status.load.chronic = 50
+    mock_status.load.acute = 60
+    mock_status.wellness = {"hrv_7d": 70}
+    mock_compute_athlete_status.return_value = mock_status
 
     mock_summary = "Weekly summary"
     mock_build_weekly_summary.return_value = mock_summary
@@ -77,13 +78,12 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_intervals_client.return_value.wellness.assert_called_once_with(days=120)
     mock_parse_activities.assert_called_once_with(mock_raw_activities)
     mock_parse_wellness_list.assert_called_once_with(mock_raw_wellness)
-    mock_compute_analysis.assert_called_once_with(mock_parsed_activities, wellness_data=mock_parsed_wellness)
+    mock_compute_athlete_status.assert_called_once_with(mock_parsed_activities, wellness_data=mock_parsed_wellness)
 
     # Verify build_weekly_summary call (especially the load and constraints)
     mock_build_weekly_summary.assert_called_once()
     args, kwargs = mock_build_weekly_summary.call_args
     assert args[0] == mock_parsed_activities
-    # load should be a TrainingLoad object with ctl=50, atl=60
     assert args[1].chronic == 50
     assert args[1].acute == 60
     assert kwargs["constraints"] == PlanningConstraints(weekly_hours=10, weekly_sessions=5)
@@ -98,7 +98,7 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
 
 @patch("app.services.planner.IntervalsClient")
 @patch("app.services.planner.parse_activities")
-@patch("app.services.planner.compute_analysis")
+@patch("app.services.planner.compute_athlete_status")
 @patch("app.services.planner.build_weekly_summary")
 @patch("app.services.planner.generate_plan")
 @patch("app.services.planner.llm_json_to_icu_txt")
@@ -106,7 +106,7 @@ def test_generate_weekly_plan_no_wellness(  # noqa: PLR0913, PLR0917
     mock_icu_txt: MagicMock,
     mock_generate_plan: MagicMock,
     mock_build_weekly_summary: MagicMock,
-    mock_compute_analysis: MagicMock,
+    mock_compute_athlete_status: MagicMock,
     mock_parse_activities: MagicMock,
     mock_intervals_client: MagicMock,
 ) -> None:
@@ -130,11 +130,12 @@ def test_generate_weekly_plan_no_wellness(  # noqa: PLR0913, PLR0917
     mock_intervals_client.return_value.activities.return_value = []
     mock_parse_activities.return_value = []
 
-    # GIVEN mocked analysis result without wellness
-    mock_analysis = MagicMock()
-    mock_analysis.daily_series = []
-    mock_analysis.wellness_summary = None
-    mock_compute_analysis.return_value = mock_analysis
+    # GIVEN mocked status result without wellness
+    mock_status = MagicMock()
+    mock_status.load.chronic = 0
+    mock_status.load.acute = 0
+    mock_status.wellness = None
+    mock_compute_athlete_status.return_value = mock_status
 
     mock_generate_plan.return_value = LLMResponse(plan="{}", prompt=[])
     mock_icu_txt.return_value = ""
@@ -144,7 +145,7 @@ def test_generate_weekly_plan_no_wellness(  # noqa: PLR0913, PLR0917
 
     # THEN wellness client method is NOT called
     mock_intervals_client.return_value.wellness.assert_not_called()
-    # AND compute_analysis is called with wellness_data=None
-    mock_compute_analysis.assert_called_once_with([], wellness_data=None)
+    # AND compute_athlete_status is called with wellness_data=None
+    mock_compute_athlete_status.assert_called_once_with([], wellness_data=None)
     # AND build_weekly_summary is called with wellness_summary=None
     assert mock_build_weekly_summary.call_args.kwargs["wellness_summary"] is None

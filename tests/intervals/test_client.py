@@ -22,7 +22,10 @@ def test_intervals_client_wellness(mock_get: MagicMock) -> None:
     client = IntervalsClient(api_key="test_key", athlete_id="test_id", cache_expiration_hours=1)
 
     # WHEN fetching wellness data
-    with patch.object(client, "read_cache", return_value=None), patch.object(client, "cache_data"):
+    with (
+        patch("app.intervals.client.IntervalsClient.read_cache", return_value=None),
+        patch("app.intervals.client.cache_data"),
+    ):
         result = client.wellness(days=7)
 
     # THEN requests.get was called with the correct URL
@@ -44,7 +47,10 @@ def test_intervals_client_activities(mock_get: MagicMock) -> None:
     client = IntervalsClient(api_key="test_key", athlete_id="test_id", cache_expiration_hours=1)
 
     # WHEN fetching activities data
-    with patch.object(client, "read_cache", return_value=None), patch.object(client, "cache_data"):
+    with (
+        patch("app.intervals.client.IntervalsClient.read_cache", return_value=None),
+        patch("app.intervals.client.cache_data"),
+    ):
         result = client.activities(days=7)
 
     # THEN requests.get was called with the correct URL

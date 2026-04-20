@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from app.intervals.analysis import compute_analysis, compute_load
+from app.intervals.analysis import compute_analysis, compute_athlete_status, compute_load
 from app.intervals.parser.activity import ParsedActivity
 from app.intervals.parser.wellness import ParsedWellness
 
@@ -50,8 +50,8 @@ def fixture_wellness_data() -> list[ParsedWellness]:
     # Creating a series of wellness data to test rolling averages
     # We need at least 42 days for a full 42d average, but we can test with fewer
     return [
-        ParsedWellness(date="2026-04-19", hrv=60.0, resting_hr=50),
-        ParsedWellness(date="2026-04-20", hrv=70.0, resting_hr=48),
+        ParsedWellness(date="2026-04-01", hrv=60.0, resting_hr=50),
+        ParsedWellness(date="2026-04-02", hrv=70.0, resting_hr=48),
     ]
 
 
@@ -233,3 +233,16 @@ def test_compute_analysis_fewer_than_42_days() -> None:
     assert analysis.wellness_summary is not None
     assert analysis.wellness_summary["hrv_42d"] == 65.0  # Average of 60 and 70
     assert analysis.wellness_summary["resting_hr_42d"] == 49.0  # Average of 50 and 48
+
+
+def test_compute_athlete_status(activities: list[ParsedActivity], wellness_data: list[ParsedWellness]) -> None:
+    """Tests the compute_athlete_status function."""
+    # GIVEN dummy activities and wellness data
+
+    # WHEN computing the athlete status
+    status = compute_athlete_status(activities, wellness_data=wellness_data)
+
+    # THEN the status contains load and wellness
+    assert status.load.chronic == 50.471
+    assert status.wellness is not None
+    assert math.isclose(status.wellness["hrv_7d"], 65.0, rel_tol=0.001)

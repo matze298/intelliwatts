@@ -3,7 +3,7 @@
 from typing import Any
 
 from app.config import GLOBAL_SETTINGS, Settings
-from app.intervals.analysis import TrainingLoad, compute_analysis
+from app.intervals.analysis import compute_athlete_status
 from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
@@ -33,12 +33,8 @@ def generate_weekly_plan(
         raw_wellness = client.wellness(days=settings.ANALYSIS_DAYS)
         wellness = parse_wellness_list(raw_wellness)
 
-    # Compute analysis including load and optional wellness trends
-    analysis = compute_analysis(activities, wellness_data=wellness)
-
-    # Build load object for backward compatibility or specific use
-    last_day = analysis.daily_series[-1] if analysis.daily_series else {"ctl": 0, "atl": 0}
-    load = TrainingLoad(chronic=last_day["ctl"], acute=last_day["atl"])
+    # Compute athlete status (load and wellness trends)
+    status = compute_athlete_status(activities, wellness_data=wellness)
 
     constraints = PlanningConstraints(
         weekly_hours=settings.weekly_hours,
@@ -48,9 +44,9 @@ def generate_weekly_plan(
 
     summary = build_weekly_summary(
         activities,
-        load,
+        status.load,
         constraints=constraints,
-        wellness_summary=analysis.wellness_summary,
+        wellness_summary=status.wellness,
     )
     llm_response = generate_plan(summary=summary, language_model=settings.LANGUAGE_MODEL, user=user)
     plan_txt = llm_json_to_icu_txt(llm_response.plan)

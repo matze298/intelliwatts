@@ -99,6 +99,23 @@ class AnalysisResult:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class AthleteStatus:
+    """The current status of the athlete."""
+
+    load: TrainingLoad
+    wellness: dict[str, Any] | None
+
+
+@dataclass(frozen=True)
+class PMCResult:
+    """Performance Management Chart results."""
+
+    ctl: pl.Series
+    atl: pl.Series
+    tsb: pl.Series
+
+
 def compute_analysis(
     activities: list[ParsedActivity],
     display_days: int | None = None,
@@ -145,8 +162,8 @@ def compute_analysis(
         daily, wellness_summary_dict = _compute_wellness_trends(daily, wellness_data)
 
     # 4. Compute PMC values (CTL/ATL/TSB) and build series
-    ctl, atl, tsb = compute_pmc_values(daily)
-    daily_series_df = _build_daily_series_df(daily, ctl, atl, tsb, has_wellness=wellness_data is not None)
+    pmc = compute_pmc_values(daily)
+    daily_series_df = _build_daily_series_df(daily, pmc.ctl, pmc.atl, pmc.tsb, has_wellness=wellness_data is not None)
 
     # 5. Filter for display and compute summaries
     daily_series_df, df_activities = _filter_by_display_days(daily_series_df, df_activities, display_days)
@@ -351,20 +368,20 @@ def _aggregate_hr_zones(df: pl.DataFrame, num_hr_zones: int = 7) -> list[float]:
     return [z / total if total > 0 else 0 for z in zones]
 
 
-def compute_pmc_values(df_daily: pl.DataFrame) -> tuple[pl.Series, pl.Series, pl.Series]:
+def compute_pmc_values(df_daily: pl.DataFrame) -> PMCResult:
     """Computes the Performance Management Chart values using an exponentially weighted moving average (EWMA).
 
     Follows the definition from https://www.sciencetosport.com/monitoring-training-load/.
 
     Returns:
-        Chronic Training Load (CTL), Acute Training Load (ATL) and Training Stress Balance (TSB).
+        PMCResult containing CTL, ATL and TSB.
     """
     alpha_ctl = 1 - math.exp(-1 / CHRONIC_TRAINING_LOAD_DAYS)
     alpha_atl = 1 - math.exp(-1 / ACUTE_TRAINING_LOAD_DAYS)
     ctl = df_daily.select(pl.col("training_stress").ewm_mean(alpha=alpha_ctl, adjust=False)).to_series()
     atl = df_daily.select(pl.col("training_stress").ewm_mean(alpha=alpha_atl, adjust=False)).to_series()
     tsb = ctl - atl
-    return ctl, atl, tsb
+    return PMCResult(ctl=ctl, atl=atl, tsb=tsb)
 
 
 def compute_load(activities: list[ParsedActivity]) -> TrainingLoad:
@@ -378,3 +395,19 @@ def compute_load(activities: list[ParsedActivity]) -> TrainingLoad:
         return TrainingLoad(chronic=0, acute=0)
     last_day = analysis.daily_series[-1]
     return TrainingLoad(chronic=last_day["ctl"], acute=last_day["atl"])
+
+
+def compute_athlete_status(
+    activities: list[ParsedActivity], wellness_data: list[ParsedWellness] | None = None
+) -> AthleteStatus:
+    """Compute the complete status of the athlete (load and wellness).
+
+    Returns:
+        The athlete status.
+    """
+    analysis = compute_analysis(activities, wellness_data=wellness_data)
+    if not analysis.daily_series:
+        return AthleteStatus(load=TrainingLoad(chronic=0, acute=0), wellness=analysis.wellness_summary)
+    last_day = analysis.daily_series[-1]
+    load = TrainingLoad(chronic=last_day["ctl"], acute=last_day["atl"])
+    return AthleteStatus(load=load, wellness=analysis.wellness_summary)

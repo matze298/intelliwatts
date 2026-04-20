@@ -34,5 +34,6 @@
 ## Known Best-Practices
 - **Atomic Commits**: Prefer small, focused commits.
 - **Test Structure**: The `tests/` directory structure and file naming must strictly mirror the `app/` directory structure (e.g., `app/path/to/module.py` should be tested in `tests/path/to/test_module.py`).
+- **Interfaces**: NEVER use bare tuples as function outputs. Always prefer well-designed, named interfaces such as `Dataclass` or `NamedTuple` to ensure clarity and type safety.
 - **FastAPI Dependency Injection**: Use FastAPI's `Depends` for shared logic and DB sessions where appropriate.
 - **SQLModel**: Align with SQLModel conventions for database interactions.
