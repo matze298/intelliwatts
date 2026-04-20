@@ -1,6 +1,7 @@
 """Client for intervals.icu."""
 
 import logging
+from ast import literal_eval
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -18,7 +19,8 @@ class IntervalsClient:
         """Initialise the client."""
         self.api_key = api_key
         self.athlete_id = athlete_id
-        self.cache_file = Path("cache/activities.json")
+        self.activities_cache_file = Path("cache/activities.json")  # Default for activities
+        self.wellness_cache_file = Path("cache/wellness.json")  # Default for wellness
         self.cache_expiration_hours = cache_expiration_hours
 
     def activities(self, days: int = 120) -> list[dict[str, Any]]:
@@ -27,55 +29,85 @@ class IntervalsClient:
         Returns:
             The activities.
         """
+        params = {"oldest": (datetime.now(tz=UTC).date() - timedelta(days=days)).isoformat()}
+        return self._fetch_with_cache("activities", self.activities_cache_file, params)
+
+    def wellness(self, days: int = 120) -> list[dict[str, Any]]:
+        """Get the wellness data for the last days.
+
+        Returns:
+            The wellness data.
+        """
+        params = {"oldest": (datetime.now(tz=UTC).date() - timedelta(days=days)).isoformat()}
+        return self._fetch_with_cache("wellness", self.wellness_cache_file, params)
+
+    def _fetch_with_cache(self, endpoint: str, cache_file: Path, params: dict[str, Any]) -> list[dict[str, Any]]:
+        """Fetch data from intervals.icu with local caching.
+
+        Args:
+            endpoint: The API endpoint to fetch from.
+            cache_file: The path to the cache file.
+            params: The query parameters.
+
+        Returns:
+            The fetched or cached data.
+        """
         # Check if cache exists and is not expired
-        if (cached_content := self.read_cache()) is not None:
+        if (cached_content := self.read_cache(cache_file)) is not None:
             return cached_content
 
         # If not, fetch from intervals.icu
         r = requests.get(
-            f"{BASE_URL}/athlete/{self.athlete_id}/activities",
+            f"{BASE_URL}/athlete/{self.athlete_id}/{endpoint}",
             auth=("API_KEY", self.api_key),
-            params={"oldest": (datetime.now(tz=UTC).date() - timedelta(days=days)).isoformat()},
+            params=params,
             timeout=10,
         )
         r.raise_for_status()
         json_content: list[dict[str, Any]] = r.json()
-        self.cache_activities(json_content)
+        cache_data(cache_file, json_content)
         return json_content
 
-    def read_cache(self) -> list[dict[str, Any]] | None:
-        """Read the activities from the cache.
+    def read_cache(self, cache_file: Path) -> list[dict[str, Any]] | None:
+        """Read data from the cache.
+
+        Args:
+            cache_file: The path to the cache file. Defaults to self.cache_file.
 
         Returns:
-            The activities if the cache exists and is not expired.
+            The data if the cache exists and is not expired.
         """
-        if not self.cache_file.exists():
+        if not cache_file.exists():
             return None
-        cache_age_hours = (datetime.now(tz=UTC).timestamp() - self.cache_file.stat().st_mtime) / 3600
+        cache_age_hours = (datetime.now(tz=UTC).timestamp() - cache_file.stat().st_mtime) / 3600
 
         if cache_age_hours > self.cache_expiration_hours:
             _LOGGER.debug(
-                "Cache expired. Age: %.2f hours >= expiration time of %.2f hours.",
+                "Cache expired for %s. Age: %.2f hours >= expiration time of %.2f hours.",
+                cache_file,
                 cache_age_hours,
                 self.cache_expiration_hours,
             )
             return None
 
         _LOGGER.debug(
-            "Cache hit. Age %.2f hours < expiration time of %.2f hours.",
+            "Cache hit for %s. Age %.2f hours < expiration time of %.2f hours.",
+            cache_file,
             cache_age_hours,
             self.cache_expiration_hours,
         )
 
-        with self.cache_file.open("r") as f:
-            return eval(f.read())  # noqa:S307
+        with cache_file.open("r", encoding="utf-8") as f:
+            return literal_eval(f.read())
 
-    def cache_activities(self, activities: list[dict[str, Any]]) -> None:
-        """Cache the activities locally.
 
-        Args:
-            activities: The activities to cache.
-        """
-        self.cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with self.cache_file.open("w") as f:
-            f.write(str(activities))
+def cache_data(cache_file: Path, data: list[dict[str, Any]]) -> None:
+    """Cache data locally.
+
+    Args:
+        cache_file: The path to the cache file.
+        data: The data to cache.
+    """
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
+    with cache_file.open("w", encoding="utf-8") as f:
+        f.write(str(data))

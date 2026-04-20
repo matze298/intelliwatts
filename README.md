@@ -4,6 +4,7 @@ IntelliWatts is a personal cycling coach that parses your training data from int
 It is customizable in terms of:
 - Training goals
 - Weekly training volume
+- Readiness & Recovery (HRV, Resting HR, Wellness)
 - Available measurements
   - HR measurements
   - Power measurements

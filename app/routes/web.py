@@ -197,6 +197,8 @@ async def generate(request: Request, user: Annotated[User, Depends(get_current_u
         The weekly plan and summary as HTML.
     """
     input_data = await request.form()
+    use_wellness = input_data.get("use_wellness") == "on"
+
     GLOBAL_SETTINGS.update(
         LANGUAGE_MODEL=str(input_data.get("language_model", GLOBAL_SETTINGS.LANGUAGE_MODEL)),
         SYSTEM_PROMPT=str(input_data.get("system_prompt", GLOBAL_SETTINGS.SYSTEM_PROMPT)),
@@ -205,7 +207,7 @@ async def generate(request: Request, user: Annotated[User, Depends(get_current_u
         weekly_sessions=input_data.get("max_sessions", GLOBAL_SETTINGS.weekly_sessions),
     )
 
-    result = generate_weekly_plan(settings=GLOBAL_SETTINGS, user=user)
+    result = generate_weekly_plan(settings=GLOBAL_SETTINGS, user=user, use_wellness=use_wellness)
 
     plan_html = markdown.markdown(
         result["plan"],
