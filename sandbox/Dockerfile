@@ -4,6 +4,7 @@ FROM python:3.14-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     build-essential \
+    bindfs \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv

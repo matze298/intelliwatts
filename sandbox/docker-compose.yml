@@ -5,7 +5,11 @@ services:
       dockerfile: sandbox/Dockerfile
     runtime: runsc
     volumes:
-      - ..:/workspace
+      - type: bind
+        source: ..
+        target: /workspace
+        bind:
+          propagation: rprivate
       - uv-cache:/root/.cache/uv
       - venv:/venv
     environment:

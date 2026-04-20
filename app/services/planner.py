@@ -1,16 +1,18 @@
 """Service for generating the weekly plan."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app.config import GLOBAL_SETTINGS, Settings
 from app.intervals.analysis import compute_athlete_status
 from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
-from app.models.user import User
 from app.planning.llm import generate_plan
 from app.planning.llm_to_icu import llm_json_to_icu_txt
 from app.planning.summary import PlanningConstraints, build_weekly_summary
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 def generate_weekly_plan(
