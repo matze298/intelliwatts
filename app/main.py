@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app_: FastAPI) -> AsyncIterator[None]:  # noqa: RUF029, ARG001
+async def lifespan(app_: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001
     """Lifespan for the FastAPI app.
 
     Yields:
