@@ -21,6 +21,7 @@
                 {% endif %}
                 <select id="theme-switcher"
                     class="bg-gray-800 text-pink-500 border border-pink-500 rounded px-2 py-1 ml-4">
+                    <option value="pro">Professional</option>
                     <option value="retro">Retro90s</option>
                     <option value="minimal">Minimalistic</option>
                 </select>
@@ -36,19 +37,19 @@
 
         <!-- Summary Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div class="p-4 rounded shadow bg-opacity-10 bg-blue-500 border border-blue-500">
+            <div class="stat-card p-4 rounded shadow bg-opacity-10 bg-blue-500 border border-blue-500">
                 <p class="text-sm text-gray-600">Total Duration</p>
                 <p class="text-2xl font-bold">{{ "%.1f"|format(analysis.summary.total_duration_h) }}h</p>
             </div>
-            <div class="p-4 rounded shadow bg-opacity-10 bg-green-500 border border-green-500">
+            <div class="stat-card p-4 rounded shadow bg-opacity-10 bg-green-500 border border-green-500">
                 <p class="text-sm text-gray-600">Total Distance</p>
                 <p class="text-2xl font-bold">{{ "%.0f"|format(analysis.summary.total_distance_km) }}km</p>
             </div>
-            <div class="p-4 rounded shadow bg-opacity-10 bg-yellow-500 border border-yellow-500">
+            <div class="stat-card p-4 rounded shadow bg-opacity-10 bg-yellow-500 border border-yellow-500">
                 <p class="text-sm text-gray-600">Total TSS</p>
                 <p class="text-2xl font-bold">{{ "%.0f"|format(analysis.summary.total_training_stress) }}</p>
             </div>
-            <div class="p-4 rounded shadow bg-opacity-10 bg-purple-500 border border-purple-500">
+            <div class="stat-card p-4 rounded shadow bg-opacity-10 bg-purple-500 border border-purple-500">
                 <p class="text-sm text-gray-600">Activities</p>
                 <p class="text-2xl font-bold">{{ analysis.summary.activity_count }}</p>
             </div>
@@ -88,7 +89,7 @@
             // Theme Logic
             const themeStylesheet = document.getElementById('theme-stylesheet');
             const themeSwitcher = document.getElementById('theme-switcher');
-            const savedTheme = localStorage.getItem('selectedTheme') || 'retro';
+            const savedTheme = localStorage.getItem('selectedTheme') || 'pro';
             themeSwitcher.value = savedTheme;
             updateTheme(savedTheme);
 
@@ -100,7 +101,9 @@
             });
 
             function updateTheme(theme) {
-                if (theme === 'retro') {
+                if (theme === 'pro') {
+                    themeStylesheet.href = '/static/tailwind-pro.css';
+                } else if (theme === 'retro') {
                     themeStylesheet.href = '/static/tailwind-retro.css';
                 } else if (theme === 'minimal') {
                     themeStylesheet.href = '/static/tailwind-minimal.css';

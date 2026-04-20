@@ -3,7 +3,7 @@
 
 <head>
     <title>Login</title>
-    <link rel="stylesheet" id="theme-stylesheet" href="/static/tailwind-retro.css">
+    <link rel="stylesheet" id="theme-stylesheet" href="/static/tailwind-pro.css">
 </head>
 
 <body>
@@ -17,6 +17,7 @@
             <a href="/login">Login</a>
             {% endif %}
             <select id="theme-switcher" class="bg-gray-800 text-pink-500 border border-pink-500 rounded px-2 py-1 ml-4">
+                <option value="pro">Professional</option>
                 <option value="retro">Retro90s</option>
                 <option value="minimal">Minimalistic</option>
             </select>
@@ -41,8 +42,8 @@
             const themeStylesheet = document.getElementById('theme-stylesheet');
             const themeSwitcher = document.getElementById('theme-switcher');
 
-            // Load saved theme from localStorage, default to 'retro'
-            const savedTheme = localStorage.getItem('selectedTheme') || 'retro';
+            // Load saved theme from localStorage, default to 'pro'
+            const savedTheme = localStorage.getItem('selectedTheme') || 'pro';
             themeSwitcher.value = savedTheme;
             updateTheme(savedTheme);
 
@@ -53,7 +54,9 @@
             });
 
             function updateTheme(theme) {
-                if (theme === 'retro') {
+                if (theme === 'pro') {
+                    themeStylesheet.href = '/static/tailwind-pro.css';
+                } else if (theme === 'retro') {
                     themeStylesheet.href = '/static/tailwind-retro.css';
                 } else if (theme === 'minimal') {
                     themeStylesheet.href = '/static/tailwind-minimal.css';

@@ -1,0 +1,150 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+
+/* Endurance Slate (Modern) Pro Theme */
+:root {
+    --bg-base: #1e293b; /* Slate 800 */
+    --bg-surface: #334155; /* Slate 700 */
+    --text-primary: #f8fafc; /* Slate 50 */
+    --text-secondary: #94a3b8; /* Slate 400 */
+    --accent: #3b82f6; /* Electric Blue (Blue 500) */
+    --accent-hover: #2563eb; /* Blue 600 */
+    --border: #475569; /* Slate 600 */
+}
+
+body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+h1 { font-size: 2.25rem; text-align: center; margin-bottom: 2rem; }
+h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: var(--text-primary);
+}
+
+.container {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    padding: 2.5rem;
+    border-radius: 0.75rem;
+    max-width: 900px;
+    width: 100%;
+    margin: 2rem;
+    box-sizing: border-box;
+}
+
+.nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+    background-color: var(--bg-base);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 0.75rem 1rem;
+    font-family: inherit;
+    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 0.5rem;
+    transition: border-color 0.2s, ring 0.2s;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+button {
+    background-color: var(--accent);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s, transform 0.1s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+button:hover {
+    background-color: var(--accent-hover);
+}
+
+button:active {
+    transform: translateY(1px);
+}
+
+/* Specific styling for the summary stats in dashboard */
+.stat-card {
+    background-color: var(--bg-base);
+    border: 1px solid var(--border);
+    padding: 1.25rem;
+    border-radius: 0.5rem;
+}
+
+/* Typography for markdown content */
+.prose {
+    color: var(--text-primary);
+}
+.prose h1, .prose h2, .prose h3 { color: var(--text-primary); border: none; }
+.prose p { color: var(--text-secondary); }
+.prose strong { color: var(--text-primary); }
+.prose code { background: var(--bg-base); padding: 0.2rem 0.4rem; border-radius: 0.25rem; color: var(--accent); }
+
+/* Theme switcher specific */
+#theme-switcher {
+    width: auto;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
