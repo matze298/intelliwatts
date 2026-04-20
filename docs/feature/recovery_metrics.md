@@ -51,10 +51,10 @@ Optionally refactor `compute_load` or create a new helper that aggregates both l
 - Modify: `app/services/planner.py`
 - Modify: `app/planning/summary.py`
 
-- [ ] **Step 1: Update `generate_weekly_plan` to fetch wellness**
+- [x] **Step 1: Update `generate_weekly_plan` to fetch wellness**
 In `app/services/planner.py`, call `client.wellness()` and pass the parsed results to the analysis and summary builders.
 
-- [ ] **Step 2: Update `build_weekly_summary` to include wellness**
+- [x] **Step 2: Update `build_weekly_summary` to include wellness**
 In `app/planning/summary.py`, update the dictionary returned to include a `wellness` section with current values and trends (e.g., "HRV is 10% below 42-day baseline").
 
 ---

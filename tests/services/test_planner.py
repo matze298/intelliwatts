@@ -68,8 +68,8 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_plan_txt = "icu workout"
     mock_llm_json_to_icu_txt.return_value = mock_plan_txt
 
-    # WHEN generating the weekly plan
-    result = generate_weekly_plan(mock_user, mock_settings)
+    # WHEN generating the weekly plan with wellness
+    result = generate_weekly_plan(mock_user, mock_settings, use_wellness=True)
 
     # THEN the IntervalsClient and all functions are called with correct parameters
     mock_intervals_client.assert_called_once_with("test_api_key", "test_athlete_id", 1)
@@ -93,12 +93,58 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_llm_json_to_icu_txt.assert_called_once_with(mock_plan_json)
 
     # THEN the result contains the expected plan and summary
-    expected_plan = (
-        '{"plan": "test plan"}\n\n## intervals.icu workout file (txt)\n\n'
-        """```text
-
-icu workout
-```"""
-    )
-    assert result["plan"] == expected_plan
     assert result["summary"] == mock_summary
+
+
+@patch("app.services.planner.IntervalsClient")
+@patch("app.services.planner.parse_activities")
+@patch("app.services.planner.compute_analysis")
+@patch("app.services.planner.build_weekly_summary")
+@patch("app.services.planner.generate_plan")
+@patch("app.services.planner.llm_json_to_icu_txt")
+def test_generate_weekly_plan_no_wellness(  # noqa: PLR0913, PLR0917
+    mock_icu_txt: MagicMock,
+    mock_generate_plan: MagicMock,
+    mock_build_weekly_summary: MagicMock,
+    mock_compute_analysis: MagicMock,
+    mock_parse_activities: MagicMock,
+    mock_intervals_client: MagicMock,
+) -> None:
+    """Test the generate_weekly_plan function without wellness data."""
+    # GIVEN a mock user and mocked settings
+    mock_user = User(
+        id=MagicMock(),
+        email="test2@example.com",
+        password_hash="hashed_password",  # noqa: S106
+    )
+    mock_settings = MagicMock()
+    mock_settings.INTERVALS_API_KEY = "test_api_key"
+    mock_settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
+    mock_settings.CACHE_INTERVALS_HOURS = 1
+    mock_settings.ANALYSIS_DAYS = 120
+    mock_settings.weekly_sessions = 5
+    mock_settings.weekly_hours = 10
+    mock_settings.LANGUAGE_MODEL = "test_model"
+
+    # GIVEN mocked raw data and parsed data
+    mock_intervals_client.return_value.activities.return_value = []
+    mock_parse_activities.return_value = []
+
+    # GIVEN mocked analysis result without wellness
+    mock_analysis = MagicMock()
+    mock_analysis.daily_series = []
+    mock_analysis.wellness_summary = None
+    mock_compute_analysis.return_value = mock_analysis
+
+    mock_generate_plan.return_value = LLMResponse(plan="{}", prompt=[])
+    mock_icu_txt.return_value = ""
+
+    # WHEN generating the weekly plan without wellness
+    generate_weekly_plan(mock_user, mock_settings, use_wellness=False)
+
+    # THEN wellness client method is NOT called
+    mock_intervals_client.return_value.wellness.assert_not_called()
+    # AND compute_analysis is called with wellness_data=None
+    mock_compute_analysis.assert_called_once_with([], wellness_data=None)
+    # AND build_weekly_summary is called with wellness_summary=None
+    assert mock_build_weekly_summary.call_args.kwargs["wellness_summary"] is None

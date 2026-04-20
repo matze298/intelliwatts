@@ -13,7 +13,9 @@ from app.planning.llm_to_icu import llm_json_to_icu_txt
 from app.planning.summary import PlanningConstraints, build_weekly_summary
 
 
-def generate_weekly_plan(user: User, settings: Settings = GLOBAL_SETTINGS) -> dict[str, Any]:
+def generate_weekly_plan(
+    user: User, settings: Settings = GLOBAL_SETTINGS, *, use_wellness: bool = True
+) -> dict[str, Any]:
     """Generates the weekly plan.
 
     Returns:
@@ -25,11 +27,13 @@ def generate_weekly_plan(user: User, settings: Settings = GLOBAL_SETTINGS) -> di
     raw_activities = client.activities(days=settings.ANALYSIS_DAYS)
     activities = parse_activities(raw_activities)
 
-    # Fetch and parse wellness data
-    raw_wellness = client.wellness(days=settings.ANALYSIS_DAYS)
-    wellness = parse_wellness_list(raw_wellness)
+    # Fetch and parse wellness data if requested
+    wellness = None
+    if use_wellness:
+        raw_wellness = client.wellness(days=settings.ANALYSIS_DAYS)
+        wellness = parse_wellness_list(raw_wellness)
 
-    # Compute analysis including load and wellness trends
+    # Compute analysis including load and optional wellness trends
     analysis = compute_analysis(activities, wellness_data=wellness)
 
     # Build load object for backward compatibility or specific use
