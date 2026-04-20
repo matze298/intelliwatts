@@ -1,0 +1,15 @@
+services:
+  sandbox:
+    build:
+      context: ..
+      dockerfile: sandbox/Dockerfile
+    runtime: runsc
+    volumes:
+      - ..:/workspace
+      - uv-cache:/root/.cache/uv
+    environment:
+      - ENV=dev
+    network_mode: bridge
+
+volumes:
+  uv-cache:
