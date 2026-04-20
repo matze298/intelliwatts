@@ -192,6 +192,8 @@ def test_compute_analysis_display_days(activities: list[ParsedActivity]) -> None
 
 def test_compute_analysis_with_wellness(activities: list[ParsedActivity], wellness_data: list[ParsedWellness]) -> None:
     """Test that compute_analysis correctly processes wellness data."""
+    # GIVEN dummy activities and wellness data
+
     # WHEN computing analysis with wellness data
     analysis = compute_analysis(activities, wellness_data=wellness_data)
 
@@ -208,9 +210,11 @@ def test_compute_analysis_with_wellness(activities: list[ParsedActivity], wellne
 
 def test_wellness_trends_in_daily_series(activities: list[ParsedActivity], wellness_data: list[ParsedWellness]) -> None:
     """Test that daily series includes wellness metrics."""
+    # GIVEN dummy activities and wellness data
+    # WHEN computing the analysis
     analysis = compute_analysis(activities, wellness_data=wellness_data)
 
-    # Check the last day in the daily series
+    # THEN the wellness trends are as expected
     last_day = analysis.daily_series[-1]
     assert "hrv" in last_day
     assert last_day["hrv"] == 70.0
