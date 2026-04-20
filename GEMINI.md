@@ -33,5 +33,6 @@
 
 ## Known Best-Practices
 - **Atomic Commits**: Prefer small, focused commits.
+- **Test Structure**: The `tests/` directory structure and file naming must strictly mirror the `app/` directory structure (e.g., `app/path/to/module.py` should be tested in `tests/path/to/test_module.py`).
 - **FastAPI Dependency Injection**: Use FastAPI's `Depends` for shared logic and DB sessions where appropriate.
 - **SQLModel**: Align with SQLModel conventions for database interactions.
