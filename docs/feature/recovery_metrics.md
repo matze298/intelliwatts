@@ -34,13 +34,13 @@ Create `tests/intervals/test_wellness.py` and verify that data is fetched and pa
 - Modify: `app/intervals/analysis.py`
 - Test: `tests/intervals/test_analysis_wellness.py`
 
-- [ ] **Step 1: Update `AnalysisResult` and `compute_analysis`**
+- [x] **Step 1: Update `AnalysisResult` and `compute_analysis`**
 Modify `AnalysisResult` to include `wellness_summary`. Update `compute_analysis` to accept an optional `list[ParsedWellness]`.
 
-- [ ] **Step 2: Implement wellness aggregation logic**
+- [x] **Step 2: Implement wellness aggregation logic**
 In `compute_analysis`, use Polars to join wellness data with the daily series. Calculate 7-day and 42-day rolling averages for HRV and RHR to detect deviations.
 
-- [ ] **Step 3: Update `compute_load` to also return wellness trends**
+- [x] **Step 3: Update `compute_load` to also return wellness trends**
 Optionally refactor `compute_load` or create a new helper that aggregates both load and wellness status.
 
 ---

@@ -62,6 +62,7 @@ ignore = [
     "FIX002", # Allow ToDo comments
     "TRY301", # Allow to raise Exceptions within try blocks
     "COM812", # Recommended ignore from ruff-format
+    "EXE002", # Ignore executable bit without shebang (often artifact of sandbox/WSL)
 ]
 
 
