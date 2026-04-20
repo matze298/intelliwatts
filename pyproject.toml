@@ -21,12 +21,13 @@ dependencies = [
     "python-jose[cryptography]",
     "python-multipart",
     "requests",
+    "requests-cache",
     "sqlmodel",
     "uvicorn",
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov"]
+test = ["pytest", "pytest-cov", "requests-mock"]
 dev = ["black", "prek", "ruff", "ty"]
 
 # Hatch configuration

@@ -1,11 +1,14 @@
 """Web routes for the app."""
 
+from datetime import timedelta
 from typing import Annotated
 
 import markdown
+import requests
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from requests_cache import CachedSession
 from sqlmodel import Session, select
 
 from app.auth.auth import create_access_token, get_current_user_from_token, hash_password, verify_password
@@ -51,10 +54,18 @@ def dashboard(
     Returns:
         The dashboard page as HTML.
     """
+    session = requests.Session()
+    if GLOBAL_SETTINGS.CACHE_INTERVALS_HOURS > 0:
+        session = CachedSession(
+            "intervals_cache",
+            backend="sqlite",
+            expire_after=timedelta(hours=GLOBAL_SETTINGS.CACHE_INTERVALS_HOURS),
+        )
+
     client = IntervalsClient(
         GLOBAL_SETTINGS.INTERVALS_API_KEY,
         GLOBAL_SETTINGS.INTERVALS_ATHLETE_ID,
-        GLOBAL_SETTINGS.CACHE_INTERVALS_HOURS,
+        session=session,
     )
     raw = client.activities(days=GLOBAL_SETTINGS.ANALYSIS_DAYS)
     activities = parse_activities(raw)

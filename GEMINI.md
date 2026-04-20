@@ -5,7 +5,7 @@
 - **Linting & Formatting**: Use **Ruff** for both linting and formatting. Line length is **120**. Ruff errors are **advisory** (non-blocker) but should be resolved when possible.
 - **Type Safety**: Mandatory type hints for all function signatures and complex variables.
 - **Docstrings**: Use **Google-style docstrings** for all modules, classes, and functions.
-- **Dependency Management**: Use **`uv`** for all dependency operations. Update `pyproject.toml` and sync `uv.lock` accordingly.
+- **Dependency Management**: Use **`uv`** for all dependency operations. To update dependencies, first modify `pyproject.toml`, then run **`uv lock`** to regenerate the `uv.lock` file. Use **`uv sync`** to install dependencies from the lock file. Refer to `setup.sh` for the canonical installation procedure.
 - **Database Migrations**: Handle schema changes manually or via bootstrap scripts (e.g., `init_db` in `app/db.py`).
 
 ### 🧪 Testing
@@ -26,6 +26,9 @@
 - **Development Environment**: **MANDATORY**. All project-related executions (tests, builds, commands) must be performed from within the project's configured sandbox (Python 3.14).
 - **Sandbox Execution**: Use `docker compose -f sandbox/docker-compose.yml run sandbox <command>` for all executions.
 - **Dependency Sync**: Run `docker compose -f sandbox/docker-compose.yml run sandbox uv sync --extra dev --extra test` to ensure all tools are available.
+- **Pre-commit**: Ensure pre-commit hooks are respected (managed via `prek`).
+- **Commit Messages**: Use **Freeform (Descriptive)** sentences. Focus on "why" rather than just "what".
+- **Documentation**: Always keep **`README.md`** updated when making changes that affect setup, usage, or features.
 
 ## Known Best-Practices
 - **Atomic Commits**: Prefer small, focused commits.
