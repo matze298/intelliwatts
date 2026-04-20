@@ -1,6 +1,7 @@
 """Client for intervals.icu."""
 
 import logging
+from ast import literal_eval
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -18,7 +19,8 @@ class IntervalsClient:
         """Initialise the client."""
         self.api_key = api_key
         self.athlete_id = athlete_id
-        self.cache_file = Path("cache/activities.json")  # Default for activities
+        self.activities_cache_file = Path("cache/activities.json")  # Default for activities
+        self.wellness_cache_file = Path("cache/wellness.json")  # Default for wellness
         self.cache_expiration_hours = cache_expiration_hours
 
     def activities(self, days: int = 120) -> list[dict[str, Any]]:
@@ -28,7 +30,7 @@ class IntervalsClient:
             The activities.
         """
         params = {"oldest": (datetime.now(tz=UTC).date() - timedelta(days=days)).isoformat()}
-        return self._fetch_with_cache("activities", self.cache_file, params)
+        return self._fetch_with_cache("activities", self.activities_cache_file, params)
 
     def wellness(self, days: int = 120) -> list[dict[str, Any]]:
         """Get the wellness data for the last days.
@@ -36,9 +38,8 @@ class IntervalsClient:
         Returns:
             The wellness data.
         """
-        cache_file = Path("cache/wellness.json")
         params = {"oldest": (datetime.now(tz=UTC).date() - timedelta(days=days)).isoformat()}
-        return self._fetch_with_cache("wellness", cache_file, params)
+        return self._fetch_with_cache("wellness", self.wellness_cache_file, params)
 
     def _fetch_with_cache(self, endpoint: str, cache_file: Path, params: dict[str, Any]) -> list[dict[str, Any]]:
         """Fetch data from intervals.icu with local caching.
@@ -67,7 +68,7 @@ class IntervalsClient:
         self.cache_data(cache_file, json_content)
         return json_content
 
-    def read_cache(self, cache_file: Path | None = None) -> list[dict[str, Any]] | None:
+    def read_cache(self, cache_file: Path) -> list[dict[str, Any]] | None:
         """Read data from the cache.
 
         Args:
@@ -76,15 +77,14 @@ class IntervalsClient:
         Returns:
             The data if the cache exists and is not expired.
         """
-        file_path = cache_file or self.cache_file
-        if not file_path.exists():
+        if not cache_file.exists():
             return None
-        cache_age_hours = (datetime.now(tz=UTC).timestamp() - file_path.stat().st_mtime) / 3600
+        cache_age_hours = (datetime.now(tz=UTC).timestamp() - cache_file.stat().st_mtime) / 3600
 
         if cache_age_hours > self.cache_expiration_hours:
             _LOGGER.debug(
                 "Cache expired for %s. Age: %.2f hours >= expiration time of %.2f hours.",
-                file_path,
+                cache_file,
                 cache_age_hours,
                 self.cache_expiration_hours,
             )
@@ -92,13 +92,13 @@ class IntervalsClient:
 
         _LOGGER.debug(
             "Cache hit for %s. Age %.2f hours < expiration time of %.2f hours.",
-            file_path,
+            cache_file,
             cache_age_hours,
             self.cache_expiration_hours,
         )
 
-        with file_path.open("r", encoding="utf-8") as f:
-            return eval(f.read())  # noqa:S307
+        with cache_file.open("r", encoding="utf-8") as f:
+            return literal_eval(f.read())
 
     @staticmethod
     def cache_data(cache_file: Path, data: list[dict[str, Any]]) -> None:
@@ -111,11 +111,3 @@ class IntervalsClient:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         with cache_file.open("w", encoding="utf-8") as f:
             f.write(str(data))
-
-    def cache_activities(self, activities: list[dict[str, Any]]) -> None:
-        """Cache the activities locally. Legacy wrapper.
-
-        Args:
-            activities: The activities to cache.
-        """
-        self.cache_data(self.cache_file, activities)
