@@ -23,8 +23,9 @@
 - **Encryption**: Use `app.security.crypto` utilities for sensitive data in the database.
 
 ### 🛠️ Workflow & Environment
-- **Development Environment**: **MANDATORY**. All project-related executions (tests, builds, commands) must be performed from within the project's configured sandbox.
+- **Development Environment**: **MANDATORY**. All project-related executions (tests, builds, commands) must be performed from within the project's configured sandbox (Python 3.12).
 - **Sandbox Execution**: Use `docker compose -f sandbox/docker-compose.yml run sandbox <command>` for all executions.
+- **Dependency Sync**: Run `docker compose -f sandbox/docker-compose.yml run sandbox uv sync --extra dev --extra test` to ensure all tools are available.
 
 ## Known Best-Practices
 - **Atomic Commits**: Prefer small, focused commits.
