@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from app.intervals.client import IntervalsClient
+from app.intervals.client import IntervalsClient, cache_data
 
 
 @patch("app.intervals.client.requests.get")
@@ -99,7 +99,7 @@ def test_fetch_with_cache_api_error(mock_get: MagicMock) -> None:
     client = IntervalsClient(api_key="test_key", athlete_id="test_id", cache_expiration_hours=1)
 
     with patch.object(client, "read_cache", return_value=None), pytest.raises(requests.exceptions.HTTPError):
-        client._fetch_with_cache("endpoint", Path("cache.json"), {})  # noqa: SLF001
+        client._fetch_with_cache("endpoint", Path("cache.json"), {})
 
 
 def test_cache_data() -> None:
@@ -111,7 +111,7 @@ def test_cache_data() -> None:
     mock_path.open.return_value = mock_file
     mock_file.__enter__.return_value = mock_file
 
-    IntervalsClient.cache_data(mock_path, [{"data": 1}])
+    cache_data(mock_path, [{"data": 1}])
 
     mock_path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
     mock_file.write.assert_called_once()

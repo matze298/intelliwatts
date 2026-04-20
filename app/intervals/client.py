@@ -65,7 +65,7 @@ class IntervalsClient:
         )
         r.raise_for_status()
         json_content: list[dict[str, Any]] = r.json()
-        self.cache_data(cache_file, json_content)
+        cache_data(cache_file, json_content)
         return json_content
 
     def read_cache(self, cache_file: Path) -> list[dict[str, Any]] | None:
@@ -100,14 +100,14 @@ class IntervalsClient:
         with cache_file.open("r", encoding="utf-8") as f:
             return literal_eval(f.read())
 
-    @staticmethod
-    def cache_data(cache_file: Path, data: list[dict[str, Any]]) -> None:
-        """Cache data locally.
 
-        Args:
-            cache_file: The path to the cache file.
-            data: The data to cache.
-        """
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with cache_file.open("w", encoding="utf-8") as f:
-            f.write(str(data))
+def cache_data(cache_file: Path, data: list[dict[str, Any]]) -> None:
+    """Cache data locally.
+
+    Args:
+        cache_file: The path to the cache file.
+        data: The data to cache.
+    """
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
+    with cache_file.open("w", encoding="utf-8") as f:
+        f.write(str(data))
