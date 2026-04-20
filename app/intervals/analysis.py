@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING, Any, cast
 
 import polars as pl
 
-from app.intervals.parser.activity import ParsedActivity
-from app.intervals.parser.wellness import ParsedWellness
-
 if TYPE_CHECKING:
     from datetime import date
+
+    from app.intervals.parser.activity import ParsedActivity
+    from app.intervals.parser.wellness import ParsedWellness
 
 _LOGGER = getLogger(__name__)
 CHRONIC_TRAINING_LOAD_DAYS = 42

@@ -5,10 +5,18 @@ services:
       dockerfile: sandbox/Dockerfile
     runtime: runsc
     volumes:
-      - ..:/app
-    working_dir: /app
+      - type: bind
+        source: ..
+        target: /workspace
+        bind:
+          propagation: rprivate
+      - uv-cache:/root/.cache/uv
+      - venv:/venv
     environment:
-      - ENV=development
-      - PYTHONPATH=/app
-      - UV_PROJECT_ENVIRONMENT=/opt/venv
+      - ENV=dev
+      - UV_PROJECT_ENVIRONMENT=/venv
     network_mode: bridge
+
+volumes:
+  uv-cache:
+  venv:

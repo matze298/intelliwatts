@@ -1,31 +1,47 @@
-# Sandbox Environment (gVisor)
+# Secure Sandbox Environment
 
-This directory contains a containerized sandbox environment designed for secure execution of project code and tests.
+This directory contains the configuration for a secure, isolated execution environment used by AI agents for all code analysis, testing, and execution tasks.
 
-## What it is
-- **Runtime**: Uses `runsc` (gVisor) for strong kernel-level isolation.
-- **Base**: Python 3.12-slim based on the project's dependencies.
-- **Mounts**: The project root is mounted to `/app`, ensuring the sandbox always runs the latest codebase.
+## Why a Sandbox?
 
-## Sandbox Types
-2 sandboxes are involved when running this project with a coding agent, e.g. Gemini CLI:
+To ensure maximum safety and reproducibility, we execute code within a **gVisor-isolated** container. This provides:
+- **Kernel-level Isolation**: Uses `runsc` to filter system calls, protecting the host machine from potentially untrusted code or dependencies.
+- **Environment Parity**: Precisely mirrors the project's Python 3.12 environment, ensuring that tests and analysis are consistent across all sessions.
+- **Dependency Isolation**: The sandbox uses its own isolated virtual environment (`/venv` inside the container) to prevent interference with your local `.venv`.
 
-1.  **Gemini CLI Internal Sandbox**: Constrains the Gemini CLI itself. 
-    - **Status**: Enabled by running `gemini -s`. 
-    - **Purpose**: Explicitly grant permissions for file/network access.
-2.  **Project execution Sandbox**: Constrains the project's code and tests.
-    - **Status**: Managed by Gemini CLI automatically via Docker/gVisor.
-    - **Purpose**: Runs risky code (tests, scripts) in an isolated environment using `runsc`.
+## How it Works
 
-## How Gemini uses the Project Sandbox
-- **Orchestration**: Gemini CLI automatically manages this sandbox for project execution. You do **not** need to manually start containers before calling Gemini.
-- **Prerequisite**: Ensure your Docker daemon is running on your host.
-- **Execution**: Gemini uses this to run tests, validate features, and execute scripts.
-- **Command**: Gemini invokes tasks using `docker compose -f sandbox/docker-compose.yml run sandbox <command>`.
+The sandbox is built on a `python:3.12-slim` image and managed via Docker Compose.
+
+### Key Components
+- **gVisor (`runsc`)**: The container runtime that provides the security boundary.
+- **Isolated Venv**: The virtual environment is stored in a Docker named volume (`venv`) and mounted to `/venv` inside the container.
+- **UV**: Used for high-speed, reliable dependency management.
 
 ## Usage
-- To run a specific command in the sandbox manually:
-  `docker compose -f sandbox/docker-compose.yml run sandbox <command> [args...]`
-  **Note**: Do not wrap the command and arguments in a single quoted string.
-- To build/rebuild the sandbox:
-  `docker compose -f sandbox/docker-compose.yml build`
+
+All project-related commands should be proxied through the sandbox.
+
+### 1. Sync Dependencies
+Ensure the sandbox environment is up to date with your `uv.lock`:
+```bash
+docker compose -f sandbox/docker-compose.yml run sandbox uv sync --extra dev --extra test
+```
+
+### 2. Run Tests
+```bash
+docker compose -f sandbox/docker-compose.yml run sandbox pytest
+```
+
+### 3. Arbitrary Commands
+```bash
+docker compose -f sandbox/docker-compose.yml run sandbox <your-command>
+```
+
+## Troubleshooting
+
+### Permissions & Mounts
+The sandbox uses a named volume for the virtual environment to avoid common filesystem issues (like symlink resolution or permission denied errors) often encountered when using gVisor with Windows/WSL2 host mounts. If the environment becomes corrupted, you can reset it by removing the volume:
+```bash
+docker compose -f sandbox/docker-compose.yml down -v
+```

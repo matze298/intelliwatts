@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "intelliwatts"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "cryptography",
     "fastapi",
@@ -45,7 +45,7 @@ constraint-dependencies = ["bcrypt==4.3.0"]
 # Ruff configuration
 [tool.ruff]
 line-length = 120
-target-version = "py312"
+target-version = "py314"
 fix = true
 
 # Google Python Style Guide alignment

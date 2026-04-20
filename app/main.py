@@ -1,8 +1,8 @@
 """Main entrypoint for the IntelliWatts app."""
 
 import logging
-from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -15,6 +15,9 @@ from app.dev.bootstrap import bootstrap_dev_user
 from app.models.user import User
 from app.routes import api, auth, secrets, web
 from app.services.planner import generate_weekly_plan
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -2,10 +2,11 @@
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from app.intervals.analysis import TrainingLoad
-from app.intervals.parser.activity import ParsedActivity
+if TYPE_CHECKING:
+    from app.intervals.analysis import TrainingLoad
+    from app.intervals.parser.activity import ParsedActivity
 
 
 @dataclass(frozen=True)

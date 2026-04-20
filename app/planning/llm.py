@@ -1,7 +1,7 @@
 """Generates the training plan based on the summary by using an LLM."""
 
 from functools import lru_cache
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from google import genai
 from google.genai.types import (
@@ -12,9 +12,11 @@ from google.genai.types import (
 )
 from openai import OpenAI
 
-from app.config import LanguageModel
 from app.models.user import User, load_user_secrets
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
+
+if TYPE_CHECKING:
+    from app.config import LanguageModel
 
 
 class LLMResponse(NamedTuple):
