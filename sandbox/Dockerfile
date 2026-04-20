@@ -15,6 +15,8 @@ WORKDIR /workspace
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV UV_LINK_MODE=copy
+ENV UV_PYTHON_PREFERENCE=only-system
+ENV PATH="/venv/bin:$PATH"
 
 # Default command
 CMD ["bash"]

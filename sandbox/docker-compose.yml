@@ -7,9 +7,12 @@ services:
     volumes:
       - ..:/workspace
       - uv-cache:/root/.cache/uv
+      - venv:/venv
     environment:
       - ENV=dev
+      - UV_PROJECT_ENVIRONMENT=/venv
     network_mode: bridge
 
 volumes:
   uv-cache:
+  venv:
