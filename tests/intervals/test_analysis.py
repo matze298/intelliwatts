@@ -4,7 +4,12 @@ import math
 
 import pytest
 
-from app.intervals.analysis import compute_analysis, compute_athlete_status, compute_load
+from app.intervals.analysis import (
+    calculate_power_to_weight,
+    compute_analysis,
+    compute_athlete_status,
+    compute_load,
+)
 from app.intervals.parser.activity import ParsedActivity
 from app.intervals.parser.wellness import ParsedWellness
 
@@ -250,3 +255,53 @@ def test_compute_athlete_status(activities: list[ParsedActivity], wellness_data:
     assert math.isclose(status.load.chronic, 50.47, rel_tol=0.001)
     assert status.wellness is not None
     assert math.isclose(status.wellness["hrv_7d"], 65.0, rel_tol=0.001)
+
+
+def test_calculate_power_to_weight_success() -> None:
+    """Tests calculating power to weight ratio with valid inputs."""
+    # GIVEN valid power (250W) and weight (70kg)
+    power = 250.0
+    weight = 70.0
+
+    # WHEN calculating power to weight ratio
+    result = calculate_power_to_weight(power, weight)
+
+    # THEN return the correct ratio rounded to 2 decimal places (250 / 70 = 3.5714...)
+    assert result == 3.57
+
+
+def test_calculate_power_to_weight_zero_weight() -> None:
+    """Tests that a zero weight raises a ValueError."""
+    # GIVEN a weight of zero
+    power = 250.0
+    weight = 0.0
+
+    # WHEN calculating power to weight ratio
+    # THEN raise ValueError
+    with pytest.raises(ValueError, match="Weight must be greater than zero"):
+        calculate_power_to_weight(power, weight)
+
+
+def test_calculate_power_to_weight_negative_power() -> None:
+    """Tests that a negative power raises a ValueError."""
+    # GIVEN negative power
+    power = -10.0
+    weight = 70.0
+
+    # WHEN calculating power to weight ratio
+    # THEN raise ValueError
+    with pytest.raises(ValueError, match="Power cannot be negative"):
+        calculate_power_to_weight(power, weight)
+
+
+def test_calculate_power_to_weight_float_precision() -> None:
+    """Tests precision with floating point values."""
+    # GIVEN floating point power (285.5W) and weight (72.3kg)
+    power = 285.5
+    weight = 72.3
+
+    # WHEN calculating power to weight ratio
+    result = calculate_power_to_weight(power, weight)
+
+    # THEN return the correct ratio rounded to 2 decimal places (285.5 / 72.3 = 3.9488...)
+    assert result == 3.95

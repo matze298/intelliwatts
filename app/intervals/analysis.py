@@ -411,3 +411,26 @@ def compute_athlete_status(
     last_day = analysis.daily_series[-1]
     load = TrainingLoad(chronic=last_day["ctl"], acute=last_day["atl"])
     return AthleteStatus(load=load, wellness=analysis.wellness_summary)
+
+
+def calculate_power_to_weight(power_watts: float, weight_kg: float) -> float:
+    """Calculate the power-to-weight ratio (W/kg).
+
+    Args:
+        power_watts: The power output in Watts.
+        weight_kg: The weight in kilograms.
+
+    Returns:
+        The power-to-weight ratio rounded to 2 decimal places.
+
+    Raises:
+        ValueError: If weight is <= 0 or power is < 0.
+    """
+    if weight_kg <= 0:
+        msg = "Weight must be greater than zero"
+        raise ValueError(msg)
+    if power_watts < 0:
+        msg = "Power cannot be negative"
+        raise ValueError(msg)
+
+    return round(power_watts / weight_kg, 2)
