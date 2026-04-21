@@ -51,3 +51,23 @@ class IntervalsClient:
         )
         r.raise_for_status()
         return r.json()
+
+    def power_curves(self, curves: str = "90d", activity_type: str = "Ride") -> list[dict[str, Any]]:
+        """Get the power curves for the athlete.
+
+        Args:
+            curves: The time range for the curves (e.g., '90d', 'all', 's0').
+            activity_type: The activity type (e.g., 'Ride', 'Run').
+
+        Returns:
+            The power curves data.
+        """
+        params = {"curves": curves, "type": activity_type}
+        r = self.session.get(
+            f"{BASE_URL}/athlete/{self.athlete_id}/power-curves",
+            auth=("API_KEY", self.api_key),
+            params=params,
+            timeout=10,
+        )
+        r.raise_for_status()
+        return r.json()

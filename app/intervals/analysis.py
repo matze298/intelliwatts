@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from datetime import date
 
     from app.intervals.parser.activity import ParsedActivity
+    from app.intervals.parser.power_curve import ParsedPowerCurve
     from app.intervals.parser.wellness import ParsedWellness
 
 _LOGGER = getLogger(__name__)
@@ -78,6 +79,44 @@ class WellnessSummary:
         return asdict(self)
 
 
+FTP_TRAJECTORY_LOOKBACK_DAYS = 28
+
+
+@dataclass(frozen=True)
+class FtpTrajectory:
+    """FTP trajectory over time."""
+
+    current_ftp: float | None
+    ftp_4w_ago: float | None
+    change_pct: float | None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the FTP trajectory to a dictionary.
+
+        Returns:
+            The FTP trajectory as a dictionary.
+        """
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class PowerCurveSummary:
+    """Summary of peak power values."""
+
+    peak_5s: int | None
+    peak_1m: int | None
+    peak_5m: int | None
+    peak_20m: int | None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the power curve summary to a dictionary.
+
+        Returns:
+            The power curve summary as a dictionary.
+        """
+        return asdict(self)
+
+
 @dataclass(frozen=True)
 class AnalysisResult:
     """Result of the sports science analysis."""
@@ -89,6 +128,8 @@ class AnalysisResult:
     power_intensity_distribution: list[float]
     activity_type_distribution: dict[str, int]
     wellness_summary: dict[str, Any] | None = None
+    ftp_trajectory: dict[str, Any] | None = None
+    power_curve: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the analysis result to a dictionary.
@@ -105,6 +146,8 @@ class AthleteStatus:
 
     load: TrainingLoad
     wellness: dict[str, Any] | None
+    ftp_trajectory: dict[str, Any] | None = None
+    power_curve: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -120,6 +163,7 @@ def compute_analysis(
     activities: list[ParsedActivity],
     display_days: int | None = None,
     wellness_data: list[ParsedWellness] | None = None,
+    power_curve: list[ParsedPowerCurve] | None = None,
 ) -> AnalysisResult:
     """Compute a complete sports science analysis.
 
@@ -129,11 +173,12 @@ def compute_analysis(
             If set, only the last `display_days` will be returned in the series and summaries.
             However, the CTL/ATL calculation will still use all available activities for initialization.
         wellness_data: Optional wellness data to analyze trends.
+        power_curve: Optional power curve data.
 
     Returns:
         The analysis result including time series and summaries.
     """
-    if not activities and not wellness_data:
+    if not activities and not wellness_data and not power_curve:
         return AnalysisResult(
             daily_series=[],
             weekly_series=[],
@@ -148,8 +193,24 @@ def compute_analysis(
 
     # 2. Determine full date range and join all dates
     min_date, max_date = _get_analysis_range(daily, wellness_data)
+
     if min_date is None or max_date is None:
-        return compute_analysis([], wellness_data=None)
+        # If no time-series data, we can still compute power curve summary
+        power_curve_dict = None
+        if power_curve:
+            power_curve_dict = _compute_power_curve_summary(power_curve)
+
+        return AnalysisResult(
+            daily_series=[],
+            weekly_series=[],
+            summary=ActivitySummary(0, 0, 0, 0, 0, 0),
+            hr_intensity_distribution=[],
+            power_intensity_distribution=[],
+            activity_type_distribution={},
+            wellness_summary=None,
+            ftp_trajectory=None,
+            power_curve=power_curve_dict,
+        )
 
     all_dates = pl.DataFrame({
         "date": pl.date_range(start=cast("date", min_date), end=cast("date", max_date), interval="1d", eager=True)
@@ -161,15 +222,25 @@ def compute_analysis(
     if wellness_data:
         daily, wellness_summary_dict = _compute_wellness_trends(daily, wellness_data)
 
-    # 4. Compute PMC values (CTL/ATL/TSB) and build series
+    # 4. Process FTP trajectory
+    ftp_trajectory_dict = None
+    if not daily.is_empty() and "ftp" in daily.columns:
+        ftp_trajectory_dict = _compute_ftp_trajectory(daily)
+
+    # 5. Process Power Curve
+    power_curve_dict = None
+    if power_curve:
+        power_curve_dict = _compute_power_curve_summary(power_curve)
+
+    # 6. Compute PMC values (CTL/ATL/TSB) and build series
     pmc = compute_pmc_values(daily)
     daily_series_df = _build_daily_series_df(daily, pmc.ctl, pmc.atl, pmc.tsb, has_wellness=wellness_data is not None)
 
-    # 5. Filter for display and compute summaries
+    # 7. Filter for display and compute summaries
     daily_series_df, df_activities = _filter_by_display_days(daily_series_df, df_activities, display_days)
     daily_series_df = daily_series_df.with_columns(pl.col("date").dt.strftime("%Y-%m-%d"))
 
-    # 6. Aggregate distributions and summaries
+    # 8. Aggregate distributions and summaries
     summary, hr_dist, power_dist, type_dist = _get_activity_metrics(df_activities)
     weekly_series = _get_weekly_series(df_activities)
 
@@ -181,6 +252,8 @@ def compute_analysis(
         power_intensity_distribution=power_dist,
         activity_type_distribution=type_dist,
         wellness_summary=wellness_summary_dict,
+        ftp_trajectory=ftp_trajectory_dict,
+        power_curve=power_curve_dict,
     )
 
 
@@ -192,12 +265,13 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame 
     """
     if not activities:
         return None, pl.DataFrame(
-            {"date": [], "training_stress": []}, schema={"date": pl.Date, "training_stress": pl.Float64}
+            {"date": [], "training_stress": [], "ftp": []},
+            schema={"date": pl.Date, "training_stress": pl.Float64, "ftp": pl.Float64},
         )
 
     df = pl.DataFrame([vars(a) for a in activities])
     df = df.with_columns(pl.col("date").str.strptime(pl.Date, format="%Y-%m-%d"))
-    daily = df.group_by("date").agg(pl.sum("training_stress")).sort("date")
+    daily = df.group_by("date").agg([pl.sum("training_stress"), pl.max("ftp")]).sort("date")
     return df, daily
 
 
@@ -246,6 +320,58 @@ def _compute_wellness_trends(
     ).to_dict()
 
     return daily, summary
+
+
+def _compute_ftp_trajectory(daily: pl.DataFrame) -> dict[str, Any]:
+    """Compute the FTP trajectory from the daily series.
+
+    Returns:
+        The FTP trajectory as a dictionary.
+    """
+    # Forward fill FTP to handle days without activities
+    df_ftp = daily.select(["date", "ftp"]).with_columns(pl.col("ftp").forward_fill())
+
+    if df_ftp["ftp"].null_count() == len(df_ftp):
+        return FtpTrajectory(None, None, None).to_dict()
+
+    current_ftp = df_ftp["ftp"].tail(1).item()
+
+    # Look back 4 weeks
+    ftp_4w_ago = None
+    if len(df_ftp) > FTP_TRAJECTORY_LOOKBACK_DAYS:
+        ftp_4w_ago = df_ftp["ftp"].gather(len(df_ftp) - (FTP_TRAJECTORY_LOOKBACK_DAYS + 1)).item()
+
+    change_pct = None
+    if current_ftp and ftp_4w_ago and ftp_4w_ago > 0:
+        change_pct = round(((current_ftp - ftp_4w_ago) / ftp_4w_ago) * 100, 2)
+
+    return FtpTrajectory(
+        current_ftp=float(current_ftp) if current_ftp else None,
+        ftp_4w_ago=float(ftp_4w_ago) if ftp_4w_ago else None,
+        change_pct=change_pct,
+    ).to_dict()
+
+
+def _compute_power_curve_summary(power_curves: list[ParsedPowerCurve]) -> dict[str, Any]:
+    """Compute a summary of the power curve.
+
+    Args:
+        power_curves: The list of parsed power curves.
+
+    Returns:
+        The power curve summary as a dictionary.
+    """
+    # For now, we just take the first curve (usually the 90d one)
+    if not power_curves:
+        return PowerCurveSummary(None, None, None, None).to_dict()
+
+    curve = power_curves[0]
+    return PowerCurveSummary(
+        peak_5s=curve.get_watts(5),
+        peak_1m=curve.get_watts(60),
+        peak_5m=curve.get_watts(300),
+        peak_20m=curve.get_watts(1200),
+    ).to_dict()
 
 
 def _build_daily_series_df(
@@ -398,19 +524,31 @@ def compute_load(activities: list[ParsedActivity]) -> TrainingLoad:
 
 
 def compute_athlete_status(
-    activities: list[ParsedActivity], wellness_data: list[ParsedWellness] | None = None
+    activities: list[ParsedActivity],
+    wellness_data: list[ParsedWellness] | None = None,
+    power_curve: list[ParsedPowerCurve] | None = None,
 ) -> AthleteStatus:
     """Compute the complete status of the athlete (load and wellness).
 
     Returns:
         The athlete status.
     """
-    analysis = compute_analysis(activities, wellness_data=wellness_data)
+    analysis = compute_analysis(activities, wellness_data=wellness_data, power_curve=power_curve)
     if not analysis.daily_series:
-        return AthleteStatus(load=TrainingLoad(chronic=0, acute=0), wellness=analysis.wellness_summary)
+        return AthleteStatus(
+            load=TrainingLoad(chronic=0, acute=0),
+            wellness=analysis.wellness_summary,
+            ftp_trajectory=analysis.ftp_trajectory,
+            power_curve=analysis.power_curve,
+        )
     last_day = analysis.daily_series[-1]
     load = TrainingLoad(chronic=last_day["ctl"], acute=last_day["atl"])
-    return AthleteStatus(load=load, wellness=analysis.wellness_summary)
+    return AthleteStatus(
+        load=load,
+        wellness=analysis.wellness_summary,
+        ftp_trajectory=analysis.ftp_trajectory,
+        power_curve=analysis.power_curve,
+    )
 
 
 def calculate_power_to_weight(power_watts: float, weight_kg: float) -> float:

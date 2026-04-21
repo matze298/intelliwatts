@@ -11,8 +11,8 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] **Subjective Wellness Data:** Integrate athlete-reported fatigue and sleep quality scores.
 
 ### 2. Athlete Context & Historical Trends
-- [ ] **FTP Trajectory:** Provide a 4-week window of FTP changes to inform intensity scaling.
-- [ ] **Power Curve Metrics:** Incorporate peak power values for key durations (5s, 1m, 5m, 20m) to tailor interval targets.
+- [x] **FTP Trajectory:** Provide a 4-week window of FTP changes to inform intensity scaling.
+- [x] **Power Curve Metrics:** Incorporate peak power values for key durations (5s, 1m, 5m, 20m) to tailor interval targets.
 - [ ] **Activity Notes:** Utilize unstructured text analysis of athlete-entered comments for qualitative context.
 
 ### 3. Environmental Context
@@ -33,8 +33,8 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [ ] **`IntervalsClient` Extension:** Extend the `IntervalsClient` class with a method to send the generated workout data to this API endpoint.
 
 ## Implementation Strategy
-- [x] 1. **Extend Data Models:** Update `app/intervals/client.py` and add `app/intervals/parser/wellness.py` to fetch and parse newly identified fields (Implemented for Wellness).
-- [x] 2. **Aggregate Data:** Modify summary aggregation logic to include historical windows for trend analysis (Implemented 7d and 42d rolling averages for wellness).
+- [x] 1. **Extend Data Models:** Update `app/intervals/client.py` and add `app/intervals/parser/wellness.py` to fetch and parse newly identified fields (Implemented for Wellness, FTP, and Power Curves).
+- [x] 2. **Aggregate Data:** Modify summary aggregation logic to include historical windows for trend analysis (Implemented Wellness trends, FTP trajectory, and Power Curve summaries).
 - [x] 3. **Refine Prompts:** Update `app/planning/coach_prompt.py` to include a dedicated "Readiness & Recovery Rules" section.
 - [ ] 4. **Persist & Adapt:** Develop database schemas to store weekly plans, enabling tracking and subsequent re-planning cycles.
 - [ ] 5. **Macro-Planning:** Incorporate goal metadata into the LLM context window to align weekly training with long-term objectives.

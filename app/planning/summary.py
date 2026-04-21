@@ -18,11 +18,13 @@ class PlanningConstraints:
     primary_goal: str = "increase_ftp"
 
 
-def build_weekly_summary(
+def build_weekly_summary(  # noqa: PLR0913, PLR0917
     activities: list[ParsedActivity],
     load: TrainingLoad,
     constraints: PlanningConstraints,
     wellness_summary: dict[str, Any] | None = None,
+    ftp_trajectory: dict[str, Any] | None = None,
+    power_curve: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Builds the weekly summary of the intervals.icu activities used for the LLM prompt.
 
@@ -31,6 +33,8 @@ def build_weekly_summary(
         load: The current training load.
         constraints: The planning constraints.
         wellness_summary: Optional wellness trends summary.
+        ftp_trajectory: Optional FTP changes trajectory.
+        power_curve: Optional power curve summary.
 
     Returns:
         The weekly summary as a dictionary.
@@ -56,5 +60,11 @@ def build_weekly_summary(
 
     if wellness_summary:
         summary["wellness"] = wellness_summary
+
+    if ftp_trajectory:
+        summary["ftp_trajectory"] = ftp_trajectory
+
+    if power_curve:
+        summary["power_curve"] = power_curve
 
     return summary

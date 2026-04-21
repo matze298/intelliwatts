@@ -19,3 +19,6 @@ intervals.db
 
 # Superpowers
 docs/superpowers/
+
+# Local cache
+intervals_cache.sqlite
