@@ -7,12 +7,14 @@
 - **Docstrings**: Use **Google-style docstrings** for all modules, classes, and functions.
 - **Dependency Management**: Use **`uv`** for all dependency operations. To update dependencies, first modify `pyproject.toml`, then run **`uv lock`** to regenerate the `uv.lock` file. Use **`uv sync`** to install dependencies from the lock file. Refer to `setup.sh` for the canonical installation procedure.
 - **Database Migrations**: Handle schema changes manually or via bootstrap scripts (e.g., `init_db` in `app/db.py`).
+- **Imports**: ALWAYS use **absolute imports** (e.g., `from app.models.user import User`). NEVER use relative imports (e.g., `from .user import User`).
 
 ### 🧪 Testing
 - **Framework**: Use **`pytest`**.
-- **Structure**: Follow the **GIVEN-WHEN-THEN** pattern in test docstrings or comments.
+- **Structure**: MANDATORY. Follow the **GIVEN-WHEN-THEN** pattern and clearly mark each section with explicit comments (e.g., `# GIVEN`, `# WHEN`, `# THEN`) in every test function.
 - **Coverage**: Maintain high test coverage; verify with `pytest-cov`.
 - **Mocking**: Mock external services (LLMs, Intervals.icu API) using `unittest.mock`.
+- **Mirror Structure**: The `tests/` directory structure and file naming MUST strictly mirror the `app/` directory structure (e.g., `app/path/to/module.py` should be tested in `tests/path/to/test_module.py`).
 
 ### 🎨 Frontend & Styling
 - **Framework**: **Tailwind CSS**.
@@ -29,6 +31,8 @@
 - **Pre-commit**: Ensure pre-commit hooks are respected (managed via `prek`).
 - **Commit Messages**: Use **Freeform (Descriptive)** sentences. Focus on "why" rather than just "what".
 - **Documentation**: Always keep **`README.md`** updated when making changes that affect setup, usage, or features.
+- **Improvement Plan**: Always keep **`docs/improvement-plan.md`** updated with your latest changes.
+- **Superpowers**: NEVER commit files in the **`docs/superpowers/`** directory. These are internal development aids.
 
 ## Known Best-Practices
 - **Atomic Commits**: Prefer small, focused commits.

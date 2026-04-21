@@ -21,7 +21,8 @@ Enhance the training plan generation by incorporating advanced physiological met
 ## Workflow & Feature Enhancements
 
 ### 1. Plan Persistence & Dynamic Updating
-- [ ] **Stateful Plans:** Store generated plans in the database to allow for mid-week updates.
+- [x] **Store Plans**: Store generated plans in the database.
+- [x] **Dynamic Plans:** Allow for mid-week updates of the plan based on requests.
 - [ ] **Adaptive Re-planning:** Compare planned vs. actual training data daily/weekly; use the delta to trigger an automated LLM re-plan for the remainder of the week if significant deviations occur.
 
 ### 2. Long-term Contextual Goal Planning
@@ -32,10 +33,14 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [ ] **API Integration:** Utilize the Intervals.icu Bulk Workouts API programmatically create planned workouts.
 - [ ] **`IntervalsClient` Extension:** Extend the `IntervalsClient` class with a method to send the generated workout data to this API endpoint.
 
+### 4. Infrastructure & Reliability
+- [ ] **Database Migrations:** Transition from manual bootstrap scripts to **Alembic** to safely manage database schema changes and preserve user data during upgrades.
+
 ## Implementation Strategy
 - [x] 1. **Extend Data Models:** Update `app/intervals/client.py` and add `app/intervals/parser/wellness.py` to fetch and parse newly identified fields (Implemented for Wellness, FTP, and Power Curves).
 - [x] 2. **Aggregate Data:** Modify summary aggregation logic to include historical windows for trend analysis (Implemented Wellness trends, FTP trajectory, and Power Curve summaries).
 - [x] 3. **Refine Prompts:** Update `app/planning/coach_prompt.py` to include a dedicated "Readiness & Recovery Rules" section.
-- [ ] 4. **Persist & Adapt:** Develop database schemas to store weekly plans, enabling tracking and subsequent re-planning cycles.
+- [x] 4. **Persist & Adapt:** Develop database schemas to store weekly plans, enabling tracking and subsequent re-planning cycles.
 - [ ] 5. **Macro-Planning:** Incorporate goal metadata into the LLM context window to align weekly training with long-term objectives.
 - [ ] 6. **Integrate API for direct workout creation in Intervals.icu.**
+- [ ] 7. **Alembic Integration:** Initialize Alembic and configure it to autogenerate migrations based on SQLModel classes.

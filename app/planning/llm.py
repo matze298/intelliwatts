@@ -1,7 +1,9 @@
 """Generates the training plan based on the summary by using an LLM."""
 
+from dataclasses import dataclass
+from enum import StrEnum
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 from google import genai
 from google.genai.types import (
@@ -12,11 +14,31 @@ from google.genai.types import (
 )
 from openai import OpenAI
 
-from app.models.user import User, load_user_secrets
-from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
+from app.models.user import load_user_secrets
+from app.planning.coach_prompt import SYSTEM_PROMPT
 
 if TYPE_CHECKING:
+    from openai.types.chat import ChatCompletionMessageParam
+
     from app.config import LanguageModel
+    from app.models.user import User
+
+
+class LLMRole(StrEnum):
+    """LLM roles."""
+
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+    MODEL = "model"
+
+
+@dataclass(frozen=True)
+class LLMMessage:
+    """Hashable representation of a chat message."""
+
+    role: LLMRole
+    content: str
 
 
 class LLMResponse(NamedTuple):
@@ -26,31 +48,45 @@ class LLMResponse(NamedTuple):
     prompt: list[dict[str, str]]
 
 
-def generate_plan(summary: dict[str, Any], language_model: LanguageModel, user: User) -> LLMResponse:
-    """Generates the training plan based on the summary by using ChatGPT.
+def generate_plan(
+    language_model: LanguageModel,
+    user: User,
+    messages: list[dict[str, str]],
+) -> LLMResponse:
+    """Generates the training plan based on the message history.
 
     Args:
-        summary: The athlete summary of the intervals.icu activities.
         language_model: The language model to use.
         user: The current user.
+        messages: Full conversation history.
 
     Returns:
         The training plan.
     """
     secrets = load_user_secrets(user.id)
     if "gpt" in language_model:
-        return call_gpt(user_prompt(summary), api_key=secrets.openai_api_key, model=language_model)
+        return call_gpt(messages, api_key=secrets.openai_api_key, model=language_model)
 
     if "gemini" in language_model:
-        return call_gemini(user_prompt(summary), api_key=secrets.gemini_api_key, model=language_model)
+        return call_gemini(messages, api_key=secrets.gemini_api_key, model=language_model)
 
     msg = "Unknown model: " + language_model
     raise NotImplementedError(msg)
 
 
-@lru_cache
-def call_gpt(prompt: str, api_key: str | None, model: LanguageModel) -> LLMResponse:
+def call_gpt(messages: list[dict[str, str]], api_key: str | None, model: LanguageModel) -> LLMResponse:
     """Sends a prompt to the GPT model.
+
+    Returns:
+        The text response and the prompt.
+    """
+    messages_tuple = tuple(LLMMessage(LLMRole(m["role"]), m["content"]) for m in messages)
+    return _call_gpt_cached(messages_tuple, api_key, model)
+
+
+@lru_cache
+def _call_gpt_cached(messages_tuple: tuple[LLMMessage, ...], api_key: str | None, model: LanguageModel) -> LLMResponse:
+    """Sends a prompt to the GPT model (cached version).
 
     Returns:
         The text response and the prompt.
@@ -62,28 +98,45 @@ def call_gpt(prompt: str, api_key: str | None, model: LanguageModel) -> LLMRespo
         msg = "OPENAI_API_KEY must be set if using GPT!"
         raise RuntimeError(msg)
 
+    messages = [{"role": m.role, "content": m.content} for m in messages_tuple]
     client = OpenAI(api_key=api_key)
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": prompt},
-    ]
     response = client.chat.completions.create(
         model=model,
-        messages=messages,  # ty: ignore[invalid-argument-type]
+        messages=cast("list[ChatCompletionMessageParam]", messages),
         temperature=0.2,
     )
+    if not response.choices[0].message.content:
+        msg = "GPT returned no text output"
+        raise RuntimeError(msg)
+
     return LLMResponse(plan=response.choices[0].message.content, prompt=messages)
 
 
-@lru_cache
 def call_gemini(
-    prompt: str,
+    messages: list[dict[str, str]],
     api_key: str | None,
     model: LanguageModel,
     temperature: float = 0.4,
     max_output_tokens: int = 6144,
 ) -> LLMResponse:
     """Sends a prompt to the Gemini model.
+
+    Returns:
+        The text response and the prompt.
+    """
+    messages_tuple = tuple(LLMMessage(LLMRole(m["role"]), m["content"]) for m in messages)
+    return _call_gemini_cached(messages_tuple, api_key, model, temperature, max_output_tokens)
+
+
+@lru_cache
+def _call_gemini_cached(
+    messages_tuple: tuple[LLMMessage, ...],
+    api_key: str | None,
+    model: LanguageModel,
+    temperature: float = 0.4,
+    max_output_tokens: int = 6144,
+) -> LLMResponse:
+    """Sends a prompt to the Gemini model (cached version).
 
     Returns:
         The text response and the prompt.
@@ -95,16 +148,27 @@ def call_gemini(
         msg = "GEMINI_API_KEY must be set if using Gemini!"
         raise RuntimeError(msg)
 
+    messages = [{"role": m.role, "content": m.content} for m in messages_tuple]
     client = genai.Client(api_key=api_key)
+
+    # For Gemini API, we can either use contents=[...] or use the chat session.
+    # To keep it consistent with our message list format:
+    gemini_contents = []
+    system_instruction = SYSTEM_PROMPT
+    for msg in messages_tuple:
+        if msg.role == LLMRole.SYSTEM:
+            system_instruction = msg.content
+            continue
+        role = "user" if msg.role == LLMRole.USER else "model"
+        gemini_contents.append({"role": role, "parts": [{"text": msg.content}]})
 
     response = client.models.generate_content(
         model=model,
-        contents=prompt,
+        contents=gemini_contents,
         config=GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
+            system_instruction=system_instruction,
             temperature=temperature,
             max_output_tokens=max_output_tokens,
-            # Adding safety settings can sometimes prevent over-active filtering
             safety_settings=[
                 SafetySetting(
                     category=HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -122,8 +186,4 @@ def call_gemini(
         msg = "Gemini returned no text output"
         raise RuntimeError(msg)
 
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": prompt},
-    ]
     return LLMResponse(plan=response.text, prompt=messages)

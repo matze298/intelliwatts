@@ -11,7 +11,12 @@ from fastapi.templating import Jinja2Templates
 from requests_cache import CachedSession
 from sqlmodel import Session, select
 
-from app.auth.auth import create_access_token, get_current_user_from_token, hash_password, verify_password
+from app.auth.auth import (
+    create_access_token,
+    get_current_user_from_token,
+    hash_password,
+    verify_password,
+)
 from app.config import GLOBAL_SETTINGS
 from app.db import engine
 from app.intervals.analysis import compute_analysis
@@ -20,27 +25,49 @@ from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.power_curve import parse_power_curves
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.user import User
-from app.services.planner import generate_weekly_plan
+from app.services.plan_loader import load_user_plan
+from app.services.planner import (
+    generate_weekly_plan,
+    update_training_plan,
+)
 
 router = APIRouter(tags=["web"])
 
 templates = Jinja2Templates(directory="app/templates")
 
 
+def get_optional_user(request: Request) -> User | None:
+    """Helper to get user without raising 401.
+
+    Returns:
+        The user if authenticated, else None.
+    """
+    return get_current_user_from_token(request, auto_error=False)
+
+
 @router.get("/", response_class=HTMLResponse)
-def home(request: Request, user: Annotated[User | None, Depends(get_current_user_from_token)]) -> HTMLResponse:
+def home(request: Request, user: Annotated[User | None, Depends(get_optional_user)]) -> HTMLResponse:
     """Home page for the app.
 
     Returns:
         The home page as HTML.
     """
+    plan_html = None
+    summary_html = None
+    prompt = None
+
+    if user:
+        loaded = load_user_plan(user)
+        plan_html = loaded.plan_html
+        prompt = loaded.prompt
+
     return templates.TemplateResponse(
         request,
         "plan.html",
         {
-            "plan_html": None,
-            "summary": None,
-            "prompt": None,
+            "plan_html": plan_html,
+            "summary": summary_html,
+            "prompt": prompt,
             "settings": request.app.state.settings,
             "user": user,
         },
@@ -49,7 +76,9 @@ def home(request: Request, user: Annotated[User | None, Depends(get_current_user
 
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(
-    request: Request, user: Annotated[User, Depends(get_current_user_from_token)], days: int | None = None
+    request: Request,
+    user: Annotated[User, Depends(get_current_user_from_token)],
+    days: int | None = None,
 ) -> HTMLResponse:
     """Dashboard page for the app.
 
@@ -254,5 +283,36 @@ async def generate(request: Request, user: Annotated[User, Depends(get_current_u
             "summary": summary_html,
             "prompt": result["prompt"],
             "settings": request.app.state.settings,
+            "user": user,
+        },
+    )
+
+
+@router.post("/update", response_class=HTMLResponse)
+async def update(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
+    """Updates the weekly plan based on feedback.
+
+    Returns:
+        The updated weekly plan as HTML.
+    """
+    input_data = await request.form()
+    feedback = str(input_data.get("feedback", ""))
+
+    result = update_training_plan(user=user, feedback=feedback)
+
+    plan_html = markdown.markdown(
+        result["plan"],
+        extensions=["tables", "fenced_code"],
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "plan.html",
+        {
+            "plan_html": plan_html,
+            "summary": None,
+            "prompt": None,
+            "settings": request.app.state.settings,
+            "user": user,
         },
     )

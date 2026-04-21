@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import Request  # noqa: TC002
+from fastapi import HTTPException, Request, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session
@@ -62,30 +62,37 @@ def decode_token(token: str) -> str | None:
         return None
 
 
-def get_current_user_from_token(request: Request) -> User | None:
+def get_current_user_from_token(request: Request, *, auto_error: bool = True) -> User | None:
     """Get the current user from the access token cookie.
 
     Args:
         request: The FastAPI request object.
+        auto_error: Whether to raise an exception if not authenticated.
 
     Returns:
         The user or None if not authenticated.
+
+    Raises:
+        HTTPException: If auto_error is True and user is not authenticated.
     """
     token = request.cookies.get("access_token")
-    if not token:
-        return None
+    user = None
 
-    # The token is expected to be in the format "Bearer <token>"
-    try:
-        _, token = token.split()
-    except ValueError:
-        return None
+    if token:
+        # The token is expected to be in the format "Bearer <token>"
+        try:
+            _, token_val = token.split()
+            user_id = decode_token(token_val)
+            if user_id:
+                with Session(engine) as session:
+                    user = session.get(User, UUID(user_id))
+        except ValueError, JWTError:
+            pass
 
-    user_id = decode_token(token)
-    if not user_id:
-        return None
-    with Session(engine) as session:
-        user = session.get(User, UUID(user_id))
-        if not user:
-            return None
-        return user
+    if not user and auto_error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
