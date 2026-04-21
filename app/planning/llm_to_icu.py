@@ -6,6 +6,25 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 
+def extract_workout_json(ai_response: str) -> list[dict]:
+    """Parses the AI response and extracts the workout JSON part.
+
+    Args:
+        ai_response: The AI response containing the plan and JSON.
+
+    Returns:
+        The parsed workout JSON as a list of dictionaries.
+    """
+    parts = ai_response.split("###JSON_START###")
+    json_part = parts[1].strip() if len(parts) > 1 else "[]"
+
+    try:
+        return json.loads(json_part)
+    except json.JSONDecodeError as e:
+        _LOGGER.exception("Failed to parse JSON from AI response.", exc_info=e)
+        return []
+
+
 def llm_json_to_icu_txt(ai_response: str) -> str:
     """Parses the AI JSON response and generates .txt workout files for intervals.icu.
 
@@ -15,18 +34,10 @@ def llm_json_to_icu_txt(ai_response: str) -> str:
     Returns:
         The workout structured as intervals.icu .txt file.
     """
-    # 1. Split the response
-    parts = ai_response.split("###JSON_START###")
-    json_part = parts[1].strip() if len(parts) > 1 else "[]"
+    # 1. Extract JSON
+    workouts = extract_workout_json(ai_response)
 
-    # 2. Parse JSON
-    try:
-        workouts = json.loads(json_part)
-    except json.JSONDecodeError as e:
-        _LOGGER.exception("Failed to parse JSON from AI response.", exc_info=e)
-        return "Failed to parse workout JSON."
-
-    # 3. Generate .txt files from JSON
+    # 2. Generate .txt files from JSON
     file_content = ""
     for workout in workouts:
         file_content += f"Title: {workout['workout_name']}\n\nDescription: {workout['description']}\n\n"
