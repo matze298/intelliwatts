@@ -1,9 +1,9 @@
 """Authentication functions."""
 
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
 from uuid import UUID
 
+from fastapi import Request  # noqa: TC002
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session
@@ -11,9 +11,6 @@ from sqlmodel import Session
 from app.config import GLOBAL_SETTINGS
 from app.db import engine
 from app.models.user import User
-
-if TYPE_CHECKING:
-    from fastapi import Request
 
 # Password hashing context
 PWD_CONTEXT = CryptContext(schemes=["bcrypt"])
