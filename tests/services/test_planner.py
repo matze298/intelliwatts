@@ -14,6 +14,7 @@ from app.planning.llm import LLMResponse, LLMRole
 from app.planning.summary import PlanningConstraints
 from app.services.planner import (
     PlanData,
+    fetch_athlete_data,
     generate_weekly_plan,
     get_or_create_active_phase,
     save_training_plan,
@@ -24,6 +25,57 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from sqlalchemy.engine import Engine
+
+
+@patch("app.services.planner.IntervalsClient")
+@patch("app.services.planner.parse_activities")
+@patch("app.services.planner.parse_wellness_list")
+@patch("app.services.planner.parse_power_curves")
+def test_fetch_athlete_data(
+    mock_parse_power_curves: MagicMock,
+    mock_parse_wellness_list: MagicMock,
+    mock_parse_activities: MagicMock,
+    mock_intervals_client: MagicMock,
+) -> None:
+    """Test the fetch_athlete_data function."""
+    # GIVEN mocked settings
+    mock_settings = MagicMock()
+    mock_settings.INTERVALS_API_KEY = "test_api_key"
+    mock_settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
+    mock_settings.CACHE_INTERVALS_HOURS = 0
+    mock_settings.ANALYSIS_DAYS = 120
+
+    # GIVEN mocked return values for parsers
+    mock_activities = [MagicMock()]
+    mock_wellness = [MagicMock()]
+    mock_power_curves = [MagicMock()]
+    mock_parse_activities.return_value = mock_activities
+    mock_parse_wellness_list.return_value = mock_wellness
+    mock_parse_power_curves.return_value = mock_power_curves
+
+    # WHEN fetching athlete data with wellness
+    activities, wellness, power_curves = fetch_athlete_data(mock_settings, use_wellness=True)
+
+    # THEN it should call the client methods and parsers
+    mock_intervals_client.assert_called_once()
+    mock_intervals_client.return_value.activities.assert_called_once_with(days=120)
+    mock_intervals_client.return_value.wellness.assert_called_once_with(days=120)
+    mock_intervals_client.return_value.power_curves.assert_called_once_with(curves="90d")
+
+    assert activities == mock_activities
+    assert wellness == mock_wellness
+    assert power_curves == mock_power_curves
+
+    # GIVEN reset mocks
+    mock_intervals_client.reset_mock()
+    mock_intervals_client.return_value.wellness.reset_mock()
+
+    # WHEN fetching athlete data WITHOUT wellness
+    activities, wellness, power_curves = fetch_athlete_data(mock_settings, use_wellness=False)
+
+    # THEN it should NOT call the wellness method
+    mock_intervals_client.return_value.wellness.assert_not_called()
+    assert wellness is None
 
 
 @pytest.fixture
