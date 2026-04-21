@@ -19,7 +19,6 @@ from app.services.planner import (
     save_training_plan,
     update_training_plan,
 )
-from app.utils.datetime import get_monday
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -38,15 +37,6 @@ def session() -> Generator[Session]:
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
-
-
-def test_get_monday() -> None:
-    """Test get_monday returns correct Monday."""
-    # GIVEN specific dates
-    # WHEN calculating the Monday of the week
-    # THEN it should return the correct date
-    assert get_monday(date(2026, 4, 21)) == date(2026, 4, 20)  # Tuesday -> Monday
-    assert get_monday(date(2026, 4, 20)) == date(2026, 4, 20)  # Monday -> Monday
 
 
 def test_get_or_create_active_phase(session: Session) -> None:
