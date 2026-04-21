@@ -52,7 +52,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_current_user
     if user:
         with Session(engine) as session:
             phase = get_or_create_active_phase(session, user.id)
-            monday = get_monday(UTC_now().date())
+            monday = get_monday(get_utc_now().date())
             statement = select(TrainingPlan).where(TrainingPlan.phase_id == phase.id, TrainingPlan.week_start == monday)
             plan = session.exec(statement).first()
             if plan:
@@ -75,7 +75,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_current_user
     )
 
 
-def UTC_now() -> datetime:  # noqa: N802
+def get_utc_now() -> datetime:
     """Helper for UTC now.
 
     Returns:

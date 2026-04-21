@@ -1,7 +1,7 @@
 """Defines the TrainingPhase and TrainingPlan models."""
 
 import uuid
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlmodel import JSON, Column, Field, SQLModel
@@ -29,5 +29,5 @@ class TrainingPlan(SQLModel, table=True):
     workout_data: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
     # prompt_history: The full conversation history for this iteration cycle.
     prompt_history: list[dict[str, str]] = Field(default_factory=list, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -19,7 +19,7 @@ def extract_workout_json(ai_response: str) -> list[dict]:
     if len(parts) <= 1:
         return []
 
-    json_part = parts[1].strip()
+    json_part = parts[1].split("###JSON_END###")[0].strip()
     return json.loads(json_part)
 
 

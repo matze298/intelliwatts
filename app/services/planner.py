@@ -1,5 +1,6 @@
 """Service for generating the weekly plan."""
 
+import json
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -122,7 +123,7 @@ def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_
         # Save the updated plan
         try:
             workout_data = extract_workout_json(llm_response.plan)
-        except Exception:  # noqa: BLE001
+        except json.JSONDecodeError:
             workout_data = []
         saved_plan = save_training_plan(
             session,
@@ -199,7 +200,7 @@ def generate_weekly_plan(
         phase = get_or_create_active_phase(db_session, user.id)
         try:
             workout_data = extract_workout_json(llm_response.plan)
-        except Exception:  # noqa: BLE001
+        except json.JSONDecodeError:
             workout_data = []
         saved_plan = save_training_plan(
             db_session,
