@@ -1,6 +1,6 @@
 """Web routes for the app."""
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import markdown
@@ -11,7 +11,12 @@ from fastapi.templating import Jinja2Templates
 from requests_cache import CachedSession
 from sqlmodel import Session, select
 
-from app.auth.auth import create_access_token, get_current_user_from_token, hash_password, verify_password
+from app.auth.auth import (
+    create_access_token,
+    get_current_user_from_token,
+    hash_password,
+    verify_password,
+)
 from app.config import GLOBAL_SETTINGS
 from app.db import engine
 from app.intervals.analysis import compute_analysis
@@ -19,8 +24,14 @@ from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.power_curve import parse_power_curves
 from app.intervals.parser.wellness import parse_wellness_list
+from app.models.plan import TrainingPlan
 from app.models.user import User
-from app.services.planner import generate_weekly_plan
+from app.services.planner import (
+    generate_weekly_plan,
+    get_monday,
+    get_or_create_active_phase,
+    update_training_plan,
+)
 
 router = APIRouter(tags=["web"])
 
@@ -34,22 +45,50 @@ def home(request: Request, user: Annotated[User | None, Depends(get_current_user
     Returns:
         The home page as HTML.
     """
+    plan_html = None
+    summary_html = None
+    prompt = None
+
+    if user:
+        with Session(engine) as session:
+            phase = get_or_create_active_phase(session, user.id)
+            monday = get_monday(UTC_now().date())
+            statement = select(TrainingPlan).where(TrainingPlan.phase_id == phase.id, TrainingPlan.week_start == monday)
+            plan = session.exec(statement).first()
+            if plan:
+                plan_html = markdown.markdown(
+                    plan.raw_content,
+                    extensions=["tables", "fenced_code"],
+                )
+                prompt = plan.prompt_history
+
     return templates.TemplateResponse(
         request,
         "plan.html",
         {
-            "plan_html": None,
-            "summary": None,
-            "prompt": None,
+            "plan_html": plan_html,
+            "summary": summary_html,
+            "prompt": prompt,
             "settings": request.app.state.settings,
             "user": user,
         },
     )
 
 
+def UTC_now() -> datetime:  # noqa: N802
+    """Helper for UTC now.
+
+    Returns:
+        The current datetime in UTC.
+    """
+    return datetime.now(UTC)
+
+
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(
-    request: Request, user: Annotated[User, Depends(get_current_user_from_token)], days: int | None = None
+    request: Request,
+    user: Annotated[User, Depends(get_current_user_from_token)],
+    days: int | None = None,
 ) -> HTMLResponse:
     """Dashboard page for the app.
 
@@ -254,5 +293,36 @@ async def generate(request: Request, user: Annotated[User, Depends(get_current_u
             "summary": summary_html,
             "prompt": result["prompt"],
             "settings": request.app.state.settings,
+            "user": user,
+        },
+    )
+
+
+@router.post("/update", response_class=HTMLResponse)
+async def update(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
+    """Updates the weekly plan based on feedback.
+
+    Returns:
+        The updated weekly plan as HTML.
+    """
+    input_data = await request.form()
+    feedback = str(input_data.get("feedback", ""))
+
+    result = update_training_plan(user=user, feedback=feedback)
+
+    plan_html = markdown.markdown(
+        result["plan"],
+        extensions=["tables", "fenced_code"],
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "plan.html",
+        {
+            "plan_html": plan_html,
+            "summary": None,
+            "prompt": None,
+            "settings": request.app.state.settings,
+            "user": user,
         },
     )

@@ -1,5 +1,6 @@
 """Unit tests for the planner service."""
 
+import uuid
 from unittest.mock import ANY, MagicMock, patch
 
 from app.models.user import User
@@ -29,10 +30,11 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917, PLR0915
     """Test the generate_weekly_plan function."""
     # GIVEN a mock user and mocked settings
     mock_user = User(
-        id=MagicMock(),
+        id=uuid.uuid4(),
         email="test@example.com",
         password_hash="hashed_password",  # noqa: S106
     )
+
     mock_settings = MagicMock()
     mock_settings.INTERVALS_API_KEY = "test_api_key"
     mock_settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
@@ -129,10 +131,11 @@ def test_generate_weekly_plan_no_wellness(  # noqa: PLR0913, PLR0917
     """Test the generate_weekly_plan function without wellness data."""
     # GIVEN a mock user and mocked settings
     mock_user = User(
-        id=MagicMock(),
+        id=uuid.uuid4(),
         email="test2@example.com",
         password_hash="hashed_password",  # noqa: S106
     )
+
     mock_settings = MagicMock()
     mock_settings.INTERVALS_API_KEY = "test_api_key"
     mock_settings.INTERVALS_ATHLETE_ID = "test_athlete_id"

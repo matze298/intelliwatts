@@ -120,13 +120,17 @@ def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_
         llm_response = generate_plan(messages=history, language_model=settings.LANGUAGE_MODEL, user=user)
 
         # Save the updated plan
+        try:
+            workout_data = extract_workout_json(llm_response.plan)
+        except Exception:  # noqa: BLE001
+            workout_data = []
         saved_plan = save_training_plan(
             session,
             phase.id,
             monday,
             PlanData(
                 raw_content=llm_response.plan,
-                workout_data=extract_workout_json(llm_response.plan),
+                workout_data=workout_data,
                 prompt_history=llm_response.prompt,
             ),
         )
@@ -193,13 +197,17 @@ def generate_weekly_plan(
     # Persist the plan
     with Session(engine) as db_session:
         phase = get_or_create_active_phase(db_session, user.id)
+        try:
+            workout_data = extract_workout_json(llm_response.plan)
+        except Exception:  # noqa: BLE001
+            workout_data = []
         saved_plan = save_training_plan(
             db_session,
             phase.id,
             get_monday(datetime.now(UTC).date()),
             PlanData(
                 raw_content=llm_response.plan,
-                workout_data=extract_workout_json(llm_response.plan),
+                workout_data=workout_data,
                 prompt_history=llm_response.prompt,
             ),
         )

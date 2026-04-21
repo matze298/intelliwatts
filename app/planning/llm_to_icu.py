@@ -16,13 +16,11 @@ def extract_workout_json(ai_response: str) -> list[dict]:
         The parsed workout JSON as a list of dictionaries.
     """
     parts = ai_response.split("###JSON_START###")
-    json_part = parts[1].strip() if len(parts) > 1 else "[]"
-
-    try:
-        return json.loads(json_part)
-    except json.JSONDecodeError as e:
-        _LOGGER.exception("Failed to parse JSON from AI response.", exc_info=e)
+    if len(parts) <= 1:
         return []
+
+    json_part = parts[1].strip()
+    return json.loads(json_part)
 
 
 def llm_json_to_icu_txt(ai_response: str) -> str:
@@ -35,7 +33,11 @@ def llm_json_to_icu_txt(ai_response: str) -> str:
         The workout structured as intervals.icu .txt file.
     """
     # 1. Extract JSON
-    workouts = extract_workout_json(ai_response)
+    try:
+        workouts = extract_workout_json(ai_response)
+    except json.JSONDecodeError as e:
+        _LOGGER.exception("Failed to parse JSON from AI response.", exc_info=e)
+        return "Failed to parse workout JSON."
 
     # 2. Generate .txt files from JSON
     file_content = ""
