@@ -44,13 +44,15 @@ def parse_power_curve(data: dict[str, Any]) -> ParsedPowerCurve:
     return ParsedPowerCurve(id=data.get("id", "unknown"), points=points)
 
 
-def parse_power_curves(data: list[dict[str, Any]]) -> list[ParsedPowerCurve]:
-    """Parse a list of power curves from intervals.icu.
+def parse_power_curves(data: list[dict[str, Any]] | dict[str, Any]) -> list[ParsedPowerCurve]:
+    """Parse power curves from intervals.icu.
 
     Args:
-        data: The raw power curves data.
+        data: The raw power curve(s) data. Can be a list of dicts or a single dict.
 
     Returns:
         The list of parsed power curves.
     """
+    if isinstance(data, dict):
+        return [parse_power_curve(data)]
     return [parse_power_curve(c) for c in data]
