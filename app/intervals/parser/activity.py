@@ -23,6 +23,7 @@ class ParsedActivity:
     elevation_gain: float | None
     hr_zone_times: list[int] | None
     power_zone_times: list[dict[str, int]] | None
+    ftp: float | None = None
 
 
 def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
@@ -45,6 +46,7 @@ def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
             elevation_gain=a.get("total_elevation_gain"),
             hr_zone_times=a.get("icu_hr_zone_times"),
             power_zone_times=a.get("icu_zone_times"),
+            ftp=a.get("icu_ftp"),
         )
     except KeyError:
         _LOGGER.exception("Unable to parse activity: %s", a)

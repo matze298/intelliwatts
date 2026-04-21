@@ -11,6 +11,7 @@ from app.intervals.analysis import (
     compute_load,
 )
 from app.intervals.parser.activity import ParsedActivity
+from app.intervals.parser.power_curve import ParsedPowerCurve, PowerCurvePoint
 from app.intervals.parser.wellness import ParsedWellness
 
 
@@ -305,3 +306,75 @@ def test_calculate_power_to_weight_float_precision() -> None:
 
     # THEN return the correct ratio rounded to 2 decimal places (285.5 / 72.3 = 3.9488...)
     assert result == 3.95
+
+
+def test_compute_ftp_trajectory() -> None:
+    """Tests the FTP trajectory calculation."""
+    # GIVEN activities with changing FTP over 30 days
+    activities = [
+        ParsedActivity(
+            date="2026-03-20",
+            duration_h=1.0,
+            training_stress=100.0,
+            avg_power=200.0,
+            type="Ride",
+            calories=800,
+            avg_hr=140.0,
+            max_hr=160.0,
+            distance_km=30.0,
+            elevation_gain=300.0,
+            hr_zone_times=None,
+            power_zone_times=None,
+            ftp=250.0,
+        ),
+        ParsedActivity(
+            date="2026-04-20",
+            duration_h=1.0,
+            training_stress=100.0,
+            avg_power=200.0,
+            type="Ride",
+            calories=800,
+            avg_hr=140.0,
+            max_hr=160.0,
+            distance_km=30.0,
+            elevation_gain=300.0,
+            hr_zone_times=None,
+            power_zone_times=None,
+            ftp=260.0,
+        ),
+    ]
+
+    # WHEN computing the analysis
+    analysis = compute_analysis(activities)
+
+    # THEN the FTP trajectory is correct (4% increase)
+    assert analysis.ftp_trajectory is not None
+    assert analysis.ftp_trajectory["current_ftp"] == 260.0
+    assert analysis.ftp_trajectory["ftp_4w_ago"] == 250.0
+    assert analysis.ftp_trajectory["change_pct"] == 4.0
+
+
+def test_compute_power_curve_summary() -> None:
+    """Tests the power curve summary calculation."""
+    # GIVEN a parsed power curve
+    power_curve = [
+        ParsedPowerCurve(
+            id="90d",
+            points=[
+                PowerCurvePoint(secs=5, watts=900),
+                PowerCurvePoint(secs=60, watts=500),
+                PowerCurvePoint(secs=300, watts=350),
+                PowerCurvePoint(secs=1200, watts=300),
+            ],
+        )
+    ]
+
+    # WHEN computing the analysis
+    analysis = compute_analysis([], power_curve=power_curve)
+
+    # THEN the power curve summary is correct
+    assert analysis.power_curve is not None
+    assert analysis.power_curve["peak_5s"] == 900
+    assert analysis.power_curve["peak_1m"] == 500
+    assert analysis.power_curve["peak_5m"] == 350
+    assert analysis.power_curve["peak_20m"] == 300
