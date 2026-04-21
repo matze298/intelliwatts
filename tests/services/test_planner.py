@@ -42,43 +42,54 @@ def session() -> Generator[Session]:
 
 def test_get_monday() -> None:
     """Test get_monday returns correct Monday."""
+    # GIVEN specific dates
+    # WHEN calculating the Monday of the week
+    # THEN it should return the correct date
     assert get_monday(date(2026, 4, 21)) == date(2026, 4, 20)  # Tuesday -> Monday
     assert get_monday(date(2026, 4, 20)) == date(2026, 4, 20)  # Monday -> Monday
 
 
 def test_get_or_create_active_phase(session: Session) -> None:
     """Test get_or_create_active_phase creates default if none exists."""
+    # GIVEN a user ID
     user_id = uuid.uuid4()
+
+    # WHEN getting or creating an active phase
     phase = get_or_create_active_phase(session, user_id)
+
+    # THEN it should create a default active phase
     assert phase.user_id == user_id
     assert phase.status == "active"
     assert phase.primary_goal == "Build FTP (Default)"
 
-    # Second call should return the same phase
+    # WHEN getting it again
     phase2 = get_or_create_active_phase(session, user_id)
+
+    # THEN it should return the same phase
     assert phase2.id == phase.id
 
 
 def test_save_training_plan_overwrite(session: Session) -> None:
     """Test save_training_plan overwrites existing plan for the week."""
+    # GIVEN an active phase and a week start date
     user_id = uuid.uuid4()
     phase = get_or_create_active_phase(session, user_id)
     week_start = date(2026, 4, 20)
 
-    # Initial save
+    # WHEN saving an initial plan
     data = PlanData(raw_content="Old Content", workout_data=[], prompt_history=[])
     save_training_plan(session, phase.id, week_start, data)
 
-    # Verify save
+    # THEN it should be stored in the database
     statement = select(TrainingPlan).where(TrainingPlan.phase_id == phase.id)
     plan = session.exec(statement).one()
     assert plan.raw_content == "Old Content"
 
-    # Overwrite
+    # WHEN saving a new plan for the same week
     data = PlanData(raw_content="New Content", workout_data=[], prompt_history=[])
     save_training_plan(session, phase.id, week_start, data)
 
-    # Verify overwrite
+    # THEN it should overwrite the existing plan
     plan = session.exec(statement).one()
     assert plan.raw_content == "New Content"
 
@@ -169,7 +180,7 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917, PLR0915
         mock_parsed_activities, wellness_data=mock_parsed_wellness, power_curve=mock_parsed_power_curves
     )
 
-    # Verify build_weekly_summary call (especially the load and constraints)
+    # THEN build_weekly_summary is called with correct parameters
     mock_build_weekly_summary.assert_called_once()
     args, kwargs = mock_build_weekly_summary.call_args
     assert args[0] == mock_parsed_activities
@@ -180,6 +191,7 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917, PLR0915
     assert kwargs["ftp_trajectory"] == {"change_pct": 2.5}
     assert kwargs["power_curve"] == {"peak_5m": 350}
 
+    # THEN generate_plan is called with the summary
     mock_generate_plan.assert_called_once_with(summary=mock_summary, language_model="test_model", user=mock_user)
 
     # THEN the result contains the expected plan and summary
@@ -243,15 +255,18 @@ def test_generate_weekly_plan_no_wellness(  # noqa: PLR0913, PLR0917
 
     # THEN wellness client method is NOT called
     mock_intervals_client.return_value.wellness.assert_not_called()
-    # AND compute_athlete_status is called with wellness_data=None
+
+    # THEN compute_athlete_status is called with wellness_data=None
     mock_compute_athlete_status.assert_called_once_with([], wellness_data=None, power_curve=[])
-    # AND build_weekly_summary is called with wellness_summary=None
+
+    # THEN build_weekly_summary is called with wellness_summary=None
     assert mock_build_weekly_summary.call_args.kwargs["wellness_summary"] is None
 
 
 @patch("app.services.planner.generate_plan")
 def test_update_training_plan_uses_history(mock_generate_plan: MagicMock, session: Session) -> None:
     """Test update_training_plan retrieves history and calls LLM with it."""
+    # GIVEN a user and an existing training plan with prompt history
     user = User(id=uuid.uuid4(), email="test@example.com", password_hash="hash")  # noqa: S106
     phase = TrainingPhase(
         user_id=user.id,
@@ -267,7 +282,7 @@ def test_update_training_plan_uses_history(mock_generate_plan: MagicMock, sessio
     data = PlanData(raw_content="Initial Plan", workout_data=[], prompt_history=initial_history)
     save_training_plan(session, phase.id, monday, data)
 
-    # Mock LLM response for update
+    # GIVEN a mocked LLM response for the update
     mock_llm_response = MagicMock()
     mock_llm_response.plan = "Updated Plan ###JSON_START### [] ###JSON_END###"
     mock_llm_response.prompt = [
@@ -277,6 +292,7 @@ def test_update_training_plan_uses_history(mock_generate_plan: MagicMock, sessio
     ]
     mock_generate_plan.return_value = mock_llm_response
 
+    # WHEN updating the training plan with feedback
     with (
         patch("app.services.planner.Session", return_value=session),
         patch("app.services.planner.get_monday", return_value=monday),
@@ -285,13 +301,13 @@ def test_update_training_plan_uses_history(mock_generate_plan: MagicMock, sessio
         mock_datetime.now.return_value = datetime(2026, 4, 21, tzinfo=UTC)
         update_training_plan(user, "make it harder")
 
-    # Verify generate_plan was called with history
+    # THEN generate_plan should be called with the extended message history
     mock_generate_plan.assert_called_once()
     passed_messages = mock_generate_plan.call_args.kwargs["messages"]
     assert len(passed_messages) == 3
     assert passed_messages[2]["content"] == "make it harder"
 
-    # Verify plan was updated in DB
+    # THEN the plan and its history should be updated in the database
     plan = session.exec(select(TrainingPlan)).one()
     assert "Updated Plan" in plan.raw_content
     assert len(plan.prompt_history) == 4

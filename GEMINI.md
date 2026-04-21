@@ -11,7 +11,7 @@
 
 ### 🧪 Testing
 - **Framework**: Use **`pytest`**.
-- **Structure**: Follow the **GIVEN-WHEN-THEN** pattern and clearly mark each section with comments.
+- **Structure**: MANDATORY. Follow the **GIVEN-WHEN-THEN** pattern and clearly mark each section with explicit comments (e.g., `# GIVEN`, `# WHEN`, `# THEN`) in every test function.
 - **Coverage**: Maintain high test coverage; verify with `pytest-cov`.
 - **Mocking**: Mock external services (LLMs, Intervals.icu API) using `unittest.mock`.
 - **Mirror Structure**: The `tests/` directory structure and file naming MUST strictly mirror the `app/` directory structure (e.g., `app/path/to/module.py` should be tested in `tests/path/to/test_module.py`).
