@@ -47,7 +47,7 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917, PLR0915
     mock_intervals_client.return_value.activities.return_value = mock_raw_activities
     mock_raw_wellness = [{"id": "wellness1"}]
     mock_intervals_client.return_value.wellness.return_value = mock_raw_wellness
-    mock_raw_power_curves = [{"id": "90d"}]
+    mock_raw_power_curves = {"list": [{"id": "90d"}]}
     mock_intervals_client.return_value.power_curves.return_value = mock_raw_power_curves
 
     mock_parsed_activities = [MagicMock()]
@@ -144,7 +144,7 @@ def test_generate_weekly_plan_no_wellness(  # noqa: PLR0913, PLR0917
 
     # GIVEN mocked raw data and parsed data
     mock_intervals_client.return_value.activities.return_value = []
-    mock_intervals_client.return_value.power_curves.return_value = []
+    mock_intervals_client.return_value.power_curves.return_value = {"list": []}
     mock_parse_activities.return_value = []
     mock_parse_power_curves.return_value = []
 
