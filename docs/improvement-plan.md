@@ -21,8 +21,12 @@ Enhance the training plan generation by incorporating advanced physiological met
 ## Workflow & Feature Enhancements
 
 ### 1. Plan Persistence & Dynamic Updating
-- [ ] **Stateful Plans:** Store generated plans in the database to allow for mid-week updates.
+- [ ] **Store Plans**: Store generated plans in the database using a Phase/Iteration hierarchy.
+- [ ] **Dynamic Plans:** Allow for mid-week updates of the plan based on requests, using stored `prompt_history` for context.
 - [ ] **Adaptive Re-planning:** Compare planned vs. actual training data daily/weekly; use the delta to trigger an automated LLM re-plan for the remainder of the week if significant deviations occur.
+- [ ] **Plan Revisions (Future):** Implement Version N+1 logic to track how plans evolve through iterations (Approach B).
+- [ ] **Metric-Based Completion (Future):** Automatically finish a training phase when a target metric (e.g., FTP) is achieved (Approach C).
+- [ ] **Interactive Phase Setup (Future):** Ask the user for specific goals and durations when starting a new training phase instead of assuming defaults.
 
 ### 2. Long-term Contextual Goal Planning
 - [ ] **Goal-Oriented Hierarchy:** Enable users to define a "Primary Goal" (e.g., A-race in 12 weeks).
