@@ -36,10 +36,17 @@ router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="app/templates")
 
 
+def get_optional_user(request: Request) -> User | None:
+    """Helper to get user without raising 401.
+
+    Returns:
+        The user if authenticated, else None.
+    """
+    return get_current_user_from_token(request, auto_error=False)
+
+
 @router.get("/", response_class=HTMLResponse)
-def home(
-    request: Request, user: Annotated[User | None, Depends(lambda r: get_current_user_from_token(r, auto_error=False))]
-) -> HTMLResponse:
+def home(request: Request, user: Annotated[User | None, Depends(get_optional_user)]) -> HTMLResponse:
     """Home page for the app.
 
     Returns:
