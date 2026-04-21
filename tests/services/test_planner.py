@@ -10,16 +10,16 @@ from sqlmodel import Session, create_engine, select
 
 from app.models.plan import SQLModel, TrainingPhase, TrainingPlan
 from app.models.user import User
-from app.planning.llm import LLMResponse
+from app.planning.llm import LLMResponse, LLMRole
 from app.planning.summary import PlanningConstraints
 from app.services.planner import (
     PlanData,
     generate_weekly_plan,
-    get_monday,
     get_or_create_active_phase,
     save_training_plan,
     update_training_plan,
 )
+from app.utils.datetime import get_monday
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -102,7 +102,7 @@ def test_save_training_plan_overwrite(session: Session) -> None:
 @patch("app.services.planner.build_weekly_summary")
 @patch("app.services.planner.generate_plan")
 @patch("app.services.planner.llm_json_to_icu_txt")
-def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917, PLR0915
+def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917, PLR0915, PLR0914
     mock_llm_json_to_icu_txt: MagicMock,
     mock_generate_plan: MagicMock,
     mock_build_weekly_summary: MagicMock,
@@ -191,8 +191,14 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917, PLR0915
     assert kwargs["ftp_trajectory"] == {"change_pct": 2.5}
     assert kwargs["power_curve"] == {"peak_5m": 350}
 
-    # THEN generate_plan is called with the summary
-    mock_generate_plan.assert_called_once_with(summary=mock_summary, language_model="test_model", user=mock_user)
+    # THEN generate_plan is called with the messages
+    mock_generate_plan.assert_called_once()
+    passed_messages = mock_generate_plan.call_args.kwargs["messages"]
+    assert len(passed_messages) == 2
+    assert passed_messages[0]["role"] == LLMRole.SYSTEM
+    assert "Weekly summary" in passed_messages[1]["content"]
+    assert mock_generate_plan.call_args.kwargs["language_model"] == "test_model"
+    assert mock_generate_plan.call_args.kwargs["user"] == mock_user
 
     # THEN the result contains the expected plan and summary
     assert result["summary"] == mock_summary

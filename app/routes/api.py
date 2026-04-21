@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING, Annotated, Any
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.auth.auth import get_authenticated_user
+from app.auth.auth import get_current_user_from_token
 from app.services.planner import generate_weekly_plan, update_training_plan
 
 if TYPE_CHECKING:
     from app.models.user import User
 
-router = APIRouter(prefix="/api", tags=["api"], dependencies=[Depends(get_authenticated_user)])
+router = APIRouter(prefix="/api", tags=["api"], dependencies=[Depends(get_current_user_from_token)])
 
 
 class UpdatePlanRequest(BaseModel):
@@ -21,7 +21,7 @@ class UpdatePlanRequest(BaseModel):
 
 
 @router.post("/generate-plan")
-def generate_plan_api(user: Annotated[User, Depends(get_authenticated_user)]) -> dict[str, Any]:
+def generate_plan_api(user: Annotated[User, Depends(get_current_user_from_token)]) -> dict[str, Any]:
     """Generates the weekly plan.
 
     Returns:
@@ -32,7 +32,7 @@ def generate_plan_api(user: Annotated[User, Depends(get_authenticated_user)]) ->
 
 @router.post("/update-plan")
 def update_plan_api(
-    request: UpdatePlanRequest, user: Annotated[User, Depends(get_authenticated_user)]
+    request: UpdatePlanRequest, user: Annotated[User, Depends(get_current_user_from_token)]
 ) -> dict[str, Any]:
     """Updates the training plan based on feedback.
 

@@ -1,6 +1,6 @@
 """Web routes for the app."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Annotated
 
 import markdown
@@ -13,7 +13,6 @@ from sqlmodel import Session, select
 
 from app.auth.auth import (
     create_access_token,
-    get_authenticated_user,
     get_current_user_from_token,
     hash_password,
     verify_password,
@@ -25,12 +24,10 @@ from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.power_curve import parse_power_curves
 from app.intervals.parser.wellness import parse_wellness_list
-from app.models.plan import TrainingPlan
 from app.models.user import User
+from app.services.plan_loader import load_user_plan
 from app.services.planner import (
     generate_weekly_plan,
-    get_monday,
-    get_or_create_active_phase,
     update_training_plan,
 )
 
@@ -40,7 +37,9 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/", response_class=HTMLResponse)
-def home(request: Request, user: Annotated[User | None, Depends(get_current_user_from_token)]) -> HTMLResponse:
+def home(
+    request: Request, user: Annotated[User | None, Depends(lambda r: get_current_user_from_token(r, auto_error=False))]
+) -> HTMLResponse:
     """Home page for the app.
 
     Returns:
@@ -51,17 +50,9 @@ def home(request: Request, user: Annotated[User | None, Depends(get_current_user
     prompt = None
 
     if user:
-        with Session(engine) as session:
-            phase = get_or_create_active_phase(session, user.id)
-            monday = get_monday(get_utc_now().date())
-            statement = select(TrainingPlan).where(TrainingPlan.phase_id == phase.id, TrainingPlan.week_start == monday)
-            plan = session.exec(statement).first()
-            if plan:
-                plan_html = markdown.markdown(
-                    plan.raw_content,
-                    extensions=["tables", "fenced_code"],
-                )
-                prompt = plan.prompt_history
+        loaded = load_user_plan(user)
+        plan_html = loaded.plan_html
+        prompt = loaded.prompt
 
     return templates.TemplateResponse(
         request,
@@ -76,19 +67,10 @@ def home(request: Request, user: Annotated[User | None, Depends(get_current_user
     )
 
 
-def get_utc_now() -> datetime:
-    """Helper for UTC now.
-
-    Returns:
-        The current datetime in UTC.
-    """
-    return datetime.now(UTC)
-
-
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(
     request: Request,
-    user: Annotated[User, Depends(get_authenticated_user)],
+    user: Annotated[User, Depends(get_current_user_from_token)],
     days: int | None = None,
 ) -> HTMLResponse:
     """Dashboard page for the app.
@@ -246,7 +228,7 @@ def logout() -> RedirectResponse:
 
 
 @router.get("/secrets", response_class=HTMLResponse)
-def secrets(request: Request, user: Annotated[User, Depends(get_authenticated_user)]) -> HTMLResponse:
+def secrets(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
     """Secrets page for the app.
 
     Returns:
@@ -256,7 +238,7 @@ def secrets(request: Request, user: Annotated[User, Depends(get_authenticated_us
 
 
 @router.post("/generate", response_class=HTMLResponse)
-async def generate(request: Request, user: Annotated[User, Depends(get_authenticated_user)]) -> HTMLResponse:
+async def generate(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
     """Generates the weekly plan for the athlete.
 
     Returns:
@@ -300,7 +282,7 @@ async def generate(request: Request, user: Annotated[User, Depends(get_authentic
 
 
 @router.post("/update", response_class=HTMLResponse)
-async def update(request: Request, user: Annotated[User, Depends(get_authenticated_user)]) -> HTMLResponse:
+async def update(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
     """Updates the weekly plan based on feedback.
 
     Returns:

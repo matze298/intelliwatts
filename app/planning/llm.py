@@ -1,8 +1,9 @@
 """Generates the training plan based on the summary by using an LLM."""
 
 from dataclasses import dataclass
+from enum import StrEnum
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, NamedTuple, cast
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 from google import genai
 from google.genai.types import (
@@ -14,7 +15,7 @@ from google.genai.types import (
 from openai import OpenAI
 
 from app.models.user import load_user_secrets
-from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
+from app.planning.coach_prompt import SYSTEM_PROMPT
 
 if TYPE_CHECKING:
     from openai.types.chat import ChatCompletionMessageParam
@@ -23,11 +24,20 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
+class LLMRole(StrEnum):
+    """LLM roles."""
+
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+    MODEL = "model"
+
+
 @dataclass(frozen=True)
 class LLMMessage:
     """Hashable representation of a chat message."""
 
-    role: str
+    role: LLMRole
     content: str
 
 
@@ -41,34 +51,18 @@ class LLMResponse(NamedTuple):
 def generate_plan(
     language_model: LanguageModel,
     user: User,
-    *,
-    summary: dict[str, Any] | None = None,
-    messages: list[dict[str, str]] | None = None,
+    messages: list[dict[str, str]],
 ) -> LLMResponse:
-    """Generates the training plan based on the summary or message history.
+    """Generates the training plan based on the message history.
 
     Args:
         language_model: The language model to use.
         user: The current user.
-        summary: Optional athlete summary for initial plan generation.
-        messages: Optional full conversation history for iterative updates.
+        messages: Full conversation history.
 
     Returns:
         The training plan.
-
-    Raises:
-        ValueError: If neither summary nor messages are provided.
     """
-    if summary is not None:
-        prompt = user_prompt(summary)
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ]
-    elif messages is None:
-        msg = "Either summary or messages must be provided"
-        raise ValueError(msg)
-
     secrets = load_user_secrets(user.id)
     if "gpt" in language_model:
         return call_gpt(messages, api_key=secrets.openai_api_key, model=language_model)
@@ -86,7 +80,7 @@ def call_gpt(messages: list[dict[str, str]], api_key: str | None, model: Languag
     Returns:
         The text response and the prompt.
     """
-    messages_tuple = tuple(LLMMessage(m["role"], m["content"]) for m in messages)
+    messages_tuple = tuple(LLMMessage(LLMRole(m["role"]), m["content"]) for m in messages)
     return _call_gpt_cached(messages_tuple, api_key, model)
 
 
@@ -130,7 +124,7 @@ def call_gemini(
     Returns:
         The text response and the prompt.
     """
-    messages_tuple = tuple(LLMMessage(m["role"], m["content"]) for m in messages)
+    messages_tuple = tuple(LLMMessage(LLMRole(m["role"]), m["content"]) for m in messages)
     return _call_gemini_cached(messages_tuple, api_key, model, temperature, max_output_tokens)
 
 
@@ -160,18 +154,19 @@ def _call_gemini_cached(
     # For Gemini API, we can either use contents=[...] or use the chat session.
     # To keep it consistent with our message list format:
     gemini_contents = []
-    for msg in messages:
-        if msg["role"] == "system":
-            # Gemini system instruction is handled in config
+    system_instruction = SYSTEM_PROMPT
+    for msg in messages_tuple:
+        if msg.role == LLMRole.SYSTEM:
+            system_instruction = msg.content
             continue
-        role = "user" if msg["role"] == "user" else "model"
-        gemini_contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+        role = "user" if msg.role == LLMRole.USER else "model"
+        gemini_contents.append({"role": role, "parts": [{"text": msg.content}]})
 
     response = client.models.generate_content(
         model=model,
         contents=gemini_contents,
         config=GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
+            system_instruction=system_instruction,
             temperature=temperature,
             max_output_tokens=max_output_tokens,
             safety_settings=[
