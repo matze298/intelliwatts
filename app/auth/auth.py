@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import Request  # noqa: TC002
+from fastapi import HTTPException, Request, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session
@@ -89,3 +89,25 @@ def get_current_user_from_token(request: Request) -> User | None:
         if not user:
             return None
         return user
+
+
+def get_authenticated_user(request: Request) -> User:
+    """Get the current user or raise 401.
+
+    Args:
+        request: The FastAPI request object.
+
+    Returns:
+        The user.
+
+    Raises:
+        HTTPException: If the user is not authenticated.
+    """
+    user = get_current_user_from_token(request)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user

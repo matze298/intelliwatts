@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
-from app.auth.auth import get_current_user_from_token
+from app.auth.auth import get_authenticated_user
 from app.db import engine
 from app.models.user import User, UserSecrets
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/secrets")
 def store(
     athlete_id: str,
     intervals_api_key: str,
-    user: Annotated[User, Depends(get_current_user_from_token)],
+    user: Annotated[User, Depends(get_authenticated_user)],
     openai_api_key: str | None = None,
     gemini_api_key: str | None = None,
 ) -> dict[str, bool]:

@@ -13,6 +13,7 @@ from sqlmodel import Session, select
 
 from app.auth.auth import (
     create_access_token,
+    get_authenticated_user,
     get_current_user_from_token,
     hash_password,
     verify_password,
@@ -87,7 +88,7 @@ def get_utc_now() -> datetime:
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(
     request: Request,
-    user: Annotated[User, Depends(get_current_user_from_token)],
+    user: Annotated[User, Depends(get_authenticated_user)],
     days: int | None = None,
 ) -> HTMLResponse:
     """Dashboard page for the app.
@@ -245,7 +246,7 @@ def logout() -> RedirectResponse:
 
 
 @router.get("/secrets", response_class=HTMLResponse)
-def secrets(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
+def secrets(request: Request, user: Annotated[User, Depends(get_authenticated_user)]) -> HTMLResponse:
     """Secrets page for the app.
 
     Returns:
@@ -255,7 +256,7 @@ def secrets(request: Request, user: Annotated[User, Depends(get_current_user_fro
 
 
 @router.post("/generate", response_class=HTMLResponse)
-async def generate(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
+async def generate(request: Request, user: Annotated[User, Depends(get_authenticated_user)]) -> HTMLResponse:
     """Generates the weekly plan for the athlete.
 
     Returns:
@@ -299,7 +300,7 @@ async def generate(request: Request, user: Annotated[User, Depends(get_current_u
 
 
 @router.post("/update", response_class=HTMLResponse)
-async def update(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
+async def update(request: Request, user: Annotated[User, Depends(get_authenticated_user)]) -> HTMLResponse:
     """Updates the weekly plan based on feedback.
 
     Returns:
