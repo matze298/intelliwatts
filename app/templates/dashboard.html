@@ -35,6 +35,17 @@
             <input type="range" id="daysSlider" min="7" max="90" value="42" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
         </div>
 
+        <!-- 1. Fitness Trend (PMC Chart) -->
+        <div class="mb-12 p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+            <h2 class="text-xl font-semibold mb-4">Fitness Trend</h2>
+            <canvas id="pmcChart" height="100"></canvas>
+        </div>
+
+        <hr class="border-slate-700 mb-12">
+
+        <!-- 2. Training Data Section -->
+        <h2 class="text-2xl font-bold text-slate-200 mb-6">🏃 Training Data</h2>
+        
         <!-- Summary Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div class="stat-card p-4 rounded shadow bg-opacity-10 bg-blue-500 border border-blue-500">
@@ -49,17 +60,42 @@
                 <p class="text-sm text-slate-400">Total TSS</p>
                 <p class="text-2xl font-bold">{{ "%.0f"|format(analysis.summary.total_training_stress) }}</p>
             </div>
-        <div class="stat-card p-4 rounded shadow bg-opacity-10 bg-purple-500 border border-purple-500">
+            <div class="stat-card p-4 rounded shadow bg-opacity-10 bg-purple-500 border border-purple-500">
                 <p class="text-sm text-slate-400">Activities</p>
                 <p class="text-2xl font-bold">{{ analysis.summary.activity_count }}</p>
             </div>
         </div>
 
-        <!-- Advanced Metrics Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <!-- Weekly Load -->
+            <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+                <h2 class="text-xl font-semibold mb-4">Weekly Training Stress</h2>
+                <canvas id="weeklyChart"></canvas>
+            </div>
+
+            <div class="space-y-8">
+                <!-- HR Intensity Distribution -->
+                <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+                    <h2 class="text-xl font-semibold mb-4">HR Intensity Distribution</h2>
+                    <canvas id="intensityChartHR"></canvas>
+                </div>
+
+                <!-- Power Zone Intensity Distribution -->
+                <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+                    <h2 class="text-xl font-semibold mb-4">Power Zone Distribution</h2>
+                    <canvas id="intensityChartPower"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <hr class="border-slate-700 mb-12">
+
+        <!-- 3. Wellness & Athlete Profile -->
+        <h2 class="text-2xl font-bold text-slate-200 mb-6">🩺 Wellness & Profile</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <!-- Readiness Card -->
             <div class="p-6 rounded-lg shadow bg-white bg-opacity-5 border border-blue-400">
-                <h2 class="text-lg font-bold mb-4">🩺 Readiness</h2>
+                <h2 class="text-lg font-bold mb-4 text-blue-300">Readiness</h2>
                 {% if analysis.wellness_summary %}
                 <div class="space-y-3">
                     <div class="flex justify-between items-center">
@@ -78,7 +114,7 @@
 
             <!-- FTP Trajectory Card -->
             <div class="p-6 rounded-lg shadow bg-white bg-opacity-5 border border-green-400">
-                <h2 class="text-lg font-bold mb-4">📈 FTP Trajectory (4w)</h2>
+                <h2 class="text-lg font-bold mb-4 text-green-300">FTP Trajectory (4w)</h2>
                 {% if analysis.ftp_trajectory and analysis.ftp_trajectory.current_ftp %}
                 <div class="space-y-2">
                     <p class="text-3xl font-bold text-green-500">{{ analysis.ftp_trajectory.current_ftp }}W</p>
@@ -93,57 +129,29 @@
 
             <!-- Power Curve Peaks -->
             <div class="p-6 rounded-lg shadow bg-white bg-opacity-5 border border-yellow-400">
-                <h2 class="text-lg font-bold mb-4">⚡ Peak Power (90d)</h2>
+                <h2 class="text-lg font-bold mb-4 text-yellow-300">Peak Power (90d)</h2>
                 {% if analysis.power_curve %}
                 <div class="grid grid-cols-2 gap-2 text-center">
                     <div class="bg-white bg-opacity-5 p-2 rounded">
                         <p class="text-xs text-slate-400">5s</p>
-                        <p class="font-bold">{{ analysis.power_curve.peak_5s or '-' }}W</p>
+                        <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_5s or '-' }}W</p>
                     </div>
                     <div class="bg-white bg-opacity-5 p-2 rounded">
                         <p class="text-xs text-slate-400">1m</p>
-                        <p class="font-bold">{{ analysis.power_curve.peak_1m or '-' }}W</p>
+                        <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_1m or '-' }}W</p>
                     </div>
                     <div class="bg-white bg-opacity-5 p-2 rounded">
                         <p class="text-xs text-slate-400">5m</p>
-                        <p class="font-bold">{{ analysis.power_curve.peak_5m or '-' }}W</p>
+                        <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_5m or '-' }}W</p>
                     </div>
                     <div class="bg-white bg-opacity-5 p-2 rounded">
                         <p class="text-xs text-slate-400">20m</p>
-                        <p class="font-bold">{{ analysis.power_curve.peak_20m or '-' }}W</p>
+                        <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_20m or '-' }}W</p>
                     </div>
                 </div>
                 {% else %}
                 <p class="text-sm text-gray-500 italic">No power curve data available</p>
                 {% endif %}
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 gap-8">
-            <!-- PMC Chart -->
-            <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
-                <h2 class="text-xl font-semibold mb-4">Fitness Trend</h2>
-                <canvas id="pmcChart" height="100"></canvas>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- Weekly Load -->
-                <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
-                    <h2 class="text-xl font-semibold mb-4">Weekly Training Stress</h2>
-                    <canvas id="weeklyChart"></canvas>
-                </div>
-
-                <!-- Intensity Distribution -->
-                <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
-                    <h2 class="text-xl font-semibold mb-4">HR Intensity Distribution</h2>
-                    <canvas id="intensityChartHR"></canvas>
-                </div>
-
-                <!-- Zone ntensity Distribution -->
-                <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
-                    <h2 class="text-xl font-semibold mb-4">Power Zone Intensity Distribution</h2>
-                    <canvas id="intensityChartPower"></canvas>
-                </div>
             </div>
         </div>
     </div>
@@ -193,87 +201,86 @@
             });
 
             // Chart Data
-            const analysis = {{ analysis | tojson
-        }};
+            const analysis = {{ analysis | tojson }};
 
-        // PMC Chart
-        new Chart(document.getElementById('pmcChart'), {
-            type: 'line',
-            data: {
-                labels: analysis.daily_series.map(d => d.date),
-                datasets: [
-                    {
-                        label: 'Fitness (CTL)',
-                        data: analysis.daily_series.map(d => d.ctl),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        fill: true,
-                        tension: 0.4
-                    },
-                    {
-                        label: 'Fatigue (ATL)',
-                        data: analysis.daily_series.map(d => d.atl),
-                        borderColor: '#ef4444',
-                        tension: 0.4
-                    },
-                    {
-                        label: 'Form (TSB)',
-                        data: analysis.daily_series.map(d => d.tsb),
-                        borderColor: '#eab308',
-                        type: 'line',
-                        fill: false,
-                        tension: 0.4
+            // PMC Chart
+            new Chart(document.getElementById('pmcChart'), {
+                type: 'line',
+                data: {
+                    labels: analysis.daily_series.map(d => d.date),
+                    datasets: [
+                        {
+                            label: 'Fitness (CTL)',
+                            data: analysis.daily_series.map(d => d.ctl),
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Fatigue (ATL)',
+                            data: analysis.daily_series.map(d => d.atl),
+                            borderColor: '#ef4444',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Form (TSB)',
+                            data: analysis.daily_series.map(d => d.tsb),
+                            borderColor: '#eab308',
+                            type: 'line',
+                            fill: false,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: false }
                     }
-                ]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: { beginAtZero: false }
                 }
-            }
-        });
+            });
 
-        // Weekly Chart
-        new Chart(document.getElementById('weeklyChart'), {
-            type: 'bar',
-            data: {
-                labels: analysis.weekly_series.map(w => w.week),
-                datasets: [{
-                    label: 'Weekly TSS',
-                    data: analysis.weekly_series.map(w => w.training_stress),
-                    backgroundColor: '#8b5cf6'
-                }]
-            }
-        });
+            // Weekly Chart
+            new Chart(document.getElementById('weeklyChart'), {
+                type: 'bar',
+                data: {
+                    labels: analysis.weekly_series.map(w => w.week),
+                    datasets: [{
+                        label: 'Weekly TSS',
+                        data: analysis.weekly_series.map(w => w.training_stress),
+                        backgroundColor: '#8b5cf6'
+                    }]
+                }
+            });
 
-        // HR Intensity Distribution
-        new Chart(document.getElementById('intensityChartHR'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7'],
-                datasets: [{
-                    data: analysis.hr_intensity_distribution,
-                    backgroundColor: [
-                        '#94a3b8', '#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#7f1d1d'
-                    ]
-                }]
-            }
-        });
+            // HR Intensity Distribution
+            new Chart(document.getElementById('intensityChartHR'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7'],
+                    datasets: [{
+                        data: analysis.hr_intensity_distribution,
+                        backgroundColor: [
+                            '#94a3b8', '#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#7f1d1d'
+                        ]
+                    }]
+                }
+            });
 
-        // Power Zone Intensity Distribution
-        new Chart(document.getElementById('intensityChartPower'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'SS'],
-                datasets: [{
-                    data: analysis.power_intensity_distribution,
-                    backgroundColor: [
-                        '#94a3b8', '#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#7f1d1d', '#627f1d'
-                    ]
-                }]
-            }
-        });
+            // Power Zone Intensity Distribution
+            new Chart(document.getElementById('intensityChartPower'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'SS'],
+                    datasets: [{
+                        data: analysis.power_intensity_distribution,
+                        backgroundColor: [
+                            '#94a3b8', '#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#7f1d1d', '#627f1d'
+                        ]
+                    }]
+                }
+            });
         });
     </script>
 </body>
