@@ -56,11 +56,14 @@ def parse_power_curves(data: list[dict[str, Any]] | dict[str, Any]) -> list[Pars
     """Parse power curves from intervals.icu.
 
     Args:
-        data: The raw power curve(s) data. Can be a list of dicts or a single dict.
+        data: The raw power curve(s) data. Can be a list of dicts, a single dict,
+              or a dict with a 'list' key containing curves.
 
     Returns:
         The list of parsed power curves.
     """
     if isinstance(data, dict):
+        if "list" in data:
+            return [parse_power_curve(c) for c in data["list"]]
         return [parse_power_curve(data)]
     return [parse_power_curve(c) for c in data]
