@@ -1,6 +1,10 @@
 """Service for generating the weekly plan."""
 
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
+
+import requests
+from requests_cache import CachedSession
 
 from app.config import GLOBAL_SETTINGS, Settings
 from app.intervals.analysis import compute_athlete_status
@@ -23,7 +27,15 @@ def generate_weekly_plan(
     Returns:
         The weekly plan and summary.
     """
-    client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, settings.CACHE_INTERVALS_HOURS)
+    session = requests.Session()
+    if settings.CACHE_INTERVALS_HOURS > 0:
+        session = CachedSession(
+            "intervals_cache",
+            backend="sqlite",
+            expire_after=timedelta(hours=settings.CACHE_INTERVALS_HOURS),
+        )
+
+    client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session)
 
     # Fetch and parse activities
     raw_activities = client.activities(days=settings.ANALYSIS_DAYS)

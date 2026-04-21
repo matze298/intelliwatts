@@ -1,141 +1,72 @@
 """Tests for the intervals client."""
 
-import time
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 import pytest
 import requests
+from requests_cache import CachedSession
 
-from app.intervals.client import IntervalsClient, cache_data
+if TYPE_CHECKING:
+    from requests_mock import Mocker
 
-
-@patch("app.intervals.client.requests.get")
-def test_intervals_client_wellness(mock_get: MagicMock) -> None:
-    """Test fetching wellness data from IntervalsClient."""
-    # GIVEN a mock response
-    mock_response = MagicMock()
-    mock_response.json.return_value = [{"id": "2026-04-20", "hrv": 70}]
-    mock_response.raise_for_status.return_value = None
-    mock_get.return_value = mock_response
-
-    client = IntervalsClient(api_key="test_key", athlete_id="test_id", cache_expiration_hours=1)
-
-    # WHEN fetching wellness data
-    with (
-        patch("app.intervals.client.IntervalsClient.read_cache", return_value=None),
-        patch("app.intervals.client.cache_data"),
-    ):
-        result = client.wellness(days=7)
-
-    # THEN requests.get was called with the correct URL
-    mock_get.assert_called_once()
-    args, _kwargs = mock_get.call_args
-    assert "athlete/test_id/wellness" in args[0]
-    assert result == [{"id": "2026-04-20", "hrv": 70}]
+from app.intervals.client import BASE_URL, IntervalsClient
 
 
-@patch("app.intervals.client.requests.get")
-def test_intervals_client_activities(mock_get: MagicMock) -> None:
-    """Test fetching activities data from IntervalsClient."""
-    # GIVEN a mock response
-    mock_response = MagicMock()
-    mock_response.json.return_value = [{"id": "act1"}]
-    mock_response.raise_for_status.return_value = None
-    mock_get.return_value = mock_response
+def test_intervals_client_caching(requests_mock: Mocker) -> None:
+    """Test that the client uses the cache on the second call."""
+    # GIVEN a CachedSession with a memory backend
+    session = CachedSession(backend="memory", expire_after=3600)
+    client = IntervalsClient(api_key="test_key", athlete_id="test_id", session=session)
+    # AND a mocked API endpoint
+    params = {"oldest": (datetime.now(tz=UTC).date() - timedelta(days=7)).isoformat()}
+    matcher = requests_mock.get(f"{BASE_URL}/athlete/test_id/wellness", json=[{"id": "2026-04-20", "hrv": 70}])
 
-    client = IntervalsClient(api_key="test_key", athlete_id="test_id", cache_expiration_hours=1)
+    # WHEN fetching wellness data twice
+    response1 = client.wellness(days=7)
+    response2 = client.wellness(days=7)
 
-    # WHEN fetching activities data
-    with (
-        patch("app.intervals.client.IntervalsClient.read_cache", return_value=None),
-        patch("app.intervals.client.cache_data"),
-    ):
-        result = client.activities(days=7)
-
-    # THEN requests.get was called with the correct URL
-    mock_get.assert_called_once()
-    args, _kwargs = mock_get.call_args
-    assert "athlete/test_id/activities" in args[0]
-    assert result == [{"id": "act1"}]
-
-
-def test_read_cache_missing() -> None:
-    """Test read_cache when the file is missing."""
-    # GIVEN an intervals client
-    client = IntervalsClient(api_key="test_key", athlete_id="test_id", cache_expiration_hours=1)
-    # WHEN reading from a non-existing cache
-    # THEN it returns None
-    with patch("app.intervals.client.Path.exists", return_value=False):
-        assert client.read_cache(Path("nonexistent.json")) is None
+    # THEN the API was only called once
+    assert matcher.call_count == 1
+    # AND the results are the same
+    assert response1 == [{"id": "2026-04-20", "hrv": 70}]
+    assert response2 == response1
+    # AND the second response was from the cache
+    cached_response = session.get(
+        f"{BASE_URL}/athlete/test_id/wellness",
+        auth=("API_KEY", "test_key"),
+        params=params,
+    )
+    assert cached_response.from_cache
 
 
-def test_read_cache_expired() -> None:
-    """Test read_cache when the file is expired."""
-    # GIVEN an intervals client with an expired cache
-    client = IntervalsClient(api_key="test_key", athlete_id="test_id", cache_expiration_hours=1)
-    mock_path = MagicMock(spec=Path)
-    mock_path.exists.return_value = True
-    # Set mtime to 2 hours ago
-    mock_path.stat.return_value.st_mtime = time.time() - (2 * 3600)
+def test_intervals_client_no_session(requests_mock: Mocker) -> None:
+    """Test that the client makes two requests when no session is provided."""
+    # GIVEN a client without a session
+    client = IntervalsClient(api_key="test_key", athlete_id="test_id")
+    # AND a mocked API endpoint
+    matcher = requests_mock.get(f"{BASE_URL}/athlete/test_id/wellness", json=[{"id": "2026-04-20", "hrv": 70}])
 
-    # WHEN reading the cache
-    # THEN None is returned
-    assert client.read_cache(mock_path) is None
+    # WHEN fetching wellness data twice
+    response1 = client.wellness(days=7)
+    response2 = client.wellness(days=7)
 
-
-def test_read_cache_hit() -> None:
-    """Test read_cache when there is a valid hit."""
-    # GIVEN a intervals client with a valid cache
-    client = IntervalsClient(api_key="test_key", athlete_id="test_id", cache_expiration_hours=1)
-    mock_path = MagicMock(spec=Path)
-    mock_path.exists.return_value = True
-    mock_path.stat.return_value.st_mtime = time.time() - 300  # 5 mins ago
-
-    # GIVEN a mocked cache entry
-    mock_file = MagicMock()
-    mock_file.read.return_value = "[{'id': 'cached'}]"
-    mock_file.__enter__.return_value = mock_file
-    mock_path.open.return_value = mock_file
-
-    # WHEN reading the cache
-    result = client.read_cache(mock_path)
-
-    # THEN the result is as expected
-    assert result == [{"id": "cached"}]
+    # THEN the API was called twice
+    assert matcher.call_count == 2
+    # AND the results are the same
+    assert response1 == [{"id": "2026-04-20", "hrv": 70}]
+    assert response2 == response1
 
 
-@patch("app.intervals.client.requests.get")
-def test_fetch_with_cache_api_error(mock_get: MagicMock) -> None:
-    """Test fetch_with_cache when API returns an error."""
-    # GIVEN a mock response that returns a HTTP Error
-    mock_response = MagicMock()
-    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("API Error")
-    mock_get.return_value = mock_response
+def test_intervals_client_api_error(requests_mock: Mocker) -> None:
+    """Test that API errors are propagated."""
+    # GIVEN a client
+    session = CachedSession(backend="memory")
+    client = IntervalsClient(api_key="test_key", athlete_id="test_id", session=session)
+    # AND a mocked API endpoint that returns an error
+    requests_mock.get(f"{BASE_URL}/athlete/test_id/wellness", status_code=500)
 
-    # GIVEN an intervals client
-    client = IntervalsClient(api_key="test_key", athlete_id="test_id", cache_expiration_hours=1)
-
-    # WHEN reading the cache
-    # THEN the HTTP Error is raised
-    with patch.object(client, "read_cache", return_value=None), pytest.raises(requests.exceptions.HTTPError):
-        client._fetch_with_cache("endpoint", Path("cache.json"), {})
-
-
-def test_cache_data() -> None:
-    """Test cache_data writes to disk."""
-    # GIVEN a mock path
-    mock_path = MagicMock(spec=Path)
-    # mock_open doesn't play well with static methods and Path objects sometimes
-    # so we'll use a manual mock for write
-    mock_file = MagicMock()
-    mock_path.open.return_value = mock_file
-    mock_file.__enter__.return_value = mock_file
-
-    # WHEN caching the data
-    cache_data(mock_path, [{"data": 1}])
-
-    # THEN the data has been stored in the cache
-    mock_path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
-    mock_file.write.assert_called_once()
-    assert "[{'data': 1}]" in mock_file.write.call_args[0][0]
+    # WHEN fetching data
+    # THEN the HTTPError is raised
+    with pytest.raises(requests.exceptions.HTTPError):
+        client.wellness(days=7)
