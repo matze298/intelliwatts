@@ -21,8 +21,8 @@ Enhance the training plan generation by incorporating advanced physiological met
 ## Workflow & Feature Enhancements
 
 ### 1. Plan Persistence & Dynamic Updating
-- [ ] **Store Plans**: Store generated plans in the database using a Phase/Iteration hierarchy.
-- [ ] **Dynamic Plans:** Allow for mid-week updates of the plan based on requests, using stored `prompt_history` for context.
+- [x] **Store Plans**: Store generated plans in the database using a Phase/Iteration hierarchy.
+- [x] **Dynamic Plans:** Allow for mid-week updates of the plan based on requests, using stored `prompt_history` for context.
 - [ ] **Adaptive Re-planning:** Compare planned vs. actual training data daily/weekly; use the delta to trigger an automated LLM re-plan for the remainder of the week if significant deviations occur.
 - [ ] **Plan Revisions (Future):** Implement Version N+1 logic to track how plans evolve through iterations (Approach B).
 - [ ] **Metric-Based Completion (Future):** Automatically finish a training phase when a target metric (e.g., FTP) is achieved (Approach C).
@@ -40,6 +40,6 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] 1. **Extend Data Models:** Update `app/intervals/client.py` and add `app/intervals/parser/wellness.py` to fetch and parse newly identified fields (Implemented for Wellness, FTP, and Power Curves).
 - [x] 2. **Aggregate Data:** Modify summary aggregation logic to include historical windows for trend analysis (Implemented Wellness trends, FTP trajectory, and Power Curve summaries).
 - [x] 3. **Refine Prompts:** Update `app/planning/coach_prompt.py` to include a dedicated "Readiness & Recovery Rules" section.
-- [ ] 4. **Persist & Adapt:** Develop database schemas to store weekly plans, enabling tracking and subsequent re-planning cycles.
+- [x] 4. **Persist & Adapt:** Develop database schemas to store weekly plans, enabling tracking and subsequent re-planning cycles.
 - [ ] 5. **Macro-Planning:** Incorporate goal metadata into the LLM context window to align weekly training with long-term objectives.
 - [ ] 6. **Integrate API for direct workout creation in Intervals.icu.**

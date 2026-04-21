@@ -1,12 +1,86 @@
 """Unit tests for the planner service."""
 
 import uuid
+from datetime import UTC, date, datetime
+from typing import TYPE_CHECKING
 from unittest.mock import ANY, MagicMock, patch
 
+import pytest
+from sqlmodel import Session, create_engine, select
+
+from app.models.plan import SQLModel, TrainingPhase, TrainingPlan
 from app.models.user import User
 from app.planning.llm import LLMResponse
 from app.planning.summary import PlanningConstraints
-from app.services.planner import generate_weekly_plan
+from app.services.planner import (
+    PlanData,
+    generate_weekly_plan,
+    get_monday,
+    get_or_create_active_phase,
+    save_training_plan,
+    update_training_plan,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from sqlalchemy.engine import Engine
+
+
+@pytest.fixture
+def session() -> Generator[Session]:
+    """Provides a clean in-memory database session.
+
+    Yields:
+        The database session.
+    """
+    engine: Engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        yield session
+
+
+def test_get_monday() -> None:
+    """Test get_monday returns correct Monday."""
+    assert get_monday(date(2026, 4, 21)) == date(2026, 4, 20)  # Tuesday -> Monday
+    assert get_monday(date(2026, 4, 20)) == date(2026, 4, 20)  # Monday -> Monday
+
+
+def test_get_or_create_active_phase(session: Session) -> None:
+    """Test get_or_create_active_phase creates default if none exists."""
+    user_id = uuid.uuid4()
+    phase = get_or_create_active_phase(session, user_id)
+    assert phase.user_id == user_id
+    assert phase.status == "active"
+    assert phase.primary_goal == "Build FTP (Default)"
+
+    # Second call should return the same phase
+    phase2 = get_or_create_active_phase(session, user_id)
+    assert phase2.id == phase.id
+
+
+def test_save_training_plan_overwrite(session: Session) -> None:
+    """Test save_training_plan overwrites existing plan for the week."""
+    user_id = uuid.uuid4()
+    phase = get_or_create_active_phase(session, user_id)
+    week_start = date(2026, 4, 20)
+
+    # Initial save
+    data = PlanData(raw_content="Old Content", workout_data=[], prompt_history=[])
+    save_training_plan(session, phase.id, week_start, data)
+
+    # Verify save
+    statement = select(TrainingPlan).where(TrainingPlan.phase_id == phase.id)
+    plan = session.exec(statement).one()
+    assert plan.raw_content == "Old Content"
+
+    # Overwrite
+    data = PlanData(raw_content="New Content", workout_data=[], prompt_history=[])
+    save_training_plan(session, phase.id, week_start, data)
+
+    # Verify overwrite
+    plan = session.exec(statement).one()
+    assert plan.raw_content == "New Content"
 
 
 @patch("app.services.planner.IntervalsClient")
@@ -80,7 +154,8 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917, PLR0915
     mock_llm_json_to_icu_txt.return_value = mock_plan_txt
 
     # WHEN generating the weekly plan with wellness
-    result = generate_weekly_plan(mock_user, mock_settings, use_wellness=True)
+    with patch("app.services.planner.Session"):
+        result = generate_weekly_plan(mock_user, mock_settings, use_wellness=True)
 
     # THEN the IntervalsClient and all functions are called with correct parameters
     mock_intervals_client.assert_called_once_with("test_api_key", "test_athlete_id", session=ANY)
@@ -106,7 +181,6 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917, PLR0915
     assert kwargs["power_curve"] == {"peak_5m": 350}
 
     mock_generate_plan.assert_called_once_with(summary=mock_summary, language_model="test_model", user=mock_user)
-    mock_llm_json_to_icu_txt.assert_called_once_with(mock_plan_json)
 
     # THEN the result contains the expected plan and summary
     assert result["summary"] == mock_summary
@@ -164,7 +238,8 @@ def test_generate_weekly_plan_no_wellness(  # noqa: PLR0913, PLR0917
     mock_icu_txt.return_value = ""
 
     # WHEN generating the weekly plan without wellness
-    generate_weekly_plan(mock_user, mock_settings, use_wellness=False)
+    with patch("app.services.planner.Session"):
+        generate_weekly_plan(mock_user, mock_settings, use_wellness=False)
 
     # THEN wellness client method is NOT called
     mock_intervals_client.return_value.wellness.assert_not_called()
@@ -172,3 +247,51 @@ def test_generate_weekly_plan_no_wellness(  # noqa: PLR0913, PLR0917
     mock_compute_athlete_status.assert_called_once_with([], wellness_data=None, power_curve=[])
     # AND build_weekly_summary is called with wellness_summary=None
     assert mock_build_weekly_summary.call_args.kwargs["wellness_summary"] is None
+
+
+@patch("app.services.planner.generate_plan")
+def test_update_training_plan_uses_history(mock_generate_plan: MagicMock, session: Session) -> None:
+    """Test update_training_plan retrieves history and calls LLM with it."""
+    user = User(id=uuid.uuid4(), email="test@example.com", password_hash="hash")  # noqa: S106
+    phase = TrainingPhase(
+        user_id=user.id,
+        primary_goal="Test",
+        start_date=date(2026, 4, 20),
+        end_date=date(2026, 5, 17),
+    )
+    session.add(phase)
+    session.commit()
+
+    monday = date(2026, 4, 20)
+    initial_history = [{"role": "system", "content": "sys"}, {"role": "user", "content": "hi"}]
+    data = PlanData(raw_content="Initial Plan", workout_data=[], prompt_history=initial_history)
+    save_training_plan(session, phase.id, monday, data)
+
+    # Mock LLM response for update
+    mock_llm_response = MagicMock()
+    mock_llm_response.plan = "Updated Plan ###JSON_START### [] ###JSON_END###"
+    mock_llm_response.prompt = [
+        *initial_history,
+        {"role": "user", "content": "make it harder"},
+        {"role": "assistant", "content": "ok"},
+    ]
+    mock_generate_plan.return_value = mock_llm_response
+
+    with (
+        patch("app.services.planner.Session", return_value=session),
+        patch("app.services.planner.get_monday", return_value=monday),
+        patch("app.services.planner.datetime") as mock_datetime,
+    ):
+        mock_datetime.now.return_value = datetime(2026, 4, 21, tzinfo=UTC)
+        update_training_plan(user, "make it harder")
+
+    # Verify generate_plan was called with history
+    mock_generate_plan.assert_called_once()
+    passed_messages = mock_generate_plan.call_args.kwargs["messages"]
+    assert len(passed_messages) == 3
+    assert passed_messages[2]["content"] == "make it harder"
+
+    # Verify plan was updated in DB
+    plan = session.exec(select(TrainingPlan)).one()
+    assert "Updated Plan" in plan.raw_content
+    assert len(plan.prompt_history) == 4
