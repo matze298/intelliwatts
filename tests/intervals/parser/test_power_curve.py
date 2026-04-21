@@ -5,17 +5,12 @@ from app.intervals.parser.power_curve import parse_power_curves
 
 def test_parse_power_curves() -> None:
     """Test that power curves are parsed correctly."""
-    # GIVEN a raw power curve response
+    # GIVEN a raw power curve response with parallel arrays
     raw_data = [
         {
             "id": "90d",
-            "points": [
-                {"secs": 1, "watts": 1000},
-                {"secs": 5, "watts": 900},
-                {"secs": 60, "watts": 500},
-                {"secs": 300, "watts": 350},
-                {"secs": 1200, "watts": 300},
-            ],
+            "secs": [1, 5, 60, 300, 1200],
+            "watts": [1000, 900, 500, 350, 300],
         }
     ]
 
@@ -39,9 +34,8 @@ def test_parse_power_curves_single_dict() -> None:
     # GIVEN a single raw power curve dictionary
     raw_data = {
         "id": "90d",
-        "points": [
-            {"secs": 5, "watts": 900},
-        ],
+        "secs": [5],
+        "watts": [900],
     }
 
     # WHEN parsing the power curve
