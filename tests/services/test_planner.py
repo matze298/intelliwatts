@@ -1,6 +1,6 @@
 """Unit tests for the planner service."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from app.models.user import User
 from app.planning.llm import LLMResponse
@@ -73,7 +73,7 @@ def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     result = generate_weekly_plan(mock_user, mock_settings, use_wellness=True)
 
     # THEN the IntervalsClient and all functions are called with correct parameters
-    mock_intervals_client.assert_called_once_with("test_api_key", "test_athlete_id", 1)
+    mock_intervals_client.assert_called_once_with("test_api_key", "test_athlete_id", session=ANY)
     mock_intervals_client.return_value.activities.assert_called_once_with(days=120)
     mock_intervals_client.return_value.wellness.assert_called_once_with(days=120)
     mock_parse_activities.assert_called_once_with(mock_raw_activities)

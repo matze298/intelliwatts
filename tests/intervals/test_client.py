@@ -1,16 +1,19 @@
 """Tests for the intervals client."""
 
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 import pytest
 import requests
-import requests_mock
 from requests_cache import CachedSession
+
+if TYPE_CHECKING:
+    from requests_mock import Mocker
 
 from app.intervals.client import BASE_URL, IntervalsClient
 
 
-def test_intervals_client_caching(requests_mock: requests_mock.Mocker) -> None:
+def test_intervals_client_caching(requests_mock: Mocker) -> None:
     """Test that the client uses the cache on the second call."""
     # GIVEN a CachedSession with a memory backend
     session = CachedSession(backend="memory", expire_after=3600)
@@ -37,7 +40,7 @@ def test_intervals_client_caching(requests_mock: requests_mock.Mocker) -> None:
     assert cached_response.from_cache
 
 
-def test_intervals_client_no_session(requests_mock: requests_mock.Mocker) -> None:
+def test_intervals_client_no_session(requests_mock: Mocker) -> None:
     """Test that the client makes two requests when no session is provided."""
     # GIVEN a client without a session
     client = IntervalsClient(api_key="test_key", athlete_id="test_id")
@@ -55,7 +58,7 @@ def test_intervals_client_no_session(requests_mock: requests_mock.Mocker) -> Non
     assert response2 == response1
 
 
-def test_intervals_client_api_error(requests_mock: requests_mock.Mocker) -> None:
+def test_intervals_client_api_error(requests_mock: Mocker) -> None:
     """Test that API errors are propagated."""
     # GIVEN a client
     session = CachedSession(backend="memory")
