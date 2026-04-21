@@ -40,19 +40,25 @@ def parse_power_curve(data: dict[str, Any]) -> ParsedPowerCurve:
     Returns:
         The parsed power curve.
     """
-    points = [PowerCurvePoint(secs=p["secs"], watts=p["watts"]) for p in data.get("points", [])]
+    # Intervals.icu uses parallel arrays 'secs' and 'watts'
+    secs_list = data.get("secs", [])
+    watts_list = data.get("watts", [])
+
+    points = []
+    # Zip them together to create PowerCurvePoint objects
+    for s, w in zip(secs_list, watts_list, strict=False):
+        points.append(PowerCurvePoint(secs=int(s), watts=int(w)))
+
     return ParsedPowerCurve(id=data.get("id", "unknown"), points=points)
 
 
-def parse_power_curves(data: list[dict[str, Any]] | dict[str, Any]) -> list[ParsedPowerCurve]:
+def parse_power_curves(data: dict[str, Any]) -> list[ParsedPowerCurve]:
     """Parse power curves from intervals.icu.
 
     Args:
-        data: The raw power curve(s) data. Can be a list of dicts or a single dict.
+        data: The raw power curve(s) data (dict with 'list' key).
 
     Returns:
         The list of parsed power curves.
     """
-    if isinstance(data, dict):
-        return [parse_power_curve(data)]
-    return [parse_power_curve(c) for c in data]
+    return [parse_power_curve(c) for c in data.get("list", [])]

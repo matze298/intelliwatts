@@ -17,6 +17,8 @@ from app.db import engine
 from app.intervals.analysis import compute_analysis
 from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
+from app.intervals.parser.power_curve import parse_power_curves
+from app.intervals.parser.wellness import parse_wellness_list
 from app.models.user import User
 from app.services.planner import generate_weekly_plan
 
@@ -67,9 +69,22 @@ def dashboard(
         GLOBAL_SETTINGS.INTERVALS_ATHLETE_ID,
         session=session,
     )
-    raw = client.activities(days=GLOBAL_SETTINGS.ANALYSIS_DAYS)
-    activities = parse_activities(raw)
-    analysis = compute_analysis(activities, display_days=days or GLOBAL_SETTINGS.DASHBOARD_DAYS)
+    # Fetch and parse data
+    raw_activities = client.activities(days=GLOBAL_SETTINGS.ANALYSIS_DAYS)
+    activities = parse_activities(raw_activities)
+
+    raw_wellness = client.wellness(days=GLOBAL_SETTINGS.ANALYSIS_DAYS)
+    wellness = parse_wellness_list(raw_wellness)
+
+    raw_power_curves = client.power_curves(curves="90d")
+    power_curves = parse_power_curves(raw_power_curves)
+
+    analysis = compute_analysis(
+        activities,
+        display_days=days or GLOBAL_SETTINGS.DASHBOARD_DAYS,
+        wellness_data=wellness,
+        power_curve=power_curves,
+    )
 
     return templates.TemplateResponse(
         request,

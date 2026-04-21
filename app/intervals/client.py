@@ -52,7 +52,7 @@ class IntervalsClient:
         r.raise_for_status()
         return r.json()
 
-    def power_curves(self, curves: str = "90d", activity_type: str = "Ride") -> list[dict[str, Any]]:
+    def power_curves(self, curves: str = "90d", activity_type: str = "Ride") -> dict[str, Any]:
         """Get the power curves for the athlete.
 
         Args:
