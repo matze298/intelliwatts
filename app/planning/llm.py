@@ -1,7 +1,7 @@
 """Generates the training plan based on the summary by using an LLM."""
 
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
 from google import genai
 from google.genai.types import (
@@ -16,6 +16,8 @@ from app.models.user import User, load_user_secrets
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
 
 if TYPE_CHECKING:
+    from openai.types.chat import ChatCompletionMessageParam
+
     from app.config import LanguageModel
 
 
@@ -26,30 +28,50 @@ class LLMResponse(NamedTuple):
     prompt: list[dict[str, str]]
 
 
-def generate_plan(summary: dict[str, Any], language_model: LanguageModel, user: User) -> LLMResponse:
-    """Generates the training plan based on the summary by using ChatGPT.
+def generate_plan(
+    language_model: LanguageModel,
+    user: User,
+    *,
+    summary: dict[str, Any] | None = None,
+    messages: list[dict[str, str]] | None = None,
+) -> LLMResponse:
+    """Generates the training plan based on the summary or message history.
 
     Args:
-        summary: The athlete summary of the intervals.icu activities.
         language_model: The language model to use.
         user: The current user.
+        summary: Optional athlete summary for initial plan generation.
+        messages: Optional full conversation history for iterative updates.
 
     Returns:
         The training plan.
+
+    Raises:
+        ValueError: If neither summary nor messages are provided.
     """
+    if summary is not None:
+        prompt = user_prompt(summary)
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+    elif messages is None:
+        msg = "Either summary or messages must be provided"
+        raise ValueError(msg)
+
     secrets = load_user_secrets(user.id)
     if "gpt" in language_model:
-        return call_gpt(user_prompt(summary), api_key=secrets.openai_api_key, model=language_model)
+        return call_gpt(messages, api_key=secrets.openai_api_key, model=language_model)
 
     if "gemini" in language_model:
-        return call_gemini(user_prompt(summary), api_key=secrets.gemini_api_key, model=language_model)
+        return call_gemini(messages, api_key=secrets.gemini_api_key, model=language_model)
 
     msg = "Unknown model: " + language_model
     raise NotImplementedError(msg)
 
 
 @lru_cache
-def call_gpt(prompt: str, api_key: str | None, model: LanguageModel) -> LLMResponse:
+def call_gpt(messages: list[dict[str, str]], api_key: str | None, model: LanguageModel) -> LLMResponse:
     """Sends a prompt to the GPT model.
 
     Returns:
@@ -63,21 +85,21 @@ def call_gpt(prompt: str, api_key: str | None, model: LanguageModel) -> LLMRespo
         raise RuntimeError(msg)
 
     client = OpenAI(api_key=api_key)
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": prompt},
-    ]
     response = client.chat.completions.create(
         model=model,
-        messages=messages,  # ty: ignore[invalid-argument-type]
+        messages=cast("list[ChatCompletionMessageParam]", messages),
         temperature=0.2,
     )
+    if not response.choices[0].message.content:
+        msg = "GPT returned no text output"
+        raise RuntimeError(msg)
+
     return LLMResponse(plan=response.choices[0].message.content, prompt=messages)
 
 
 @lru_cache
 def call_gemini(
-    prompt: str,
+    messages: list[dict[str, str]],
     api_key: str | None,
     model: LanguageModel,
     temperature: float = 0.4,
@@ -97,14 +119,23 @@ def call_gemini(
 
     client = genai.Client(api_key=api_key)
 
+    # For Gemini API, we can either use contents=[...] or use the chat session.
+    # To keep it consistent with our message list format:
+    gemini_contents = []
+    for msg in messages:
+        if msg["role"] == "system":
+            # Gemini system instruction is handled in config
+            continue
+        role = "user" if msg["role"] == "user" else "model"
+        gemini_contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+
     response = client.models.generate_content(
         model=model,
-        contents=prompt,
+        contents=gemini_contents,
         config=GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             temperature=temperature,
             max_output_tokens=max_output_tokens,
-            # Adding safety settings can sometimes prevent over-active filtering
             safety_settings=[
                 SafetySetting(
                     category=HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -122,8 +153,4 @@ def call_gemini(
         msg = "Gemini returned no text output"
         raise RuntimeError(msg)
 
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": prompt},
-    ]
     return LLMResponse(plan=response.text, prompt=messages)

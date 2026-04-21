@@ -96,6 +96,51 @@ def save_training_plan(
     return plan
 
 
+def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_SETTINGS) -> dict[str, Any]:
+    """Updates the training plan based on user feedback.
+
+    Returns:
+        The updated weekly plan and summary.
+    """
+    with Session(engine) as session:
+        phase = get_or_create_active_phase(session, user.id)
+        monday = get_monday(datetime.now(UTC).date())
+
+        statement = select(TrainingPlan).where(TrainingPlan.phase_id == phase.id, TrainingPlan.week_start == monday)
+        plan = session.exec(statement).first()
+
+        if not plan:
+            # Fallback to generating a new plan if none exists
+            return generate_weekly_plan(user, settings)
+
+        # Append feedback to history
+        history = plan.prompt_history
+        history.append({"role": "user", "content": feedback})
+
+        llm_response = generate_plan(messages=history, language_model=settings.LANGUAGE_MODEL, user=user)
+
+        # Save the updated plan
+        saved_plan = save_training_plan(
+            session,
+            phase.id,
+            monday,
+            PlanData(
+                raw_content=llm_response.plan,
+                workout_data=extract_workout_json(llm_response.plan),
+                prompt_history=llm_response.prompt,
+            ),
+        )
+
+    full_plan_text = (
+        llm_response.plan
+        + "\n\n"
+        + "## intervals.icu workout file (txt)\n\n```text\n\n"
+        + llm_json_to_icu_txt(llm_response.plan)
+        + "\n```"
+    )
+    return {"plan": full_plan_text, "plan_id": saved_plan.id}
+
+
 def generate_weekly_plan(
     user: User, settings: Settings = GLOBAL_SETTINGS, *, use_wellness: bool = True
 ) -> dict[str, Any]:
