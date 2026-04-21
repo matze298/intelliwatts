@@ -30,13 +30,13 @@
 
         <h1 class="text-3xl font-bold text-slate-100 mb-6">📊 Training Analytics</h1>
 
-        <div class="mb-6 p-4 rounded bg-white bg-opacity-5">
+        <div class="mb-6 p-4 rounded bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm">
             <label for="daysSlider" class="block text-sm font-medium text-slate-300">Days to visualize: <span id="daysValue">42</span></label>
             <input type="range" id="daysSlider" min="7" max="90" value="42" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
         </div>
 
         <!-- 1. Fitness Trend (PMC Chart) -->
-        <div class="mb-12 p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+        <div class="mb-12 p-6 rounded-lg shadow-inner bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm">
             <h2 class="text-xl font-semibold mb-4">Fitness Trend</h2>
             <canvas id="pmcChart" height="100"></canvas>
         </div>
@@ -68,20 +68,20 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             <!-- Weekly Load -->
-            <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+            <div class="p-6 rounded-lg shadow-inner bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm">
                 <h2 class="text-xl font-semibold mb-4">Weekly Training Stress</h2>
                 <canvas id="weeklyChart"></canvas>
             </div>
 
             <div class="space-y-8">
                 <!-- HR Intensity Distribution -->
-                <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+                <div class="p-6 rounded-lg shadow-inner bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm">
                     <h2 class="text-xl font-semibold mb-4">HR Intensity Distribution</h2>
                     <canvas id="intensityChartHR"></canvas>
                 </div>
 
                 <!-- Power Zone Intensity Distribution -->
-                <div class="p-6 rounded-lg shadow-inner bg-white bg-opacity-5">
+                <div class="p-6 rounded-lg shadow-inner bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm">
                     <h2 class="text-xl font-semibold mb-4">Power Zone Distribution</h2>
                     <canvas id="intensityChartPower"></canvas>
                 </div>
@@ -94,7 +94,7 @@
         <h2 class="text-2xl font-bold text-slate-200 mb-6">🩺 Wellness & Profile</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <!-- Readiness Card -->
-            <div class="p-6 rounded-lg shadow bg-white bg-opacity-5 border border-blue-400">
+            <div class="p-6 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm border border-blue-400">
                 <h2 class="text-lg font-bold mb-4 text-blue-300">Readiness</h2>
                 {% if analysis.wellness_summary %}
                 <div class="space-y-3">
@@ -113,7 +113,7 @@
             </div>
 
             <!-- FTP Trajectory Card -->
-            <div class="p-6 rounded-lg shadow bg-white bg-opacity-5 border border-green-400">
+            <div class="p-6 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm border border-green-400">
                 <h2 class="text-lg font-bold mb-4 text-green-300">FTP Trajectory (4w)</h2>
                 {% if analysis.ftp_trajectory and analysis.ftp_trajectory.current_ftp %}
                 <div class="space-y-2">
@@ -128,23 +128,23 @@
             </div>
 
             <!-- Power Curve Peaks -->
-            <div class="p-6 rounded-lg shadow bg-white bg-opacity-5 border border-yellow-400">
+            <div class="p-6 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm border border-yellow-400">
                 <h2 class="text-lg font-bold mb-4 text-yellow-300">Peak Power (90d)</h2>
                 {% if analysis.power_curve %}
                 <div class="grid grid-cols-2 gap-2 text-center">
-                    <div class="bg-white bg-opacity-5 p-2 rounded">
+                    <div class="bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm p-2 rounded">
                         <p class="text-xs text-slate-400">5s</p>
                         <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_5s or '-' }}W</p>
                     </div>
-                    <div class="bg-white bg-opacity-5 p-2 rounded">
+                    <div class="bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm p-2 rounded">
                         <p class="text-xs text-slate-400">1m</p>
                         <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_1m or '-' }}W</p>
                     </div>
-                    <div class="bg-white bg-opacity-5 p-2 rounded">
+                    <div class="bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm p-2 rounded">
                         <p class="text-xs text-slate-400">5m</p>
                         <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_5m or '-' }}W</p>
                     </div>
-                    <div class="bg-white bg-opacity-5 p-2 rounded">
+                    <div class="bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm p-2 rounded">
                         <p class="text-xs text-slate-400">20m</p>
                         <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_20m or '-' }}W</p>
                     </div>
