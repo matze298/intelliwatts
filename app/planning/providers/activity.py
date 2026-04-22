@@ -1,11 +1,12 @@
 """Activity metric provider."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import TYPE_CHECKING, override
 
 from app.intervals.analysis import compute_load
 from app.intervals.parser.activity import parse_activities
 from app.planning.providers.base import MetricProvider
+from app.utils.datetime import get_utc_now
 
 if TYPE_CHECKING:
     from app.intervals.client import IntervalsClient
@@ -37,7 +38,7 @@ class ActivityProvider(MetricProvider):
             return "No recent activities found."
 
         # Logic from app/planning/summary.py
-        today = datetime.now(tz=UTC).date()
+        today = get_utc_now().date()
         seven_days_ago = str(today - timedelta(days=7))
         last_7d = [a for a in activities if a.date >= seven_days_ago]
 
@@ -48,7 +49,7 @@ class ActivityProvider(MetricProvider):
 
         return (
             "Recent Training (Last 7 Days):\n"
-            f"- Total TSS: {tss_7d}\n"
+            f"- Total TSS: {tss_7d:.1f}\n"
             f"- Total Hours: {hours_7d}\n\n"
             "Training Load:\n"
             f"- Chronic (CTL): {load.chronic:.1f}\n"

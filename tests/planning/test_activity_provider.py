@@ -40,7 +40,7 @@ async def test_activity_provider_context() -> None:
 
     # THEN: The context should include TSS, hours, and load metrics.
     assert "Recent Training (Last 7 Days):" in context
-    assert "Total TSS: 100.0" in context or "Total TSS: 100" in context
+    assert "Total TSS: 100.0" in context
     assert "Total Hours: 1.0" in context
     assert "Training Load:" in context
     assert "Chronic (CTL):" in context
