@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast, override
 
-from app.planning.providers.base import MetricProvider
+from app.planning.providers.interfaces import MetricProvider
 
 if TYPE_CHECKING:
     import polars as pl

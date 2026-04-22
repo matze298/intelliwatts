@@ -4,7 +4,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 
-from app.planning.providers.base import MetricProvider
+from app.planning.providers.interfaces import MetricProvider
 from app.planning.providers.registry import MetricRegistry
 
 

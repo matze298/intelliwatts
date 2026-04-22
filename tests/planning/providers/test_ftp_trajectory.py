@@ -13,17 +13,17 @@ from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider, FTPTraj
 async def test_ftp_trajectory_provider_context() -> None:
     """Test that FTPTrajectoryProvider returns the correct context string."""
     # GIVEN: A result object for testing provide_context
-    result = FTPTrajectoryResult(current_ftp=260.0, lowest_ftp=250.0, highest_ftp=265.0, days_analyzed=30)
+    result = FTPTrajectoryResult(current_ftp=260.0, ftp_4w_ago=250.0, change_pct=4.0, days_analyzed=30)
 
     provider = FTPTrajectoryProvider()
 
     # WHEN: Generating FTP trajectory context.
     context = await provider.provide_context(result)
 
-    # THEN: The context should include the current FTP, historical FTP, and progress.
+    # THEN: The context should include the current FTP and historical FTP.
     assert "FTP History (Last 30 days):" in context
-    assert "Current: 260.0W" in context
-    assert "Range: 250.0W - 265.0W" in context
+    assert "Current: 260W" in context
+    assert "Range: 250.0W -> 260W" in context
 
 
 def test_ftp_trajectory_provider_no_data() -> None:

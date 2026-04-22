@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     import polars as pl
 
     from app.intervals.client import IntervalsClient
-    from app.planning.providers.base import DashboardWidget, MetricProvider
+    from app.planning.providers.interfaces import DashboardWidget, MetricProvider
 
 
 class MetricRegistry:

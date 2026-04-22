@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, override
 
 from app.intervals.analysis import TrainingLoad
 from app.intervals.parser.activity import parse_activities
-from app.planning.providers.base import MetricProvider
+from app.planning.providers.interfaces import MetricProvider
 
 if TYPE_CHECKING:
     import polars as pl

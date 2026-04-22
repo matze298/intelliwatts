@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, override
 
 import polars as pl
 
-from app.planning.providers.base import DashboardWidget, MetricProvider
+from app.planning.providers.interfaces import DashboardWidget, MetricProvider
 
 if TYPE_CHECKING:
     from app.intervals.client import IntervalsClient
@@ -35,7 +35,7 @@ class PMCProvider(MetricProvider[PMCResult]):
         """Returns the unique name of the provider.
 
         Returns:
-            str: The provider name.
+            The provider name.
         """
         return "pmc"
 
@@ -60,7 +60,7 @@ class PMCProvider(MetricProvider[PMCResult]):
             power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
-            PMCResult: Dictionary containing lists of CTL, ATL, TSB values and dates.
+            Dictionary containing lists of CTL, ATL, TSB values and dates.
         """
         if daily_df.is_empty():
             return PMCResult(ctl=[], atl=[], tsb=[], dates=[])
@@ -91,7 +91,7 @@ class PMCProvider(MetricProvider[PMCResult]):
             result: The result from the calculate method.
 
         Returns:
-            str: A formatted string containing the PMC context (currently empty).
+            A formatted string containing the PMC context (currently empty).
         """
         return ""
 
@@ -103,7 +103,7 @@ class PMCProvider(MetricProvider[PMCResult]):
             result: The result from the calculate method.
 
         Returns:
-            DashboardWidget | None: The dashboard widget.
+            The dashboard widget.
         """
         return DashboardWidget(
             name="pmc",
