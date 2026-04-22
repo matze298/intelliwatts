@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock
 
+import polars as pl
 import pytest
 
 from app.intervals.client import IntervalsClient
@@ -19,11 +20,14 @@ async def test_ftp_trajectory_provider_context() -> None:
         "ftp_4w_ago": 250.0,
         "change_pct": 4.0,
     }
+    analysis.daily_series = []
 
     provider = FTPTrajectoryProvider()
 
     # WHEN: Generating FTP trajectory context.
-    context = await provider.provide_context(client, days=7, analysis=analysis)
+    daily_df = pl.DataFrame(analysis.daily_series)
+    result = provider.calculate(daily_df, client=client, analysis=analysis)
+    context = await provider.provide_context(result)
 
     # THEN: The context should include the current FTP, historical FTP, and progress from analysis.
     assert "FTP Trajectory (Last 4 Weeks):" in context
@@ -39,11 +43,14 @@ async def test_ftp_trajectory_provider_no_data() -> None:
     client = MagicMock(spec=IntervalsClient)
     analysis = MagicMock()
     analysis.ftp_trajectory = None
+    analysis.daily_series = []
 
     provider = FTPTrajectoryProvider()
 
     # WHEN: Generating FTP trajectory context.
-    context = await provider.provide_context(client, days=7, analysis=analysis)
+    daily_df = pl.DataFrame(analysis.daily_series)
+    result = provider.calculate(daily_df, client=client, analysis=analysis)
+    context = await provider.provide_context(result)
 
     # THEN: A helpful message should be returned.
     assert "Current FTP data unavailable." in context

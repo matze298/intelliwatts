@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
+import polars as pl
 import pytest
 
 from app.intervals.client import IntervalsClient
@@ -39,8 +40,10 @@ async def test_activity_provider_context() -> None:
 
     provider = ActivityProvider()
 
-    # WHEN: Generating activity context for the last 7 days.
-    context = await provider.provide_context(client, days=7, analysis=analysis)
+    # WHEN: Calculating and generating activity context for the last 7 days.
+    daily_df = pl.DataFrame(analysis.daily_series)
+    result = provider.calculate(daily_df, client=client, analysis=analysis)
+    context = await provider.provide_context(result)
 
     # THEN: The context should include TSS, hours, and load metrics from analysis.
     assert "Recent Training (Last 7 Days):" in context

@@ -1,7 +1,7 @@
 """Calculate the sports science analysis."""
 
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, cast
@@ -130,6 +130,8 @@ class AnalysisResult:
     wellness_summary: dict[str, Any] | None = None
     ftp_trajectory: dict[str, Any] | None = None
     power_curve: dict[str, Any] | None = None
+    provider_results: dict[str, Any] = field(default_factory=dict)
+    widgets: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the analysis result to a dictionary.

@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock
 
+import polars as pl
 import pytest
 
 from app.intervals.client import IntervalsClient
@@ -23,7 +24,9 @@ async def test_resting_hr_trend_provider_context() -> None:
     provider = RestingHRTrendProvider()
 
     # WHEN: Generating RHR trend context.
-    context = await provider.provide_context(client, days=7, analysis=analysis)
+    daily_df = pl.DataFrame(analysis.daily_series)
+    result = provider.calculate(daily_df, client=client, analysis=analysis)
+    context = await provider.provide_context(result)
 
     # THEN: The context should include the trend string from analysis.
     assert "Resting HR Trend (Last 7 days): 50 -> 52 -> 51" in context
@@ -40,7 +43,9 @@ async def test_resting_hr_trend_provider_no_data() -> None:
     provider = RestingHRTrendProvider()
 
     # WHEN: Generating RHR trend context.
-    context = await provider.provide_context(client, days=7, analysis=analysis)
+    daily_df = pl.DataFrame(analysis.daily_series)
+    result = provider.calculate(daily_df, client=client, analysis=analysis)
+    context = await provider.provide_context(result)
 
     # THEN: A helpful message should be returned.
     assert "No resting HR data available." in context

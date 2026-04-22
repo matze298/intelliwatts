@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock
 
+import polars as pl
 import pytest
 
 from app.intervals.client import IntervalsClient
@@ -20,11 +21,14 @@ async def test_power_curve_provider_context() -> None:
         "peak_5m": 300,
         "peak_20m": 250,
     }
+    analysis.daily_series = []
 
     provider = PowerCurveProvider()
 
     # WHEN: Generating power curve context.
-    context = await provider.provide_context(client, days=7, analysis=analysis)
+    daily_df = pl.DataFrame(analysis.daily_series)
+    result = provider.calculate(daily_df, client=client, analysis=analysis)
+    context = await provider.provide_context(result)
 
     # THEN: The context should include peak power values from analysis.
     assert "Power Curve (Last 90 Days):" in context
@@ -41,11 +45,14 @@ async def test_power_curve_provider_no_data() -> None:
     client = MagicMock(spec=IntervalsClient)
     analysis = MagicMock()
     analysis.power_curve = None
+    analysis.daily_series = []
 
     provider = PowerCurveProvider()
 
     # WHEN: Generating power curve context.
-    context = await provider.provide_context(client, days=7, analysis=analysis)
+    daily_df = pl.DataFrame(analysis.daily_series)
+    result = provider.calculate(daily_df, client=client, analysis=analysis)
+    context = await provider.provide_context(result)
 
     # THEN: A helpful message should be returned.
     assert "No power curve data available." in context

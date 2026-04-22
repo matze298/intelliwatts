@@ -1,12 +1,15 @@
 """FTP Trajectory metric provider."""
 
-from typing import TYPE_CHECKING, override
+from __future__ import annotations
 
-from app.planning.providers.base import MetricProvider
+from typing import TYPE_CHECKING, Any, cast, override
+
+from app.planning.providers.base import DashboardWidget, MetricProvider
 
 if TYPE_CHECKING:
+    import polars as pl
+
     from app.intervals.analysis import AnalysisResult
-    from app.intervals.client import IntervalsClient
 
 
 class FTPTrajectoryProvider(MetricProvider):
@@ -22,18 +25,23 @@ class FTPTrajectoryProvider(MetricProvider):
         return "ftp_trajectory"
 
     @override
-    async def provide_context(self, client: IntervalsClient, days: int, analysis: AnalysisResult) -> str:
-        """Provides FTP trajectory context for the last 28 days.
+    def calculate(self, daily_df: pl.DataFrame, **kwargs: object) -> object:
+        """Perform calculations on raw data and return a structured result.
 
-        Args:
-            client: The Intervals.icu client.
-            days: Number of past days to analyze (overridden to 30 for trend).
-            analysis: The pre-computed analysis result.
+        Returns:
+            object: The structured calculation result.
+        """
+        analysis = cast("AnalysisResult", kwargs.get("analysis"))
+        return analysis.ftp_trajectory
+
+    @override
+    async def provide_context(self, result: object) -> str:
+        """Provides FTP trajectory context for the last 28 days.
 
         Returns:
             str: The formatted FTP trajectory.
         """
-        traj = analysis.ftp_trajectory
+        traj = cast("dict[str, Any]", result)
 
         if not traj or traj.get("current_ftp") is None:
             return "Current FTP data unavailable."
@@ -52,3 +60,12 @@ class FTPTrajectoryProvider(MetricProvider):
             f"- 4 Weeks Ago: {prev}W\n"
             f"- Progress: {trend_sign}{change}%"
         )
+
+    @override
+    def get_dashboard_widget(self, result: object) -> DashboardWidget | None:
+        """Format the calculation result for the dashboard.
+
+        Returns:
+            DashboardWidget | None: The dashboard widget or None.
+        """
+        return None

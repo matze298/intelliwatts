@@ -1,12 +1,15 @@
 """Wellness metric provider."""
 
-from typing import TYPE_CHECKING, override
+from __future__ import annotations
 
-from app.planning.providers.base import MetricProvider
+from typing import TYPE_CHECKING, Any, cast, override
+
+from app.planning.providers.base import DashboardWidget, MetricProvider
 
 if TYPE_CHECKING:
+    import polars as pl
+
     from app.intervals.analysis import AnalysisResult
-    from app.intervals.client import IntervalsClient
 
 
 class WellnessProvider(MetricProvider):
@@ -22,13 +25,23 @@ class WellnessProvider(MetricProvider):
         return "wellness"
 
     @override
-    async def provide_context(self, client: IntervalsClient, days: int, analysis: AnalysisResult) -> str:
+    def calculate(self, daily_df: pl.DataFrame, **kwargs: object) -> object:
+        """Perform calculations on raw data and return a structured result.
+
+        Returns:
+            object: The structured calculation result.
+        """
+        analysis = cast("AnalysisResult", kwargs.get("analysis"))
+        return analysis.wellness_summary
+
+    @override
+    async def provide_context(self, result: object) -> str:
         """Provides wellness context for the last days.
 
         Returns:
             str: The formatted wellness summary.
         """
-        summary = analysis.wellness_summary
+        summary = cast("dict[str, Any]", result)
 
         if not summary:
             return "No wellness data available."
@@ -45,3 +58,12 @@ class WellnessProvider(MetricProvider):
             f"- Resting HR (7d avg): {rhr_7d:.1f}\n"
             f"- Resting HR (42d avg): {rhr_42d:.1f}"
         )
+
+    @override
+    def get_dashboard_widget(self, result: object) -> DashboardWidget | None:
+        """Format the calculation result for the dashboard.
+
+        Returns:
+            DashboardWidget | None: The dashboard widget or None.
+        """
+        return None

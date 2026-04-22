@@ -116,16 +116,21 @@ async def test_generate_weekly_plan(
     mock_settings.LANGUAGE_MODEL = "test_model"
 
     mock_registry.get_combined_context = AsyncMock(return_value="Registry context")
+    mock_registry.process_analysis = AsyncMock(return_value=({"activity": {}}, []))
     mock_user_prompt.return_value = "Formatted prompt"
     mock_generate_plan.return_value = LLMResponse(plan="test plan", prompt=[{"role": "user", "content": "test prompt"}])
     mock_llm_json_to_icu_txt.return_value = "icu workout"
 
     # WHEN: Generating the weekly plan.
-    with patch("app.services.planner.Session"):
+    with (
+        patch("app.services.planner.Session"),
+        patch("app.services.planner._get_analysis", return_value=MagicMock(daily_series=[])),
+    ):
         result = await generate_weekly_plan(mock_user, mock_settings)
 
     # THEN: The registry and LLM should be called with correct data.
     mock_intervals_client.assert_called_once_with("test_api_key", "test_athlete_id", session=ANY)
+    mock_registry.process_analysis.assert_called_once()
     mock_registry.get_combined_context.assert_called_once()
     mock_user_prompt.assert_called_once()
     assert "Registry context" in mock_user_prompt.call_args[0][0]

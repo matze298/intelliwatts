@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
+import polars as pl
 import requests
 from requests_cache import CachedSession
 from sqlmodel import Session, select
@@ -193,8 +194,12 @@ async def generate_weekly_plan(
     # Pre-fetch and compute analysis once to be shared among providers
     analysis = _get_analysis(client, settings.ANALYSIS_DAYS)
 
+    # Run providers via registry
+    daily_df = pl.DataFrame(analysis.daily_series)
+    results, _ = await registry.process_analysis(daily_df, client=client, analysis=analysis)
+
     # Fetch combined context from all registered providers
-    context = await registry.get_combined_context(client, settings.ANALYSIS_DAYS, analysis=analysis)
+    context = await registry.get_combined_context(results)
 
     # Build the full summary string
     full_summary = (

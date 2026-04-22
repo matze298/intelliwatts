@@ -1,0 +1,18 @@
+<!-- app/templates/macros/widgets.html -->
+{% macro render_widget(widget) %}
+    {% if widget.custom_template %}
+        {% include widget.custom_template %}
+    {% else %}
+        <div class="p-6 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700">
+            <h2 class="text-lg font-bold mb-4">{{ widget.title }}</h2>
+            <div class="space-y-2">
+                <p class="text-3xl font-bold">{{ widget.value }}</p>
+                {% if widget.trend %}
+                <p class="text-sm {% if widget.trend_positive %}text-green-500{% else %}text-red-500{% endif %}">
+                    {{ widget.trend }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+{% endmacro %}
