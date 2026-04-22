@@ -1,0 +1,44 @@
+"""Registry for managing and executing metric providers."""
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.intervals.client import IntervalsClient
+    from app.planning.providers.base import MetricProvider
+
+
+class MetricRegistry:
+    """Registry that holds all active metric providers."""
+
+    def __init__(self) -> None:
+        """Initializes an empty registry."""
+        self.providers: list[MetricProvider] = []
+
+    def register(self, provider: MetricProvider) -> None:
+        """Registers a new provider.
+
+        Args:
+            provider: The provider instance to register.
+        """
+        self.providers.append(provider)
+
+    async def get_combined_context(self, client: IntervalsClient, days: int) -> str:
+        """Collects and combines context from all registered providers.
+
+        Args:
+            client: The Intervals.icu client.
+            days: Number of past days to analyze.
+
+        Returns:
+            str: Combined context string from all providers.
+        """
+        contexts = []
+        for provider in self.providers:
+            context = await provider.provide_context(client, days)
+            if context:
+                contexts.append(context)
+        return "\n\n".join(contexts)
+
+
+# Global registry instance
+registry = MetricRegistry()
