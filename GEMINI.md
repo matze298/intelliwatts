@@ -4,7 +4,7 @@
 - **Style Guide**: Adhere strictly to the **Google Python Style Guide**.
 - **Linting & Formatting**: Use **Ruff** for both linting and formatting. Line length is **120**. Ruff errors are **advisory** (non-blocker) but should be resolved when possible. **NEVER add new ignores to `pyproject.toml` or other config files without explicit user approval.**
 - **Type Safety**: Mandatory type hints for all function signatures and complex variables.
-- **Docstrings**: Use **Google-style docstrings** for all modules, classes, and functions.
+- **Docstrings**: Use **Google-style docstrings** for all modules, classes, and functions. **Do not include type information in docstrings if they are already present in the type hints.**
 - **Dependency Management**: Use **`uv`** for all dependency operations. To update dependencies, first modify `pyproject.toml`, then run **`uv lock`** to regenerate the `uv.lock` file. Use **`uv sync`** to install dependencies from the lock file. Refer to `setup.sh` for the canonical installation procedure.
 - **Database Migrations**: Handle schema changes manually or via bootstrap scripts (e.g., `init_db` in `app/db.py`).
 - **Imports**: ALWAYS use **absolute imports** (e.g., `from app.models.user import User`). NEVER use relative imports (e.g., `from .user import User`).
