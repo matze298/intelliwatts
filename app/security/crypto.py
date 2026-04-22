@@ -2,9 +2,12 @@
 
 from cryptography.fernet import Fernet
 
-from app.config import GLOBAL_SETTINGS
+from app.config import get_settings
 
-fernet = Fernet(GLOBAL_SETTINGS.APP_SECRET_KEY)
+# Use a property or function to avoid top-level global state where possible,
+# but Fernet is often used as a global instance once settings are loaded.
+_settings = get_settings()
+fernet = Fernet(_settings.APP_SECRET_KEY)
 
 
 def encrypt(secret: str) -> bytes:

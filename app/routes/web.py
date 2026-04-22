@@ -17,7 +17,7 @@ from app.auth.auth import (
     hash_password,
     verify_password,
 )
-from app.config import GLOBAL_SETTINGS
+from app.config import Settings, get_settings
 from app.db import engine
 from app.intervals.analysis import compute_analysis
 from app.intervals.client import IntervalsClient
@@ -78,6 +78,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
 def dashboard(
     request: Request,
     user: Annotated[User, Depends(get_current_user_from_token)],
+    settings: Annotated[Settings, Depends(get_settings)],
     days: int | None = None,
 ) -> HTMLResponse:
     """Dashboard page for the app.
@@ -86,23 +87,23 @@ def dashboard(
         The dashboard page as HTML.
     """
     session = requests.Session()
-    if GLOBAL_SETTINGS.CACHE_INTERVALS_HOURS > 0:
+    if settings.CACHE_INTERVALS_HOURS > 0:
         session = CachedSession(
             "intervals_cache",
             backend="sqlite",
-            expire_after=timedelta(hours=GLOBAL_SETTINGS.CACHE_INTERVALS_HOURS),
+            expire_after=timedelta(hours=settings.CACHE_INTERVALS_HOURS),
         )
 
     client = IntervalsClient(
-        GLOBAL_SETTINGS.INTERVALS_API_KEY,
-        GLOBAL_SETTINGS.INTERVALS_ATHLETE_ID,
+        settings.INTERVALS_API_KEY,
+        settings.INTERVALS_ATHLETE_ID,
         session=session,
     )
     # Fetch and parse data
-    raw_activities = client.activities(days=GLOBAL_SETTINGS.ANALYSIS_DAYS)
+    raw_activities = client.activities(days=settings.ANALYSIS_DAYS)
     activities = parse_activities(raw_activities)
 
-    raw_wellness = client.wellness(days=GLOBAL_SETTINGS.ANALYSIS_DAYS)
+    raw_wellness = client.wellness(days=settings.ANALYSIS_DAYS)
     wellness = parse_wellness_list(raw_wellness)
 
     raw_power_curves = client.power_curves(curves="90d")
@@ -110,7 +111,7 @@ def dashboard(
 
     analysis = compute_analysis(
         activities,
-        display_days=days or GLOBAL_SETTINGS.DASHBOARD_DAYS,
+        display_days=days or settings.DASHBOARD_DAYS,
         wellness_data=wellness,
         power_curve=power_curves,
     )
@@ -245,7 +246,11 @@ def secrets(request: Request, user: Annotated[User, Depends(get_current_user_fro
 
 
 @router.post("/generate", response_class=HTMLResponse)
-async def generate(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
+async def generate(
+    request: Request,
+    user: Annotated[User, Depends(get_current_user_from_token)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
     """Generates the weekly plan for the athlete.
 
     Returns:
@@ -267,7 +272,7 @@ async def generate(request: Request, user: Annotated[User, Depends(get_current_u
 
     result = await generate_weekly_plan(
         user=user,
-        settings=GLOBAL_SETTINGS,
+        settings=settings,
         weekly_hours=weekly_hours,
         weekly_sessions=weekly_sessions,
     )
@@ -297,7 +302,11 @@ async def generate(request: Request, user: Annotated[User, Depends(get_current_u
 
 
 @router.post("/update", response_class=HTMLResponse)
-async def update(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
+async def update(
+    request: Request,
+    user: Annotated[User, Depends(get_current_user_from_token)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
     """Updates the weekly plan based on feedback.
 
     Returns:
@@ -306,7 +315,7 @@ async def update(request: Request, user: Annotated[User, Depends(get_current_use
     input_data = await request.form()
     feedback = str(input_data.get("feedback", ""))
 
-    result = await update_training_plan(user=user, feedback=feedback)
+    result = await update_training_plan(user=user, feedback=feedback, settings=settings)
 
     plan_html = markdown.markdown(
         result["plan"],

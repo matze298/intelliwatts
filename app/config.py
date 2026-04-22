@@ -1,7 +1,8 @@
 """Config for the FastAPI app."""
 
 from enum import StrEnum
-from typing import Any
+from functools import lru_cache
+from typing import Any, cast
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,7 +22,24 @@ class LanguageModel(StrEnum):
 
 
 class Settings(BaseSettings):
-    """Settings for the FastAPI app."""
+    """Settings for the FastAPI app.
+
+    Attributes:
+        DEV_USER: Developer email for auto-login/dev tools.
+        DEV_PASSWORD: Developer password for auto-login/dev tools.
+        JWT_SECRET_KEY: Secret key for signing JWT tokens.
+        APP_SECRET_KEY: Secret key for application-level encryption.
+        INTERVALS_ATHLETE_ID: Default athlete ID for Intervals.icu.
+        INTERVALS_API_KEY: API key for Intervals.icu.
+        OPENAI_API_KEY: API key for OpenAI.
+        GEMINI_API_KEY: API key for Google Gemini.
+        LANGUAGE_MODEL: The LLM model to use for planning.
+        CACHE_INTERVALS_HOURS: How long to cache Intervals.icu API responses.
+        ANALYSIS_DAYS: Number of days of history to analyze for the coach.
+        DASHBOARD_DAYS: Number of days to display on the dashboard.
+        SYSTEM_PROMPT: The core coaching logic prompt.
+        USER_PROMPT: The template for athlete-specific data.
+    """
 
     # Dev settings
     DEV_USER: str | None = None
@@ -47,10 +65,6 @@ class Settings(BaseSettings):
     SYSTEM_PROMPT: str = Field(DEFAULT_SYSTEM_PROMPT)
     USER_PROMPT: str = Field(DEFAULT_USER_PROMPT)
 
-    # Training constraints
-    weekly_hours: float = 8
-    weekly_sessions: int = 4
-
     # Pydantic v2 config
     model_config = SettingsConfigDict(
         env_file=".env",  # Only used locally, on prod env vars are used
@@ -59,11 +73,12 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    def update(self, **kwargs: Any) -> None:  # noqa:ANN401
-        """Update the settings at runtime with validation."""
-        for key, value in kwargs.items():
-            if value is not None:
-                setattr(self, key, value)
 
+@lru_cache
+def get_settings() -> Settings:
+    """Returns a cached singleton of the application settings.
 
-GLOBAL_SETTINGS = Settings()  # ty: ignore[missing-argument]
+    Returns:
+        The application settings.
+    """
+    return Settings(**cast("dict[str, Any]", {}))

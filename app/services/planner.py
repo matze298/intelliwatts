@@ -9,7 +9,7 @@ import requests
 from requests_cache import CachedSession
 from sqlmodel import Session, select
 
-from app.config import GLOBAL_SETTINGS, Settings
+from app.config import Settings, get_settings
 from app.db import engine
 from app.intervals.client import IntervalsClient
 from app.models.plan import TrainingPhase, TrainingPlan
@@ -37,8 +37,8 @@ class PlanData:
 def get_or_create_active_phase(session: Session, user_id: uuid.UUID) -> TrainingPhase:
     """Gets the active training phase for a user or creates a default one.
 
-    TODO(mr): In the future, we should ask the user for their specific goal and duration
-    when starting a new phase instead of assuming defaults. # noqa: TD003
+    TODO: In the future, we should ask the user for their specific goal and duration
+    when starting a new phase instead of assuming defaults.
 
     Returns:
         The active training phase.
@@ -90,12 +90,15 @@ def save_training_plan(
     return plan
 
 
-async def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_SETTINGS) -> dict[str, Any]:
+async def update_training_plan(user: User, feedback: str, settings: Settings | None = None) -> dict[str, Any]:
     """Updates the training plan based on user feedback.
 
     Returns:
         The updated weekly plan and summary.
     """
+    if settings is None:
+        settings = get_settings()
+
     with Session(engine) as session:
         phase = get_or_create_active_phase(session, user.id)
         monday = get_monday(datetime.now(UTC).date())
@@ -141,7 +144,7 @@ async def update_training_plan(user: User, feedback: str, settings: Settings = G
 
 async def generate_weekly_plan(
     user: User,
-    settings: Settings = GLOBAL_SETTINGS,
+    settings: Settings | None = None,
     *,
     weekly_hours: float | None = None,
     weekly_sessions: int | None = None,
@@ -151,6 +154,9 @@ async def generate_weekly_plan(
     Returns:
         The weekly plan and summary.
     """
+    if settings is None:
+        settings = get_settings()
+
     session = requests.Session()
     if settings.CACHE_INTERVALS_HOURS > 0:
         session = CachedSession(
@@ -166,8 +172,9 @@ async def generate_weekly_plan(
 
     # TODO(mr): In Task 6, these will be fetched from the User model # noqa: TD003
     primary_goal = "Build FTP (Default)"
-    hours = weekly_hours if weekly_hours is not None else settings.weekly_hours
-    sessions = weekly_sessions if weekly_sessions is not None else settings.weekly_sessions
+    # TODO(mr): Default values for hours and sessions should also come from User model in Task 6 # noqa: TD003
+    hours = weekly_hours if weekly_hours is not None else 8.0
+    sessions = weekly_sessions if weekly_sessions is not None else 4
 
     full_summary = (
         "Training Constraints:\n"

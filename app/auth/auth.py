@@ -8,15 +8,18 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session
 
-from app.config import GLOBAL_SETTINGS
+from app.config import get_settings
 from app.db import engine
 from app.models.user import User
+
+# Load settings once for auth module constants
+_settings = get_settings()
 
 # Password hashing context
 PWD_CONTEXT = CryptContext(schemes=["bcrypt"])
 
 # JWT (JSON Web Token) settings
-SECRET_KEY = GLOBAL_SETTINGS.JWT_SECRET_KEY
+SECRET_KEY = _settings.JWT_SECRET_KEY
 ALGORITHM = "HS256"
 
 
