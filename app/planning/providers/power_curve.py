@@ -2,17 +2,30 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast, override
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, override
 
-from app.planning.providers.base import DashboardWidget, MetricProvider
+from app.planning.providers.base import MetricProvider
 
 if TYPE_CHECKING:
     import polars as pl
 
-    from app.intervals.analysis import AnalysisResult
+    from app.intervals.client import IntervalsClient
 
 
-class PowerCurveProvider(MetricProvider):
+@dataclass(frozen=True)
+class PowerCurveResult:
+    """Result of the power curve calculation."""
+
+    peak_1s: int | None
+    peak_15s: int | None
+    peak_1m: int | None
+    peak_5m: int | None
+    peak_20m: int | None
+    peak_60m: int | None
+
+
+class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
     """Provides power curve context."""
 
     @override
@@ -25,45 +38,69 @@ class PowerCurveProvider(MetricProvider):
         return "power_curve"
 
     @override
-    def calculate(self, daily_df: pl.DataFrame, **kwargs: object) -> object:
+    def calculate(
+        self,
+        daily_df: pl.DataFrame,
+        client: IntervalsClient | None = None,
+        provider_results: dict[str, Any] | None = None,
+        wellness_summary: dict[str, Any] | None = None,
+        ftp_trajectory: dict[str, Any] | None = None,
+        power_curve: dict[str, Any] | None = None,
+    ) -> PowerCurveResult | None:
         """Perform calculations on raw data and return a structured result.
 
-        Returns:
-            object: The structured calculation result.
-        """
-        analysis = cast("AnalysisResult", kwargs.get("analysis"))
-        return analysis.power_curve
-
-    @override
-    async def provide_context(self, result: object) -> str:
-        """Provides power curve context.
+        Args:
+            daily_df: Polars DataFrame containing daily wellness/activity data.
+            client: The Intervals.icu client.
+            provider_results: Mapping of previous provider results.
+            wellness_summary: Legacy wellness summary from analysis.py.
+            ftp_trajectory: Legacy FTP trajectory from analysis.py.
+            power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
-            str: The formatted power curve summary.
+            PowerCurveResult | None: The structured calculation result.
         """
-        summary = cast("dict[str, Any]", result)
+        # For now, bridge from analysis passed in kwargs (Phase 3 will move this)
+        if not power_curve:
+            return None
 
-        if not summary:
-            return "No power curve data available."
-
-        peak_5s = summary.get("peak_5s")
-        peak_1m = summary.get("peak_1m")
-        peak_5m = summary.get("peak_5m")
-        peak_20m = summary.get("peak_20m")
-
-        return (
-            "Power Curve (Last 90 Days):\n"
-            f"- 5s Peak: {peak_5s}W\n"
-            f"- 1m Peak: {peak_1m}W\n"
-            f"- 5m Peak: {peak_5m}W\n"
-            f"- 20m Peak: {peak_20m}W"
+        return PowerCurveResult(
+            peak_1s=power_curve.get("peak_1s"),
+            peak_15s=power_curve.get("peak_15s"),
+            peak_1m=power_curve.get("peak_1m"),
+            peak_5m=power_curve.get("peak_5m"),
+            peak_20m=power_curve.get("peak_20m"),
+            peak_60m=power_curve.get("peak_60m"),
         )
 
     @override
-    def get_dashboard_widget(self, result: object) -> DashboardWidget | None:
-        """Format the calculation result for the dashboard.
+    async def provide_context(self, result: PowerCurveResult | None) -> str:
+        """Provides power curve context.
+
+        Args:
+            result: The result from the calculate method.
 
         Returns:
-            DashboardWidget | None: The dashboard widget or None.
+            str: A formatted string containing the power curve context.
         """
-        return None
+        if result is None:
+            return "No power curve data available."
+
+        return (
+            "Season Peak Power:\n"
+            f"- 1s: {result.peak_1s or '-'}W\n"
+            f"- 15s: {result.peak_15s or '-'}W\n"
+            f"- 1m: {result.peak_1m or '-'}W\n"
+            f"- 5m: {result.peak_5m or '-'}W\n"
+            f"- 20m: {result.peak_20m or '-'}W\n"
+            f"- 60m: {result.peak_60m or '-'}W"
+        )
+
+    @override
+    def get_dashboard_widget(self, result: PowerCurveResult | None) -> None:
+        """Format the calculation result for the dashboard.
+
+        Args:
+            result: The result from the calculate method.
+        """
+        return

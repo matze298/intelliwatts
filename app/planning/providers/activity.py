@@ -2,20 +2,30 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast, override
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, override
 
 from app.intervals.analysis import TrainingLoad
 from app.intervals.parser.activity import parse_activities
-from app.planning.providers.base import DashboardWidget, MetricProvider
+from app.planning.providers.base import MetricProvider
 
 if TYPE_CHECKING:
     import polars as pl
 
-    from app.intervals.analysis import AnalysisResult
     from app.intervals.client import IntervalsClient
 
 
-class ActivityProvider(MetricProvider):
+@dataclass(frozen=True)
+class ActivityResult:
+    """Result of the activity calculation."""
+
+    load: TrainingLoad
+    tss_7d: float
+    hours_7d: float
+    has_activities: bool
+
+
+class ActivityProvider(MetricProvider[ActivityResult]):
     """Provides activity-related context."""
 
     @override
@@ -28,53 +38,80 @@ class ActivityProvider(MetricProvider):
         return "activity"
 
     @override
-    def calculate(self, daily_df: pl.DataFrame, **kwargs: object) -> object:
+    def calculate(
+        self,
+        daily_df: pl.DataFrame,
+        client: IntervalsClient | None = None,
+        provider_results: dict[str, Any] | None = None,
+        wellness_summary: dict[str, Any] | None = None,
+        ftp_trajectory: dict[str, Any] | None = None,
+        power_curve: dict[str, Any] | None = None,
+    ) -> ActivityResult:
         """Perform calculations on raw data and return a structured result.
 
-        Returns:
-            object: The structured calculation result.
-        """
-        analysis = cast("AnalysisResult", kwargs.get("analysis"))
-        client = cast("IntervalsClient", kwargs.get("client"))
+        Args:
+            daily_df: Polars DataFrame containing daily wellness/activity data.
+            client: The Intervals.icu client.
+            provider_results: Mapping of previous provider results.
+            wellness_summary: Legacy wellness summary from analysis.py.
+            ftp_trajectory: Legacy FTP trajectory from analysis.py.
+            power_curve: Legacy power curve summary from analysis.py.
 
-        # 1. Pull pre-computed load from shared analysis
-        last_day = analysis.daily_series[-1] if analysis.daily_series else {"ctl": 0.0, "atl": 0.0}
-        load = TrainingLoad(chronic=last_day.get("ctl", 0.0), acute=last_day.get("atl", 0.0))
+        Returns:
+            ActivityResult: The structured calculation result.
+        """
+        # 1. Pull pre-computed load from PMC provider results if available
+        chronic = 0.0
+        acute = 0.0
+
+        if provider_results and "pmc" in provider_results:
+            pmc_res = provider_results["pmc"]
+            if isinstance(pmc_res, dict):
+                ctl = pmc_res.get("ctl", [])
+                atl = pmc_res.get("atl", [])
+                if ctl and atl:
+                    chronic = ctl[-1]
+                    acute = atl[-1]
+
+        load = TrainingLoad(chronic=chronic, acute=acute)
 
         # 2. Pull specific 7d metrics (tss, hours)
-        # We still need to re-parse or filter activities for the specific "Last 7 Days" summary part.
-        # Since we use cached session, this is efficient.
+        if client is None:
+            return ActivityResult(load=load, tss_7d=0.0, hours_7d=0.0, has_activities=False)
+
         # TODO(mr): Move this fetching logic out of calculate in Phase 3 #noqa: TD003
         raw_activities = client.activities(days=7)
         activities = parse_activities(raw_activities)
 
         if not activities:
-            return {"load": load, "tss_7d": 0.0, "hours_7d": 0.0, "has_activities": False}
+            return ActivityResult(load=load, tss_7d=0.0, hours_7d=0.0, has_activities=False)
 
         tss_7d = sum(a.training_stress for a in activities)
         hours_7d = round(sum(a.duration_h for a in activities), 1)
 
-        return {
-            "load": load,
-            "tss_7d": tss_7d,
-            "hours_7d": hours_7d,
-            "has_activities": True,
-        }
+        return ActivityResult(
+            load=load,
+            tss_7d=tss_7d,
+            hours_7d=hours_7d,
+            has_activities=True,
+        )
 
     @override
-    async def provide_context(self, result: object) -> str:
+    async def provide_context(self, result: ActivityResult) -> str:
         """Provides activity context for the last days.
+
+        Args:
+            result: The result from the calculate method.
 
         Returns:
             str: The formatted activity summary.
         """
-        res = cast("dict[str, Any]", result)
-        if not res.get("has_activities") and res.get("load") is None:
-            return "No recent activities found."
+        load = result.load
+        tss_7d = result.tss_7d
+        hours_7d = result.hours_7d
 
-        load = res["load"]
-        tss_7d = res["tss_7d"]
-        hours_7d = res["hours_7d"]
+        if not result.has_activities and load.chronic == 0 and load.acute == 0:
+            return "No recent activities found."
 
         return (
             "Recent Training (Last 7 Days):\n"
@@ -87,10 +124,10 @@ class ActivityProvider(MetricProvider):
         )
 
     @override
-    def get_dashboard_widget(self, result: object) -> DashboardWidget | None:
+    def get_dashboard_widget(self, result: ActivityResult) -> None:
         """Format the calculation result for the dashboard.
 
-        Returns:
-            DashboardWidget | None: The dashboard widget or None.
+        Args:
+            result: The result from the calculate method.
         """
-        return None
+        return

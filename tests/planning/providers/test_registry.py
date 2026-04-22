@@ -1,6 +1,6 @@
 """Tests for the metric registry."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 
@@ -22,8 +22,7 @@ def test_metric_registry_registration() -> None:
     assert len(registry.providers) == 1
 
 
-@pytest.mark.asyncio
-async def test_metric_registry_process_analysis() -> None:
+def test_metric_registry_process_analysis() -> None:
     """Tests that the registry correctly processes analysis across all providers."""
     # GIVEN: A registry with two providers.
     registry = MetricRegistry()
@@ -43,13 +42,29 @@ async def test_metric_registry_process_analysis() -> None:
     registry.register(provider2)
 
     # WHEN: Running the analysis.
-    results, widgets = await registry.process_analysis(daily_df, extra="arg")
+    results, widgets = registry.process_analysis(daily_df, client=None)
 
     # THEN: The results and widgets should be collected correctly.
     assert results == {"p1": {"val": 1}, "p2": {"val": 2}}
     assert len(widgets) == 1
-    provider1.calculate.assert_called_once_with(daily_df, extra="arg")
-    provider2.calculate.assert_called_once_with(daily_df, extra="arg")
+    # provider_results is passed and accumulates
+    provider1.calculate.assert_called_once_with(
+        daily_df,
+        client=None,
+        provider_results=ANY,
+        wellness_summary=None,
+        ftp_trajectory=None,
+        power_curve=None,
+    )
+    # p2 was called with p1's result
+    provider2.calculate.assert_called_once_with(
+        daily_df,
+        client=None,
+        provider_results=ANY,
+        wellness_summary=None,
+        ftp_trajectory=None,
+        power_curve=None,
+    )
 
 
 @pytest.mark.asyncio

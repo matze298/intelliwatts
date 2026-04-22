@@ -1,10 +1,16 @@
 """Base classes for metric providers."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
 if TYPE_CHECKING:
     import polars as pl
+
+    from app.intervals.client import IntervalsClient
+
+T_co = TypeVar("T_co", covariant=True)
 
 
 @dataclass(frozen=True)
@@ -17,10 +23,10 @@ class DashboardWidget:
     trend: str | None = None
     trend_positive: bool | None = None
     custom_template: str | None = None
-    data: dict[str, object] | None = None
+    data: dict[str, Any] | None = None
 
 
-class MetricProvider(Protocol):
+class MetricProvider(Protocol[T_co]):
     """Protocol for metric providers that contribute to the planning context."""
 
     def get_name(self) -> str:
@@ -31,19 +37,31 @@ class MetricProvider(Protocol):
         """
         ...
 
-    def calculate(self, daily_df: pl.DataFrame, **kwargs: object) -> object:
+    def calculate(  # noqa: PLR0913, PLR0917
+        self,
+        daily_df: pl.DataFrame,
+        client: IntervalsClient | None = None,
+        provider_results: dict[str, Any] | None = None,
+        wellness_summary: dict[str, Any] | None = None,
+        ftp_trajectory: dict[str, Any] | None = None,
+        power_curve: dict[str, Any] | None = None,
+    ) -> T_co:
         """Perform calculations on raw data and return a structured result.
 
         Args:
             daily_df: Polars DataFrame containing daily wellness/activity data.
-            **kwargs: Additional provider-specific arguments.
+            client: The Intervals.icu client.
+            provider_results: Mapping of previous provider results.
+            wellness_summary: Legacy wellness summary from analysis.py.
+            ftp_trajectory: Legacy FTP trajectory from analysis.py.
+            power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
-            object: The calculation result.
+            T_co: The calculation result.
         """
         ...
 
-    async def provide_context(self, result: object) -> str:
+    async def provide_context(self, result: T_co) -> str:
         """Provides metric-specific context for the LLM.
 
         Args:
@@ -54,7 +72,7 @@ class MetricProvider(Protocol):
         """
         ...
 
-    def get_dashboard_widget(self, result: object) -> DashboardWidget | None:
+    def get_dashboard_widget(self, result: T_co) -> DashboardWidget | None:
         """Format the calculation result for the dashboard.
 
         Args:

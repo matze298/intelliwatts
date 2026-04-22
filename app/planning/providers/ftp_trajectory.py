@@ -1,18 +1,29 @@
-"""FTP Trajectory metric provider."""
+"""FTP trajectory metric provider."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast, override
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, override
 
-from app.planning.providers.base import DashboardWidget, MetricProvider
+from app.planning.providers.base import MetricProvider
 
 if TYPE_CHECKING:
     import polars as pl
 
-    from app.intervals.analysis import AnalysisResult
+    from app.intervals.client import IntervalsClient
 
 
-class FTPTrajectoryProvider(MetricProvider):
+@dataclass(frozen=True)
+class FTPTrajectoryResult:
+    """Result of the FTP trajectory calculation."""
+
+    current_ftp: float
+    lowest_ftp: float
+    highest_ftp: float
+    days_analyzed: int
+
+
+class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
     """Provides FTP trajectory context."""
 
     @override
@@ -25,47 +36,62 @@ class FTPTrajectoryProvider(MetricProvider):
         return "ftp_trajectory"
 
     @override
-    def calculate(self, daily_df: pl.DataFrame, **kwargs: object) -> object:
+    def calculate(
+        self,
+        daily_df: pl.DataFrame,
+        client: IntervalsClient | None = None,
+        provider_results: dict[str, Any] | None = None,
+        wellness_summary: dict[str, Any] | None = None,
+        ftp_trajectory: dict[str, Any] | None = None,
+        power_curve: dict[str, Any] | None = None,
+    ) -> FTPTrajectoryResult | None:
         """Perform calculations on raw data and return a structured result.
 
-        Returns:
-            object: The structured calculation result.
-        """
-        analysis = cast("AnalysisResult", kwargs.get("analysis"))
-        return analysis.ftp_trajectory
-
-    @override
-    async def provide_context(self, result: object) -> str:
-        """Provides FTP trajectory context for the last 28 days.
+        Args:
+            daily_df: Polars DataFrame containing daily wellness/activity data.
+            client: The Intervals.icu client.
+            provider_results: Mapping of previous provider results.
+            wellness_summary: Legacy wellness summary from analysis.py.
+            ftp_trajectory: Legacy FTP trajectory from analysis.py.
+            power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
-            str: The formatted FTP trajectory.
+            FTPTrajectoryResult | None: The structured calculation result.
         """
-        traj = cast("dict[str, Any]", result)
+        if not ftp_trajectory:
+            return None
 
-        if not traj or traj.get("current_ftp") is None:
-            return "Current FTP data unavailable."
-
-        current = traj["current_ftp"]
-        prev = traj.get("ftp_4w_ago")
-        change = traj.get("change_pct")
-
-        if prev is None:
-            return f"Current FTP: {current}W (Historical trend unavailable)"
-
-        trend_sign = "+" if (change or 0) >= 0 else ""
-        return (
-            "FTP Trajectory (Last 4 Weeks):\n"
-            f"- Current FTP: {current}W\n"
-            f"- 4 Weeks Ago: {prev}W\n"
-            f"- Progress: {trend_sign}{change}%"
+        return FTPTrajectoryResult(
+            current_ftp=ftp_trajectory.get("current_ftp", 0.0),
+            lowest_ftp=ftp_trajectory.get("lowest_ftp", 0.0),
+            highest_ftp=ftp_trajectory.get("highest_ftp", 0.0),
+            days_analyzed=ftp_trajectory.get("days_analyzed", 0),
         )
 
     @override
-    def get_dashboard_widget(self, result: object) -> DashboardWidget | None:
-        """Format the calculation result for the dashboard.
+    async def provide_context(self, result: FTPTrajectoryResult | None) -> str:
+        """Provides FTP trajectory context.
+
+        Args:
+            result: The result from the calculate method.
 
         Returns:
-            DashboardWidget | None: The dashboard widget or None.
+            str: A formatted string containing the FTP context.
         """
-        return None
+        if result is None:
+            return "Current FTP data unavailable."
+
+        return (
+            f"FTP History (Last {result.days_analyzed} days):\n"
+            f"- Current: {result.current_ftp}W\n"
+            f"- Range: {result.lowest_ftp}W - {result.highest_ftp}W"
+        )
+
+    @override
+    def get_dashboard_widget(self, result: FTPTrajectoryResult | None) -> None:
+        """Format the calculation result for the dashboard.
+
+        Args:
+            result: The result from the calculate method.
+        """
+        return

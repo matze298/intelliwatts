@@ -34,7 +34,7 @@ async def test_activity_provider_context() -> None:
         }
     ]
 
-    # GIVEN: A mocked analysis result.
+    # GIVEN: A mocked analysis result (for legacy fallback if needed).
     analysis = MagicMock()
     analysis.daily_series = [{"ctl": 50.0, "atl": 60.0, "tsb": -10.0}]
 
@@ -42,7 +42,8 @@ async def test_activity_provider_context() -> None:
 
     # WHEN: Calculating and generating activity context for the last 7 days.
     daily_df = pl.DataFrame(analysis.daily_series)
-    result = provider.calculate(daily_df, client=client, analysis=analysis)
+    provider_results = {"pmc": {"ctl": [50.0], "atl": [60.0]}}
+    result = provider.calculate(daily_df, client=client, provider_results=provider_results)
     context = await provider.provide_context(result)
 
     # THEN: The context should include TSS, hours, and load metrics from analysis.
