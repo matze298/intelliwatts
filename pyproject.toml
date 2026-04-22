@@ -24,6 +24,7 @@ dependencies = [
     "requests-cache",
     "sqlmodel",
     "uvicorn",
+    "alembic",
 ]
 
 [project.optional-dependencies]

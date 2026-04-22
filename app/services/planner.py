@@ -170,11 +170,10 @@ async def generate_weekly_plan(
     # Fetch combined context from all registered providers
     context = await registry.get_combined_context(client, settings.ANALYSIS_DAYS)
 
-    # TODO(mr): In Task 6, these will be fetched from the User model # noqa: TD003
+    # Fetch preferences from User model
     primary_goal = "Build FTP (Default)"
-    # TODO(mr): Default values for hours and sessions should also come from User model in Task 6 # noqa: TD003
-    hours = weekly_hours if weekly_hours is not None else 8.0
-    sessions = weekly_sessions if weekly_sessions is not None else 4
+    hours = weekly_hours if weekly_hours is not None else user.weekly_hours
+    sessions = weekly_sessions if weekly_sessions is not None else user.weekly_sessions
 
     full_summary = (
         "Training Constraints:\n"

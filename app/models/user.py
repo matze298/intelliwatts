@@ -28,6 +28,8 @@ class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     email: str
     password_hash: str
+    weekly_hours: float = 8.0
+    weekly_sessions: int = 4
 
     def create_secrets(
         self,
