@@ -270,6 +270,20 @@ async def generate(
     if isinstance(raw_sessions, str) and raw_sessions:
         weekly_sessions = int(raw_sessions)
 
+    # Persist the preferences if provided
+    if weekly_hours is not None or weekly_sessions is not None:
+        with Session(engine) as session:
+            db_user = session.get(User, user.id)
+            if db_user:
+                if weekly_hours is not None:
+                    db_user.weekly_hours = weekly_hours
+                if weekly_sessions is not None:
+                    db_user.weekly_sessions = weekly_sessions
+                session.add(db_user)
+                session.commit()
+                session.refresh(db_user)
+                user = db_user
+
     result = await generate_weekly_plan(
         user=user,
         settings=settings,

@@ -69,16 +69,7 @@ The API key for the language model selected must be set correctly either via  `.
 ## Via Python (Dev)
 1. Run `python app/main.py` to generate the training plan.
 
-# Settings
-The settings for the app are defined in `app/config.py`. There are three types of settings:
-
-1. Settings that can be updated via the App interface (e.g., `SYSTEM_PROMPT`, `USER_PROMPT`, `weekly_hours`, `weekly_sessions`).
-2. Settings that are managed via `.env`, Env variables or the Secrets page (e.g., `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
-3. Settings that are hardcoded and cannot be changed (e.g., `CACHE_INTERVALS_HOURS`).
-
-
 # Local Development Setup
-
 To set up the local DevEnv, run the `setup.sh` script in your project's root directory:
 
 ```bash
@@ -89,6 +80,38 @@ This script will:
 - Create and activate a Python virtual environment.
 - Install Python dependencies using `uv`.
 - Install pre-commit hooks.
+
+# Settings
+The settings for the app are defined in `app/config.py`. There are three types of settings:
+
+1. Settings that can be updated via the App interface (e.g., `SYSTEM_PROMPT`, `USER_PROMPT`, `weekly_hours`, `weekly_sessions`).
+2. Settings that are managed via `.env`, Env variables or the Secrets page (e.g., `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
+3. Settings that are hardcoded and cannot be changed (e.g., `CACHE_INTERVALS_HOURS`).
+
+
+# Database & Persistence
+This application uses **SQLModel** (built on **SQLAlchemy**) for database interactions. To manage the evolution of our database schema safely, we use **Alembic**.
+
+## Why Alembic?
+As the application grows, we frequently add new features that require database changes (e.g., Task 6 added persistent user training preferences). Managing these changes manually is error-prone and can lead to data loss or inconsistent environments.
+
+Alembic provides:
+1.  **Version Control for Data**: Every schema change is captured in a migration script, allowing us to track *how* and *when* the database evolved.
+2.  **Safety**: We can "upgrade" to the latest schema or "downgrade" if a change causes issues, without manually writing risky SQL `ALTER TABLE` statements.
+3.  **Consistency**: Ensures that all environments (Local Dev, CI/CD, Production) are running exactly the same database structure.
+4.  **Auto-generation**: Alembic can automatically detect changes in our `SQLModel` classes and generate the necessary migration code for us.
+
+## Running Migrations
+When you pull new changes, you should always sync your local database with the latest schema:
+```bash
+uv run alembic upgrade head
+```
+
+For developers creating new models or modifying existing ones:
+1.  Update your `SQLModel` in `app/models/`.
+2.  Generate a new migration script: `uv run alembic revision --autogenerate -m "describe_your_change"`.
+3.  Review the generated script in `migrations/versions/`.
+4.  Apply the change: `uv run alembic upgrade head`.
 
 # Web Page Style & Themes
 This application uses [Tailwind CSS](https://tailwindcss.com/) for its styling, processed via PostCSS.

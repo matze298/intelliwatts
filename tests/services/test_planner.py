@@ -102,6 +102,8 @@ async def test_generate_weekly_plan(
         id=uuid.uuid4(),
         email="test@example.com",
         password_hash="hashed_password",  # noqa: S106
+        weekly_hours=10.0,
+        weekly_sessions=5,
     )
 
     mock_settings = MagicMock()
@@ -127,7 +129,7 @@ async def test_generate_weekly_plan(
     mock_registry.get_combined_context.assert_called_once()
     mock_user_prompt.assert_called_once()
     assert "Registry context" in mock_user_prompt.call_args[0][0]
-    assert "Max Hours: 8.0" in mock_user_prompt.call_args[0][0]
+    assert "Max Hours: 10.0" in mock_user_prompt.call_args[0][0]
     assert result["plan"] == "test plan\n\n## intervals.icu workout file (txt)\n\n```text\n\nicu workout\n```"
     assert result["summary"] == mock_user_prompt.call_args[0][0]
 
