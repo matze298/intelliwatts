@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING
 
+from app.planning.providers.activity import ActivityProvider
+
 if TYPE_CHECKING:
     from app.intervals.client import IntervalsClient
     from app.planning.providers.base import MetricProvider
@@ -42,3 +44,4 @@ class MetricRegistry:
 
 # Global registry instance
 registry = MetricRegistry()
+registry.register(ActivityProvider())
