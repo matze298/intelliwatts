@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 
 from app.config import Settings, get_settings
 from app.db import engine
-from app.intervals.analysis import AnalysisResult, compute_analysis
+from app.intervals.analysis import compute_analysis
 from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.power_curve import parse_power_curves
@@ -26,6 +26,7 @@ from app.utils.datetime import get_monday
 if TYPE_CHECKING:
     import uuid
 
+    from app.intervals.models import AnalysisResult
     from app.models.user import User
 
 

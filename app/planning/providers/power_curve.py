@@ -1,11 +1,10 @@
 """Power curve metric provider."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, override
 
-from app.planning.providers.base import MetricProvider
+from app.intervals.parser.power_curve import parse_power_curves
+from app.planning.providers.interfaces import DashboardWidget, MetricProvider
 
 if TYPE_CHECKING:
     import polars as pl
@@ -33,7 +32,7 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
         """Returns the provider name.
 
         Returns:
-            str: The provider name.
+            The provider name.
         """
         return "power_curve"
 
@@ -43,9 +42,6 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
         provider_results: dict[str, Any] | None = None,
-        wellness_summary: dict[str, Any] | None = None,
-        ftp_trajectory: dict[str, Any] | None = None,
-        power_curve: dict[str, Any] | None = None,
     ) -> PowerCurveResult | None:
         """Perform calculations on raw data and return a structured result.
 
@@ -53,24 +49,33 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
             provider_results: Mapping of previous provider results.
-            wellness_summary: Legacy wellness summary from analysis.py.
-            ftp_trajectory: Legacy FTP trajectory from analysis.py.
-            power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
             The structured calculation result.
         """
-        # For now, bridge from analysis passed in kwargs (Phase 3 will move this)
-        if not power_curve:
+        # Fetch power curve directly using client
+        if client is None:
+            return None
+        raw_curves = client.power_curves(curves="90d")
+
+        curves = parse_power_curves(raw_curves)
+        if not curves:
+            return None
+        c = curves[0]
+
+        def _get_peak(secs: int) -> int | None:
+            for p in c.points:
+                if p.secs == secs:
+                    return p.watts
             return None
 
         return PowerCurveResult(
-            peak_1s=power_curve.get("peak_1s"),
-            peak_15s=power_curve.get("peak_15s"),
-            peak_1m=power_curve.get("peak_1m"),
-            peak_5m=power_curve.get("peak_5m"),
-            peak_20m=power_curve.get("peak_20m"),
-            peak_60m=power_curve.get("peak_60m"),
+            peak_1s=_get_peak(1),
+            peak_15s=_get_peak(15),
+            peak_1m=_get_peak(60),
+            peak_5m=_get_peak(300),
+            peak_20m=_get_peak(1200),
+            peak_60m=_get_peak(3600),
         )
 
     @override
@@ -81,7 +86,7 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
             result: The result from the calculate method.
 
         Returns:
-            str: A formatted string containing the power curve context.
+            A formatted string containing the power curve context.
         """
         if result is None:
             return "No power curve data available."
@@ -97,10 +102,22 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
         )
 
     @override
-    def get_dashboard_widget(self, result: PowerCurveResult | None) -> None:
+    def get_dashboard_widget(self, result: PowerCurveResult | None) -> DashboardWidget | None:
         """Format the calculation result for the dashboard.
 
         Args:
             result: The result from the calculate method.
+
+        Returns:
+            The dashboard widget.
         """
-        return
+        if result is None or result.peak_20m is None:
+            return None
+
+        return DashboardWidget(
+            name="power_curve",
+            title="Power Peaks",
+            value=f"{result.peak_20m} W",
+            trend="20m Peak",
+            trend_positive=True,
+        )

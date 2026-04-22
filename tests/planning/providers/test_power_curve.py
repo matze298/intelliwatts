@@ -34,15 +34,13 @@ def test_power_curve_provider_no_data() -> None:
     """Test that PowerCurveProvider handles missing data gracefully."""
     # GIVEN: An analysis result with no power curve.
     client = MagicMock(spec=IntervalsClient)
-    analysis = MagicMock()
-    analysis.power_curve = None
-    analysis.daily_series = []
+    client.power_curves.return_value = {"list": []}
+    daily_df = pl.DataFrame([])
 
     provider = PowerCurveProvider()
 
     # WHEN: Calculating power curve result with no data.
-    daily_df = pl.DataFrame(analysis.daily_series)
-    result = provider.calculate(daily_df, client=client, power_curve=None)
+    result = provider.calculate(daily_df, client=client)
 
     # THEN: Result should be None.
     assert result is None

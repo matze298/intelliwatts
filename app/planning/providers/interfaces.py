@@ -1,7 +1,5 @@
 """Base classes for metric providers."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
@@ -37,14 +35,11 @@ class MetricProvider(Protocol[T_co]):
         """
         ...
 
-    def calculate(  # noqa: PLR0913, PLR0917
+    def calculate(
         self,
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
         provider_results: dict[str, Any] | None = None,
-        wellness_summary: dict[str, Any] | None = None,
-        ftp_trajectory: dict[str, Any] | None = None,
-        power_curve: dict[str, Any] | None = None,
     ) -> T_co:
         """Perform calculations on raw data and return a structured result.
 
@@ -52,9 +47,6 @@ class MetricProvider(Protocol[T_co]):
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
             provider_results: Mapping of previous provider results.
-            wellness_summary: Legacy wellness summary from analysis.py.
-            ftp_trajectory: Legacy FTP trajectory from analysis.py.
-            power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
             The calculation result.
