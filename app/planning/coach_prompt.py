@@ -1,7 +1,5 @@
 """The coach prompt sent to the LLM."""
 
-from typing import Any
-
 SYSTEM_PROMPT = """
 You are an evidence-based cycling coach.
 
@@ -77,18 +75,19 @@ TASK:
 """
 
 
-def user_prompt(summary: dict[str, Any]) -> str:
+def user_prompt(summary: str) -> str:
     """Generates the prompt for the LLM.
 
+    Args:
+        summary: The formatted summary string of athlete status and constraints.
+
     Returns:
-        The prompt.
+        The prompt string.
     """
     return f"""
-Athlete weekly summary & constraints (JSON):
+Athlete Status & Constraints:
 
-```json
 {summary}
-```
 
 {USER_PROMPT}
 """

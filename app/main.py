@@ -1,5 +1,6 @@
 """Main entrypoint for the IntelliWatts app."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
@@ -63,7 +64,9 @@ if __name__ == "__main__":
     if GLOBAL_SETTINGS.DEV_USER is None or GLOBAL_SETTINGS.DEV_PASSWORD is None:
         msg = "DEV_USER and DEV_PASSWORD must be set to run main()"
         raise ValueError(msg)
-    content = generate_weekly_plan(
-        user=User(email=GLOBAL_SETTINGS.DEV_USER, password_hash=hash_password(GLOBAL_SETTINGS.DEV_PASSWORD)),
+    content = asyncio.run(
+        generate_weekly_plan(
+            user=User(email=GLOBAL_SETTINGS.DEV_USER, password_hash=hash_password(GLOBAL_SETTINGS.DEV_PASSWORD)),
+        )
     )
     _LOGGER.info("Generated plan:\n%s", content)

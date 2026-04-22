@@ -11,16 +11,12 @@ from sqlmodel import Session, select
 
 from app.config import GLOBAL_SETTINGS, Settings
 from app.db import engine
-from app.intervals.analysis import compute_athlete_status
 from app.intervals.client import IntervalsClient
-from app.intervals.parser.activity import parse_activities
-from app.intervals.parser.power_curve import parse_power_curves
-from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPhase, TrainingPlan
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
 from app.planning.llm import LLMRole, generate_plan
 from app.planning.llm_to_icu import extract_workout_json, llm_json_to_icu_txt
-from app.planning.summary import PlanningConstraints, build_weekly_summary
+from app.planning.providers.registry import registry
 from app.utils.datetime import get_monday
 
 if TYPE_CHECKING:
@@ -94,7 +90,7 @@ def save_training_plan(
     return plan
 
 
-def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_SETTINGS) -> dict[str, Any]:
+async def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_SETTINGS) -> dict[str, Any]:
     """Updates the training plan based on user feedback.
 
     Returns:
@@ -109,7 +105,7 @@ def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_
 
         if not plan:
             # Fallback to generating a new plan if none exists
-            return generate_weekly_plan(user, settings)
+            return await generate_weekly_plan(user, settings)
 
         # Append feedback to history
         history = plan.prompt_history
@@ -143,15 +139,16 @@ def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_
     return {"plan": full_plan_text, "plan_id": saved_plan.id}
 
 
-def fetch_athlete_data(settings: Settings, *, use_wellness: bool = True) -> tuple[list, Any, list]:
-    """Fetches and parses athlete data from Intervals.icu.
-
-    Args:
-        settings: The app settings.
-        use_wellness: Whether to fetch wellness data.
+async def generate_weekly_plan(
+    user: User,
+    settings: Settings = GLOBAL_SETTINGS,
+    *,
+    use_wellness: bool = True,  # noqa: ARG001
+) -> dict[str, Any]:
+    """Generates the weekly plan.
 
     Returns:
-        A tuple of (activities, wellness, power_curves).
+        The weekly plan and summary.
     """
     session = requests.Session()
     if settings.CACHE_INTERVALS_HOURS > 0:
@@ -163,51 +160,23 @@ def fetch_athlete_data(settings: Settings, *, use_wellness: bool = True) -> tupl
 
     client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session)
 
-    # Fetch and parse activities
-    raw_activities = client.activities(days=settings.ANALYSIS_DAYS)
-    activities = parse_activities(raw_activities)
+    # Fetch combined context from all registered providers
+    context = await registry.get_combined_context(client, settings.ANALYSIS_DAYS)
 
-    # Fetch and parse wellness data if requested
-    wellness = None
-    if use_wellness:
-        raw_wellness = client.wellness(days=settings.ANALYSIS_DAYS)
-        wellness = parse_wellness_list(raw_wellness)
+    # TODO(mr): In Task 6, these will be fetched from the User model # noqa: TD003
+    primary_goal = "Build FTP (Default)"
 
-    # Fetch and parse power curve data
-    raw_power_curves = client.power_curves(curves="90d")
-    power_curves = parse_power_curves(raw_power_curves)
-
-    return activities, wellness, power_curves
-
-
-def generate_weekly_plan(
-    user: User, settings: Settings = GLOBAL_SETTINGS, *, use_wellness: bool = True
-) -> dict[str, Any]:
-    """Generates the weekly plan.
-
-    Returns:
-        The weekly plan and summary.
-    """
-    activities, wellness, power_curves = fetch_athlete_data(settings, use_wellness=use_wellness)
-
-    # Compute athlete status (load, wellness, ftp trends, and power curve)
-    status = compute_athlete_status(activities, wellness_data=wellness, power_curve=power_curves)
-
-    summary = build_weekly_summary(
-        activities,
-        status.load,
-        constraints=PlanningConstraints(
-            weekly_hours=settings.weekly_hours,
-            weekly_sessions=settings.weekly_sessions,
-            primary_goal="increase_ftp",  # Default for now
-        ),
-        wellness_summary=status.wellness,
-        ftp_trajectory=status.ftp_trajectory,
-        power_curve=status.power_curve,
+    full_summary = (
+        "Training Constraints:\n"
+        f"- Max Hours: {settings.weekly_hours}\n"
+        f"- Max Sessions: {settings.weekly_sessions}\n"
+        f"- Primary Goal: {primary_goal}\n\n"
+        f"{context}"
     )
+
     messages = [
         {"role": LLMRole.SYSTEM, "content": SYSTEM_PROMPT},
-        {"role": LLMRole.USER, "content": user_prompt(summary)},
+        {"role": LLMRole.USER, "content": user_prompt(full_summary)},
     ]
     llm_response = generate_plan(messages=messages, language_model=settings.LANGUAGE_MODEL, user=user)
 
@@ -236,4 +205,4 @@ def generate_weekly_plan(
         + llm_json_to_icu_txt(llm_response.plan)
         + "\n```"
     )
-    return {"plan": plan, "summary": summary, "prompt": llm_response.prompt, "plan_id": saved_plan.id}
+    return {"plan": plan, "summary": full_summary, "prompt": llm_response.prompt, "plan_id": saved_plan.id}
