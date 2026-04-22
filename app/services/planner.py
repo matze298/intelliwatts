@@ -11,7 +11,11 @@ from sqlmodel import Session, select
 
 from app.config import Settings, get_settings
 from app.db import engine
+from app.intervals.analysis import AnalysisResult, compute_analysis
 from app.intervals.client import IntervalsClient
+from app.intervals.parser.activity import parse_activities
+from app.intervals.parser.power_curve import parse_power_curves
+from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPhase, TrainingPlan
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
 from app.planning.llm import LLMRole, generate_plan
@@ -142,6 +146,25 @@ async def update_training_plan(user: User, feedback: str, settings: Settings | N
     return {"plan": full_plan_text, "plan_id": saved_plan.id}
 
 
+def _get_analysis(client: IntervalsClient, analysis_days: int) -> AnalysisResult:
+    """Performs the full sports science analysis for the athlete.
+
+    Returns:
+        The computed analysis result.
+    """
+    # Use max required days (e.g. 120d for PMC, 30d for FTP trajectory, 42d for wellness)
+    lookback_days = max(analysis_days, 42)
+    raw_activities = client.activities(days=lookback_days)
+    raw_wellness = client.wellness(days=lookback_days)
+    raw_power_curves = client.power_curves(curves="90d")
+
+    return compute_analysis(
+        parse_activities(raw_activities),
+        wellness_data=parse_wellness_list(raw_wellness),
+        power_curve=parse_power_curves(raw_power_curves),
+    )
+
+
 async def generate_weekly_plan(
     user: User,
     settings: Settings | None = None,
@@ -167,27 +190,29 @@ async def generate_weekly_plan(
 
     client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session)
 
+    # Pre-fetch and compute analysis once to be shared among providers
+    analysis = _get_analysis(client, settings.ANALYSIS_DAYS)
+
     # Fetch combined context from all registered providers
-    context = await registry.get_combined_context(client, settings.ANALYSIS_DAYS)
+    context = await registry.get_combined_context(client, settings.ANALYSIS_DAYS, analysis=analysis)
 
-    # Fetch preferences from User model
-    primary_goal = "Build FTP (Default)"
-    hours = weekly_hours if weekly_hours is not None else user.weekly_hours
-    sessions = weekly_sessions if weekly_sessions is not None else user.weekly_sessions
-
+    # Build the full summary string
     full_summary = (
         "Training Constraints:\n"
-        f"- Max Hours: {hours}\n"
-        f"- Max Sessions: {sessions}\n"
-        f"- Primary Goal: {primary_goal}\n\n"
+        f"- Max Hours: {weekly_hours if weekly_hours is not None else user.weekly_hours}\n"
+        f"- Max Sessions: {weekly_sessions if weekly_sessions is not None else user.weekly_sessions}\n"
+        f"- Primary Goal: Build FTP (Default)\n\n"
         f"{context}"
     )
 
-    messages = [
-        {"role": LLMRole.SYSTEM, "content": SYSTEM_PROMPT},
-        {"role": LLMRole.USER, "content": user_prompt(full_summary)},
-    ]
-    llm_response = generate_plan(messages=messages, language_model=settings.LANGUAGE_MODEL, user=user)
+    llm_response = generate_plan(
+        messages=[
+            {"role": LLMRole.SYSTEM, "content": SYSTEM_PROMPT},
+            {"role": LLMRole.USER, "content": user_prompt(full_summary)},
+        ],
+        language_model=settings.LANGUAGE_MODEL,
+        user=user,
+    )
 
     # Persist the plan
     with Session(engine) as db_session:
@@ -207,11 +232,11 @@ async def generate_weekly_plan(
             ),
         )
 
-    plan = (
+    full_plan_text = (
         llm_response.plan
         + "\n\n"
         + "## intervals.icu workout file (txt)\n\n```text\n\n"
         + llm_json_to_icu_txt(llm_response.plan)
         + "\n```"
     )
-    return {"plan": plan, "summary": full_summary, "prompt": llm_response.prompt, "plan_id": saved_plan.id}
+    return {"plan": full_plan_text, "summary": full_summary, "prompt": llm_response.prompt, "plan_id": saved_plan.id}

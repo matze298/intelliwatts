@@ -9,6 +9,7 @@ from app.planning.providers.resting_hr import RestingHRTrendProvider
 from app.planning.providers.wellness import WellnessProvider
 
 if TYPE_CHECKING:
+    from app.intervals.analysis import AnalysisResult
     from app.intervals.client import IntervalsClient
     from app.planning.providers.base import MetricProvider
 
@@ -28,19 +29,20 @@ class MetricRegistry:
         """
         self.providers.append(provider)
 
-    async def get_combined_context(self, client: IntervalsClient, days: int) -> str:
+    async def get_combined_context(self, client: IntervalsClient, days: int, analysis: AnalysisResult) -> str:
         """Collects and combines context from all registered providers.
 
         Args:
             client: The Intervals.icu client.
             days: Number of past days to analyze.
+            analysis: The pre-computed analysis result.
 
         Returns:
             str: Combined context string from all providers.
         """
         contexts = []
         for provider in self.providers:
-            context = await provider.provide_context(client, days)
+            context = await provider.provide_context(client, days, analysis=analysis)
             if context:
                 contexts.append(context)
         return "\n\n".join(contexts)

@@ -33,16 +33,20 @@ async def test_activity_provider_context() -> None:
         }
     ]
 
+    # GIVEN: A mocked analysis result.
+    analysis = MagicMock()
+    analysis.daily_series = [{"ctl": 50.0, "atl": 60.0, "tsb": -10.0}]
+
     provider = ActivityProvider()
 
     # WHEN: Generating activity context for the last 7 days.
-    context = await provider.provide_context(client, days=7)
+    context = await provider.provide_context(client, days=7, analysis=analysis)
 
-    # THEN: The context should include TSS, hours, and load metrics.
+    # THEN: The context should include TSS, hours, and load metrics from analysis.
     assert "Recent Training (Last 7 Days):" in context
     assert "Total TSS: 100.0" in context
     assert "Total Hours: 1.0" in context
     assert "Training Load:" in context
-    assert "Chronic (CTL):" in context
-    assert "Acute (ATL):" in context
-    assert "Balance (TSB):" in context
+    assert "Chronic (CTL): 50.0" in context
+    assert "Acute (ATL): 60.0" in context
+    assert "Balance (TSB): -10.0" in context
