@@ -37,8 +37,8 @@ class PlanData:
 def get_or_create_active_phase(session: Session, user_id: uuid.UUID) -> TrainingPhase:
     """Gets the active training phase for a user or creates a default one.
 
-    TODO: In the future, we should ask the user for their specific goal and duration
-    when starting a new phase instead of assuming defaults.
+    TODO(mr): In the future, we should ask the user for their specific goal and duration
+    when starting a new phase instead of assuming defaults. # noqa: TD003
 
     Returns:
         The active training phase.
@@ -143,7 +143,8 @@ async def generate_weekly_plan(
     user: User,
     settings: Settings = GLOBAL_SETTINGS,
     *,
-    use_wellness: bool = True,  # noqa: ARG001
+    weekly_hours: float | None = None,
+    weekly_sessions: int | None = None,
 ) -> dict[str, Any]:
     """Generates the weekly plan.
 
@@ -165,11 +166,13 @@ async def generate_weekly_plan(
 
     # TODO(mr): In Task 6, these will be fetched from the User model # noqa: TD003
     primary_goal = "Build FTP (Default)"
+    hours = weekly_hours if weekly_hours is not None else settings.weekly_hours
+    sessions = weekly_sessions if weekly_sessions is not None else settings.weekly_sessions
 
     full_summary = (
         "Training Constraints:\n"
-        f"- Max Hours: {settings.weekly_hours}\n"
-        f"- Max Sessions: {settings.weekly_sessions}\n"
+        f"- Max Hours: {hours}\n"
+        f"- Max Sessions: {sessions}\n"
         f"- Primary Goal: {primary_goal}\n\n"
         f"{context}"
     )

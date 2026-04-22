@@ -252,17 +252,25 @@ async def generate(request: Request, user: Annotated[User, Depends(get_current_u
         The weekly plan and summary as HTML.
     """
     input_data = await request.form()
-    use_wellness = input_data.get("use_wellness") == "on"
 
-    GLOBAL_SETTINGS.update(
-        LANGUAGE_MODEL=str(input_data.get("language_model", GLOBAL_SETTINGS.LANGUAGE_MODEL)),
-        SYSTEM_PROMPT=str(input_data.get("system_prompt", GLOBAL_SETTINGS.SYSTEM_PROMPT)),
-        USER_PROMPT=str(input_data.get("user_prompt", GLOBAL_SETTINGS.USER_PROMPT)),
-        weekly_hours=input_data.get("max_hours", GLOBAL_SETTINGS.weekly_hours),
-        weekly_sessions=input_data.get("max_sessions", GLOBAL_SETTINGS.weekly_sessions),
+    # Training constraints from form
+    raw_hours = input_data.get("max_hours")
+    raw_sessions = input_data.get("max_sessions")
+
+    weekly_hours: float | None = None
+    if isinstance(raw_hours, str) and raw_hours:
+        weekly_hours = float(raw_hours)
+
+    weekly_sessions: int | None = None
+    if isinstance(raw_sessions, str) and raw_sessions:
+        weekly_sessions = int(raw_sessions)
+
+    result = await generate_weekly_plan(
+        user=user,
+        settings=GLOBAL_SETTINGS,
+        weekly_hours=weekly_hours,
+        weekly_sessions=weekly_sessions,
     )
-
-    result = await generate_weekly_plan(settings=GLOBAL_SETTINGS, user=user, use_wellness=use_wellness)
 
     plan_html = markdown.markdown(
         result["plan"],
