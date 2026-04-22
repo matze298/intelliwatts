@@ -162,6 +162,7 @@ def _get_analysis(client: IntervalsClient, analysis_days: int) -> AnalysisResult
         parse_activities(raw_activities),
         wellness_data=parse_wellness_list(raw_wellness),
         power_curve=parse_power_curves(raw_power_curves),
+        client=client,
     )
 
 
@@ -194,7 +195,7 @@ async def generate_weekly_plan(
     analysis = _get_analysis(client, settings.ANALYSIS_DAYS)
 
     # Fetch combined context from all registered providers
-    context = await registry.get_combined_context(client, settings.ANALYSIS_DAYS, analysis=analysis)
+    context = await registry.get_combined_context(analysis.provider_results)
 
     # Build the full summary string
     full_summary = (

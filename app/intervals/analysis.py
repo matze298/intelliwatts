@@ -1,7 +1,9 @@
 """Calculate the sports science analysis."""
 
+from __future__ import annotations
+
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, cast
@@ -11,9 +13,11 @@ import polars as pl
 if TYPE_CHECKING:
     from datetime import date
 
+    from app.intervals.client import IntervalsClient
     from app.intervals.parser.activity import ParsedActivity
     from app.intervals.parser.power_curve import ParsedPowerCurve
     from app.intervals.parser.wellness import ParsedWellness
+    from app.planning.providers.base import DashboardWidget
 
 _LOGGER = getLogger(__name__)
 CHRONIC_TRAINING_LOAD_DAYS = 42
@@ -130,6 +134,8 @@ class AnalysisResult:
     wellness_summary: dict[str, Any] | None = None
     ftp_trajectory: dict[str, Any] | None = None
     power_curve: dict[str, Any] | None = None
+    provider_results: dict[str, Any] = field(default_factory=dict)
+    widgets: list[DashboardWidget] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the analysis result to a dictionary.
@@ -149,11 +155,12 @@ class PMCResult:
     tsb: pl.Series
 
 
-def compute_analysis(
+def compute_analysis(  # noqa: PLR0914
     activities: list[ParsedActivity],
     display_days: int | None = None,
     wellness_data: list[ParsedWellness] | None = None,
     power_curve: list[ParsedPowerCurve] | None = None,
+    client: IntervalsClient | None = None,
 ) -> AnalysisResult:
     """Compute a complete sports science analysis.
 
@@ -164,6 +171,7 @@ def compute_analysis(
             However, the CTL/ATL calculation will still use all available activities for initialization.
         wellness_data: Optional wellness data to analyze trends.
         power_curve: Optional power curve data.
+        client: Optional Intervals.icu client for provider-specific data fetching.
 
     Returns:
         The analysis result including time series and summaries.
@@ -222,15 +230,27 @@ def compute_analysis(
     if power_curve:
         power_curve_dict = _compute_power_curve_summary(power_curve)
 
-    # 6. Compute PMC values (CTL/ATL/TSB) and build series
+    # 6. Run calculations for all providers and collect results/widgets
+    # Local import to avoid circular dependency
+    from app.planning.providers.registry import registry  # noqa: PLC0415
+
+    provider_results, provider_widgets = registry.process_analysis(
+        daily,
+        client=client,
+        wellness_summary=wellness_summary_dict,
+        ftp_trajectory=ftp_trajectory_dict,
+        power_curve=power_curve_dict,
+    )
+
+    # 7. Compute PMC values (CTL/ATL/TSB) and build series
     pmc = compute_pmc_values(daily)
     daily_series_df = _build_daily_series_df(daily, pmc.ctl, pmc.atl, pmc.tsb, has_wellness=wellness_data is not None)
 
-    # 7. Filter for display and compute summaries
+    # 8. Filter for display and compute summaries
     daily_series_df, df_activities = _filter_by_display_days(daily_series_df, df_activities, display_days)
     daily_series_df = daily_series_df.with_columns(pl.col("date").dt.strftime("%Y-%m-%d"))
 
-    # 8. Aggregate distributions and summaries
+    # 9. Aggregate distributions and summaries
     summary, hr_dist, power_dist, type_dist = _get_activity_metrics(df_activities)
     weekly_series = _get_weekly_series(df_activities)
 
@@ -244,6 +264,8 @@ def compute_analysis(
         wellness_summary=wellness_summary_dict,
         ftp_trajectory=ftp_trajectory_dict,
         power_curve=power_curve_dict,
+        provider_results=provider_results,
+        widgets=provider_widgets,
     )
 
 
@@ -500,13 +522,17 @@ def compute_pmc_values(df_daily: pl.DataFrame) -> PMCResult:
     return PMCResult(ctl=ctl, atl=atl, tsb=tsb)
 
 
-def compute_load(activities: list[ParsedActivity]) -> TrainingLoad:
+def compute_load(activities: list[ParsedActivity], client: IntervalsClient | None = None) -> TrainingLoad:
     """Compute the training load.
+
+    Args:
+        activities: The activities to analyze.
+        client: Optional Intervals.icu client.
 
     Returns:
         The training load (CTL, ATL & TSB).
     """
-    analysis = compute_analysis(activities)
+    analysis = compute_analysis(activities, client=client)
     if not analysis.daily_series:
         return TrainingLoad(chronic=0, acute=0)
     last_day = analysis.daily_series[-1]

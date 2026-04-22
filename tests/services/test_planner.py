@@ -121,12 +121,17 @@ async def test_generate_weekly_plan(
     mock_llm_json_to_icu_txt.return_value = "icu workout"
 
     # WHEN: Generating the weekly plan.
-    with patch("app.services.planner.Session"):
+    mock_analysis = MagicMock()
+    mock_analysis.provider_results = {"activity": {}}
+    with (
+        patch("app.services.planner.Session"),
+        patch("app.services.planner._get_analysis", return_value=mock_analysis),
+    ):
         result = await generate_weekly_plan(mock_user, mock_settings)
 
     # THEN: The registry and LLM should be called with correct data.
     mock_intervals_client.assert_called_once_with("test_api_key", "test_athlete_id", session=ANY)
-    mock_registry.get_combined_context.assert_called_once()
+    mock_registry.get_combined_context.assert_called_once_with(mock_analysis.provider_results)
     mock_user_prompt.assert_called_once()
     assert "Registry context" in mock_user_prompt.call_args[0][0]
     assert "Max Hours: 10.0" in mock_user_prompt.call_args[0][0]

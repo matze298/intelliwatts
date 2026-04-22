@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock
 
+import polars as pl
 import pytest
 
 from app.intervals.client import IntervalsClient
@@ -20,11 +21,15 @@ async def test_wellness_provider_context() -> None:
         "resting_hr_7d": 50.0,
         "resting_hr_42d": 52.0,
     }
+    analysis.daily_series = []
 
     provider = WellnessProvider()
 
     # WHEN: Generating wellness context.
-    context = await provider.provide_context(client, days=7, analysis=analysis)
+    daily_df = pl.DataFrame(analysis.daily_series)
+    result = provider.calculate(daily_df, client=client, wellness_summary=analysis.wellness_summary)
+    assert result is not None
+    context = await provider.provide_context(result)
 
     # THEN: The context should include HRV and RHR averages from analysis.
     assert "Wellness Trends:" in context
@@ -34,18 +39,19 @@ async def test_wellness_provider_context() -> None:
     assert "Resting HR (42d avg): 52.0" in context
 
 
-@pytest.mark.asyncio
-async def test_wellness_provider_no_data() -> None:
+def test_wellness_provider_no_data() -> None:
     """Test that WellnessProvider handles missing data gracefully."""
     # GIVEN: An analysis result with no wellness summary.
     client = MagicMock(spec=IntervalsClient)
     analysis = MagicMock()
     analysis.wellness_summary = None
+    analysis.daily_series = []
 
     provider = WellnessProvider()
 
-    # WHEN: Generating wellness context.
-    context = await provider.provide_context(client, days=7, analysis=analysis)
+    # WHEN: Calculating wellness result with no data.
+    daily_df = pl.DataFrame(analysis.daily_series)
+    result = provider.calculate(daily_df, client=client, wellness_summary=analysis.wellness_summary)
 
-    # THEN: A helpful message should be returned.
-    assert "No wellness data available." in context
+    # THEN: Result should be None.
+    assert result is None

@@ -114,6 +114,7 @@ def dashboard(
         display_days=days or settings.DASHBOARD_DAYS,
         wellness_data=wellness,
         power_curve=power_curves,
+        client=client,
     )
 
     return templates.TemplateResponse(
