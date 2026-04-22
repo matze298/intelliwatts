@@ -1,6 +1,5 @@
 """Service for generating the weekly plan."""
 
-import asyncio
 import json
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -91,7 +90,7 @@ def save_training_plan(
     return plan
 
 
-def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_SETTINGS) -> dict[str, Any]:
+async def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_SETTINGS) -> dict[str, Any]:
     """Updates the training plan based on user feedback.
 
     Returns:
@@ -106,7 +105,7 @@ def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_
 
         if not plan:
             # Fallback to generating a new plan if none exists
-            return generate_weekly_plan(user, settings)
+            return await generate_weekly_plan(user, settings)
 
         # Append feedback to history
         history = plan.prompt_history
@@ -140,7 +139,7 @@ def update_training_plan(user: User, feedback: str, settings: Settings = GLOBAL_
     return {"plan": full_plan_text, "plan_id": saved_plan.id}
 
 
-def generate_weekly_plan(
+async def generate_weekly_plan(
     user: User,
     settings: Settings = GLOBAL_SETTINGS,
     *,
@@ -162,7 +161,7 @@ def generate_weekly_plan(
     client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session)
 
     # Fetch combined context from all registered providers
-    context = asyncio.run(registry.get_combined_context(client, settings.ANALYSIS_DAYS))
+    context = await registry.get_combined_context(client, settings.ANALYSIS_DAYS)
 
     # TODO(mr): In Task 6, these will be fetched from the User model # noqa: TD003
     primary_goal = "Build FTP (Default)"

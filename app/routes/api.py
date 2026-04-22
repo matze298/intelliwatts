@@ -21,17 +21,17 @@ class UpdatePlanRequest(BaseModel):
 
 
 @router.post("/generate-plan")
-def generate_plan_api(user: Annotated[User, Depends(get_current_user_from_token)]) -> dict[str, Any]:
+async def generate_plan_api(user: Annotated[User, Depends(get_current_user_from_token)]) -> dict[str, Any]:
     """Generates the weekly plan.
 
     Returns:
         The weekly plan and summary.
     """
-    return generate_weekly_plan(user=user)
+    return await generate_weekly_plan(user=user)
 
 
 @router.post("/update-plan")
-def update_plan_api(
+async def update_plan_api(
     request: UpdatePlanRequest, user: Annotated[User, Depends(get_current_user_from_token)]
 ) -> dict[str, Any]:
     """Updates the training plan based on feedback.
@@ -39,4 +39,4 @@ def update_plan_api(
     Returns:
         The updated weekly plan and summary.
     """
-    return update_training_plan(user=user, feedback=request.feedback)
+    return await update_training_plan(user=user, feedback=request.feedback)

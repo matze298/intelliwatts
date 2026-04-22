@@ -88,7 +88,8 @@ def test_save_training_plan_overwrite(session: Session) -> None:
 @patch("app.services.planner.generate_plan")
 @patch("app.services.planner.llm_json_to_icu_txt")
 @patch("app.services.planner.user_prompt")
-def test_generate_weekly_plan(
+@pytest.mark.asyncio
+async def test_generate_weekly_plan(
     mock_user_prompt: MagicMock,
     mock_llm_json_to_icu_txt: MagicMock,
     mock_generate_plan: MagicMock,
@@ -119,7 +120,7 @@ def test_generate_weekly_plan(
 
     # WHEN: Generating the weekly plan.
     with patch("app.services.planner.Session"):
-        result = generate_weekly_plan(mock_user, mock_settings)
+        result = await generate_weekly_plan(mock_user, mock_settings)
 
     # THEN: The registry and LLM should be called with correct data.
     mock_intervals_client.assert_called_once_with("test_api_key", "test_athlete_id", session=ANY)
@@ -133,7 +134,8 @@ def test_generate_weekly_plan(
 
 
 @patch("app.services.planner.generate_plan")
-def test_update_training_plan_uses_history(mock_generate_plan: MagicMock, session: Session) -> None:
+@pytest.mark.asyncio
+async def test_update_training_plan_uses_history(mock_generate_plan: MagicMock, session: Session) -> None:
     """Test update_training_plan retrieves history and calls LLM with it."""
     # GIVEN: A user and an existing training plan with prompt history.
     user = User(id=uuid.uuid4(), email="test@example.com", password_hash="hash")  # noqa: S106
@@ -168,7 +170,7 @@ def test_update_training_plan_uses_history(mock_generate_plan: MagicMock, sessio
         patch("app.services.planner.datetime") as mock_datetime,
     ):
         mock_datetime.now.return_value = datetime(2026, 4, 21, tzinfo=UTC)
-        update_training_plan(user, "make it harder")
+        await update_training_plan(user, "make it harder")
 
     # THEN: Generate_plan should be called with the extended message history.
     mock_generate_plan.assert_called_once()

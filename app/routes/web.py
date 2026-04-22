@@ -262,7 +262,7 @@ async def generate(request: Request, user: Annotated[User, Depends(get_current_u
         weekly_sessions=input_data.get("max_sessions", GLOBAL_SETTINGS.weekly_sessions),
     )
 
-    result = generate_weekly_plan(settings=GLOBAL_SETTINGS, user=user, use_wellness=use_wellness)
+    result = await generate_weekly_plan(settings=GLOBAL_SETTINGS, user=user, use_wellness=use_wellness)
 
     plan_html = markdown.markdown(
         result["plan"],
@@ -298,7 +298,7 @@ async def update(request: Request, user: Annotated[User, Depends(get_current_use
     input_data = await request.form()
     feedback = str(input_data.get("feedback", ""))
 
-    result = update_training_plan(user=user, feedback=feedback)
+    result = await update_training_plan(user=user, feedback=feedback)
 
     plan_html = markdown.markdown(
         result["plan"],
