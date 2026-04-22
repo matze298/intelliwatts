@@ -11,34 +11,36 @@ from app.planning.providers.resting_hr import RestingHRTrendProvider
 @pytest.mark.asyncio
 async def test_resting_hr_trend_provider_context() -> None:
     """Test that RestingHRTrendProvider returns the correct trend string."""
-    # GIVEN: An IntervalsClient mocked to return 3 days of wellness data.
+    # GIVEN: A mocked analysis result with a daily series containing RHR.
     client = MagicMock(spec=IntervalsClient)
-    client.wellness.return_value = [
-        {"id": "2026-04-20", "restingHR": 50},
-        {"id": "2026-04-21", "restingHR": 52},
-        {"id": "2026-04-22", "restingHR": 51},
+    analysis = MagicMock()
+    analysis.daily_series = [
+        {"date": "2026-04-20", "resting_hr": 50},
+        {"date": "2026-04-21", "resting_hr": 52},
+        {"date": "2026-04-22", "resting_hr": 51},
     ]
 
     provider = RestingHRTrendProvider()
 
     # WHEN: Generating RHR trend context.
-    context = await provider.provide_context(client, days=7)
+    context = await provider.provide_context(client, days=7, analysis=analysis)
 
-    # THEN: The context should include the trend string.
+    # THEN: The context should include the trend string from analysis.
     assert "Resting HR Trend (Last 7 days): 50 -> 52 -> 51" in context
 
 
 @pytest.mark.asyncio
 async def test_resting_hr_trend_provider_no_data() -> None:
     """Test that RestingHRTrendProvider handles missing data gracefully."""
-    # GIVEN: An IntervalsClient returning no wellness data.
+    # GIVEN: An analysis result with no daily series.
     client = MagicMock(spec=IntervalsClient)
-    client.wellness.return_value = []
+    analysis = MagicMock()
+    analysis.daily_series = []
 
     provider = RestingHRTrendProvider()
 
     # WHEN: Generating RHR trend context.
-    context = await provider.provide_context(client, days=7)
+    context = await provider.provide_context(client, days=7, analysis=analysis)
 
     # THEN: A helpful message should be returned.
-    assert "No wellness data available for RHR trend." in context
+    assert "No resting HR data available." in context

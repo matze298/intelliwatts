@@ -11,42 +11,41 @@ from app.planning.providers.wellness import WellnessProvider
 @pytest.mark.asyncio
 async def test_wellness_provider_context() -> None:
     """Test that WellnessProvider returns the correct context string."""
-    # GIVEN: An IntervalsClient mocked to return 42 days of wellness data.
+    # GIVEN: A mocked analysis result with wellness trends.
     client = MagicMock(spec=IntervalsClient)
-    mock_wellness = []
-    for i in range(42):
-        date_str = f"2026-04-{22 - i:02d}" if 22 - i > 0 else f"2026-03-{31 - (i - 22):02d}"
-        mock_wellness.append({
-            "id": date_str,
-            "hrv": 60.0,
-            "restingHR": 50.0,
-        })
-    client.wellness.return_value = mock_wellness
+    analysis = MagicMock()
+    analysis.wellness_summary = {
+        "hrv_7d": 60.0,
+        "hrv_42d": 65.0,
+        "resting_hr_7d": 50.0,
+        "resting_hr_42d": 52.0,
+    }
 
     provider = WellnessProvider()
 
-    # WHEN: Generating wellness context for the last 7 days.
-    context = await provider.provide_context(client, days=7)
+    # WHEN: Generating wellness context.
+    context = await provider.provide_context(client, days=7, analysis=analysis)
 
-    # THEN: The context should include HRV and RHR averages.
+    # THEN: The context should include HRV and RHR averages from analysis.
     assert "Wellness Trends:" in context
     assert "HRV (7d avg): 60.0" in context
-    assert "HRV (42d avg): 60.0" in context
+    assert "HRV (42d avg): 65.0" in context
     assert "Resting HR (7d avg): 50.0" in context
-    assert "Resting HR (42d avg): 50.0" in context
+    assert "Resting HR (42d avg): 52.0" in context
 
 
 @pytest.mark.asyncio
 async def test_wellness_provider_no_data() -> None:
     """Test that WellnessProvider handles missing data gracefully."""
-    # GIVEN: An IntervalsClient returning no wellness data.
+    # GIVEN: An analysis result with no wellness summary.
     client = MagicMock(spec=IntervalsClient)
-    client.wellness.return_value = []
+    analysis = MagicMock()
+    analysis.wellness_summary = None
 
     provider = WellnessProvider()
 
     # WHEN: Generating wellness context.
-    context = await provider.provide_context(client, days=7)
+    context = await provider.provide_context(client, days=7, analysis=analysis)
 
     # THEN: A helpful message should be returned.
     assert "No wellness data available." in context

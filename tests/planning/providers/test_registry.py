@@ -28,6 +28,7 @@ async def test_metric_registry_combined_context() -> None:
     # GIVEN: A registry with three providers (two returning text, one returning an empty string).
     registry = MetricRegistry()
     client = MagicMock()
+    analysis = MagicMock()
     days = 7
 
     provider1 = MagicMock(spec=MetricProvider)
@@ -44,10 +45,10 @@ async def test_metric_registry_combined_context() -> None:
     registry.register(provider3)
 
     # WHEN: Requesting combined context from all registered providers via the registry.
-    combined_context = await registry.get_combined_context(client, days)
+    combined_context = await registry.get_combined_context(client, days, analysis=analysis)
 
     # THEN: Only the non-empty contexts should be joined with double newlines.
     assert combined_context == "Context 1\n\nContext 2"
-    provider1.provide_context.assert_called_once_with(client, days, analysis=None)
-    provider2.provide_context.assert_called_once_with(client, days, analysis=None)
-    provider3.provide_context.assert_called_once_with(client, days, analysis=None)
+    provider1.provide_context.assert_called_once_with(client, days, analysis=analysis)
+    provider2.provide_context.assert_called_once_with(client, days, analysis=analysis)
+    provider3.provide_context.assert_called_once_with(client, days, analysis=analysis)

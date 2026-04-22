@@ -29,15 +29,13 @@ class MetricRegistry:
         """
         self.providers.append(provider)
 
-    async def get_combined_context(
-        self, client: IntervalsClient, days: int, analysis: AnalysisResult | None = None
-    ) -> str:
+    async def get_combined_context(self, client: IntervalsClient, days: int, analysis: AnalysisResult) -> str:
         """Collects and combines context from all registered providers.
 
         Args:
             client: The Intervals.icu client.
             days: Number of past days to analyze.
-            analysis: Optional pre-computed analysis result.
+            analysis: The pre-computed analysis result.
 
         Returns:
             str: Combined context string from all providers.

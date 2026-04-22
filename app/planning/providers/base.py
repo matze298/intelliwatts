@@ -18,13 +18,13 @@ class MetricProvider(Protocol):
         """
         ...
 
-    async def provide_context(self, client: IntervalsClient, days: int, analysis: AnalysisResult | None = None) -> str:
+    async def provide_context(self, client: IntervalsClient, days: int, analysis: AnalysisResult) -> str:
         """Provides metric-specific context for the LLM.
 
         Args:
             client: The Intervals.icu client.
             days: Number of past days to analyze.
-            analysis: Optional pre-computed analysis result to avoid redundant computation.
+            analysis: The pre-computed analysis result.
 
         Returns:
             str: A formatted string containing the metric context.
