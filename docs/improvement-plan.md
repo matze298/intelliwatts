@@ -17,7 +17,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [ ] **Subjective Wellness Data:** Integrate fatigue and sleep quality scores into the LLM context.
 
 ### 2. Athlete Context & Historical Trends
-- [x] **FTP Trajectory:** Provide a 4-week window of FTP changes (Implemented in Analysis, *Need Provider Migration*).
+- [x] **FTP Trajectory:** Provide a 4-week window of FTP changes (Task 8).
 - [x] **Power Curve Metrics:** Incorporate peak power values for key durations (5s, 1m, 5m, 20m).
 - [ ] **Activity Notes:** Utilize unstructured text analysis of athlete-entered comments for qualitative context.
 
@@ -42,7 +42,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 ---
 
 ## 🛠️ Follow-up Architecture Tasks (Next Steps)
-1.  **[High Priority] FTP Trajectory Provider:** Port the FTP change calculation from `analysis.py` into a new `FTPTrajectoryProvider` so the LLM regains awareness of intensity trends.
-2.  **[Refactor] Logic De-duplication:** Move shared calculation logic (HRV averages, FTP trends) from `analysis.py` into a shared utility or allow Providers to contribute data back to the `AnalysisResult` used by the dashboard.
-3.  **[Feature] Subjective Data Plugin:** Expand `WellnessProvider` to include sleep scores and fatigue trends.
-4.  **[UI] Theme Consistency:** Ensure the dashboard uses the same request-scoped settings and database preferences as the planner.
+1.  **[Refactor] Logic De-duplication:** Move shared calculation logic (HRV averages, FTP trends) from `analysis.py` into a shared utility or allow Providers to contribute data back to the `AnalysisResult` used by the dashboard.
+2.  **[Feature] Subjective Data Plugin:** Expand `WellnessProvider` to include sleep scores and fatigue trends.
+3.  **[UI] Theme Consistency:** Ensure the dashboard uses the same request-scoped settings and database preferences as the planner.
+4.  **[API] Intervals.icu Workout Push:** Extend `IntervalsClient` to allow uploading the generated plan back to the athlete's calendar.
