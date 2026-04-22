@@ -48,6 +48,6 @@ async def test_metric_registry_combined_context() -> None:
 
     # THEN: Only the non-empty contexts should be joined with double newlines.
     assert combined_context == "Context 1\n\nContext 2"
-    provider1.provide_context.assert_called_once_with(client, days)
-    provider2.provide_context.assert_called_once_with(client, days)
-    provider3.provide_context.assert_called_once_with(client, days)
+    provider1.provide_context.assert_called_once_with(client, days, analysis=None)
+    provider2.provide_context.assert_called_once_with(client, days, analysis=None)
+    provider3.provide_context.assert_called_once_with(client, days, analysis=None)

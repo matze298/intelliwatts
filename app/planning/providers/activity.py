@@ -3,12 +3,13 @@
 from datetime import timedelta
 from typing import TYPE_CHECKING, override
 
-from app.intervals.analysis import compute_load
+from app.intervals.analysis import TrainingLoad, compute_load
 from app.intervals.parser.activity import parse_activities
 from app.planning.providers.base import MetricProvider
 from app.utils.datetime import get_utc_now
 
 if TYPE_CHECKING:
+    from app.intervals.analysis import AnalysisResult
     from app.intervals.client import IntervalsClient
 
 
@@ -25,27 +26,37 @@ class ActivityProvider(MetricProvider):
         return "activity"
 
     @override
-    async def provide_context(self, client: IntervalsClient, days: int) -> str:
+    async def provide_context(self, client: IntervalsClient, days: int, analysis: AnalysisResult | None = None) -> str:
         """Provides activity context for the last days.
 
         Returns:
             str: The formatted activity summary.
         """
+        if analysis is None:
+            raw_activities = client.activities(days=days)
+            activities = parse_activities(raw_activities)
+            if not activities:
+                return "No recent activities found."
+            load = compute_load(activities)
+        else:
+            # Use pre-computed load from analysis
+            last_day = analysis.daily_series[-1] if analysis.daily_series else {"ctl": 0.0, "atl": 0.0}
+            load = TrainingLoad(chronic=last_day.get("ctl", 0.0), acute=last_day.get("atl", 0.0))
+
+        # We still need to re-parse or filter activities for the specific "Last 7 Days" summary part.
+        # Since we use cached session, this is efficient.
         raw_activities = client.activities(days=days)
         activities = parse_activities(raw_activities)
 
         if not activities:
             return "No recent activities found."
 
-        # Logic from app/planning/summary.py
         today = get_utc_now().date()
         seven_days_ago = str(today - timedelta(days=7))
         last_7d = [a for a in activities if a.date >= seven_days_ago]
 
         tss_7d = sum(a.training_stress for a in last_7d)
         hours_7d = round(sum(a.duration_h for a in last_7d), 1)
-
-        load = compute_load(activities)
 
         return (
             "Recent Training (Last 7 Days):\n"

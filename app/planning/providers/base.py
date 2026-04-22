@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
+    from app.intervals.analysis import AnalysisResult
     from app.intervals.client import IntervalsClient
 
 
@@ -17,12 +18,13 @@ class MetricProvider(Protocol):
         """
         ...
 
-    async def provide_context(self, client: IntervalsClient, days: int) -> str:
+    async def provide_context(self, client: IntervalsClient, days: int, analysis: AnalysisResult | None = None) -> str:
         """Provides metric-specific context for the LLM.
 
         Args:
             client: The Intervals.icu client.
             days: Number of past days to analyze.
+            analysis: Optional pre-computed analysis result to avoid redundant computation.
 
         Returns:
             str: A formatted string containing the metric context.

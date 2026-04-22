@@ -7,6 +7,7 @@ from app.intervals.parser.activity import parse_activities
 from app.planning.providers.base import MetricProvider
 
 if TYPE_CHECKING:
+    from app.intervals.analysis import AnalysisResult
     from app.intervals.client import IntervalsClient
 
 
@@ -23,25 +24,29 @@ class FTPTrajectoryProvider(MetricProvider):
         return "ftp_trajectory"
 
     @override
-    async def provide_context(self, client: IntervalsClient, days: int) -> str:
+    async def provide_context(self, client: IntervalsClient, days: int, analysis: AnalysisResult | None = None) -> str:
         """Provides FTP trajectory context for the last 28 days.
 
         Args:
             client: The Intervals.icu client.
             days: Number of past days to analyze (overridden to 30 for trend).
+            analysis: Optional pre-computed analysis result.
 
         Returns:
             str: The formatted FTP trajectory.
         """
-        # FTP trajectory needs at least 28 days of history
-        raw_activities = client.activities(days=max(days, 30))
-        activities = parse_activities(raw_activities)
+        if analysis and analysis.ftp_trajectory:
+            traj = analysis.ftp_trajectory
+        else:
+            # FTP trajectory needs at least 28 days of history
+            raw_activities = client.activities(days=max(days, 30))
+            activities = parse_activities(raw_activities)
 
-        if not activities:
-            return "No activities found to determine FTP trajectory."
+            if not activities:
+                return "No activities found to determine FTP trajectory."
 
-        analysis = compute_analysis(activities)
-        traj = analysis.ftp_trajectory
+            analysis = compute_analysis(activities)
+            traj = analysis.ftp_trajectory
 
         if not traj or traj.get("current_ftp") is None:
             return "Current FTP data unavailable."
