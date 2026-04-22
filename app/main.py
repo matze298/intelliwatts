@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.auth.auth import hash_password
-from app.config import GLOBAL_SETTINGS, LanguageModel
+from app.config import LanguageModel, get_settings
 from app.db import init_db
 from app.dev.bootstrap import bootstrap_dev_user
 from app.models.user import User
@@ -44,8 +44,8 @@ app.include_router(auth.router)
 app.include_router(secrets.router)
 init_db()
 
-# Add settings to the App state
-app.state.settings = {"settings": GLOBAL_SETTINGS, "models": LanguageModel}
+# Add settings to the App state for templates
+app.state.settings = {"settings": get_settings(), "models": LanguageModel}
 
 
 @app.get("/health", tags=["infra"])
@@ -61,12 +61,13 @@ def health_check() -> dict[str, str]:
 if __name__ == "__main__":
     # Run code without FastAPI
     logging.basicConfig(level=logging.DEBUG)
-    if GLOBAL_SETTINGS.DEV_USER is None or GLOBAL_SETTINGS.DEV_PASSWORD is None:
+    settings = get_settings()
+    if settings.DEV_USER is None or settings.DEV_PASSWORD is None:
         msg = "DEV_USER and DEV_PASSWORD must be set to run main()"
         raise ValueError(msg)
     content = asyncio.run(
         generate_weekly_plan(
-            user=User(email=GLOBAL_SETTINGS.DEV_USER, password_hash=hash_password(GLOBAL_SETTINGS.DEV_PASSWORD)),
+            user=User(email=settings.DEV_USER, password_hash=hash_password(settings.DEV_PASSWORD)),
         )
     )
     _LOGGER.info("Generated plan:\n%s", content)
