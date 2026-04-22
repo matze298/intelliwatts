@@ -7,7 +7,6 @@ import pytest
 from app.intervals.analysis import (
     calculate_power_to_weight,
     compute_analysis,
-    compute_athlete_status,
     compute_load,
 )
 from app.intervals.parser.activity import ParsedActivity
@@ -243,19 +242,6 @@ def test_compute_analysis_fewer_than_42_days() -> None:
     assert analysis.wellness_summary is not None
     assert analysis.wellness_summary["hrv_42d"] == 65.0  # Average of 60 and 70
     assert analysis.wellness_summary["resting_hr_42d"] == 49.0  # Average of 50 and 48
-
-
-def test_compute_athlete_status(activities: list[ParsedActivity], wellness_data: list[ParsedWellness]) -> None:
-    """Tests the compute_athlete_status function."""
-    # GIVEN dummy activities and wellness data
-
-    # WHEN computing the athlete status
-    status = compute_athlete_status(activities, wellness_data=wellness_data)
-
-    # THEN the status contains load and wellness
-    assert math.isclose(status.load.chronic, 50.47, rel_tol=0.001)
-    assert status.wellness is not None
-    assert math.isclose(status.wellness["hrv_7d"], 65.0, rel_tol=0.001)
 
 
 def test_calculate_power_to_weight_success() -> None:

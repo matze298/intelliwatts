@@ -141,16 +141,6 @@ class AnalysisResult:
 
 
 @dataclass(frozen=True)
-class AthleteStatus:
-    """The current status of the athlete."""
-
-    load: TrainingLoad
-    wellness: dict[str, Any] | None
-    ftp_trajectory: dict[str, Any] | None = None
-    power_curve: dict[str, Any] | None = None
-
-
-@dataclass(frozen=True)
 class PMCResult:
     """Performance Management Chart results."""
 
@@ -521,34 +511,6 @@ def compute_load(activities: list[ParsedActivity]) -> TrainingLoad:
         return TrainingLoad(chronic=0, acute=0)
     last_day = analysis.daily_series[-1]
     return TrainingLoad(chronic=last_day["ctl"], acute=last_day["atl"])
-
-
-def compute_athlete_status(
-    activities: list[ParsedActivity],
-    wellness_data: list[ParsedWellness] | None = None,
-    power_curve: list[ParsedPowerCurve] | None = None,
-) -> AthleteStatus:
-    """Compute the complete status of the athlete (load and wellness).
-
-    Returns:
-        The athlete status.
-    """
-    analysis = compute_analysis(activities, wellness_data=wellness_data, power_curve=power_curve)
-    if not analysis.daily_series:
-        return AthleteStatus(
-            load=TrainingLoad(chronic=0, acute=0),
-            wellness=analysis.wellness_summary,
-            ftp_trajectory=analysis.ftp_trajectory,
-            power_curve=analysis.power_curve,
-        )
-    last_day = analysis.daily_series[-1]
-    load = TrainingLoad(chronic=last_day["ctl"], acute=last_day["atl"])
-    return AthleteStatus(
-        load=load,
-        wellness=analysis.wellness_summary,
-        ftp_trajectory=analysis.ftp_trajectory,
-        power_curve=analysis.power_curve,
-    )
 
 
 def calculate_power_to_weight(power_watts: float, weight_kg: float) -> float:
