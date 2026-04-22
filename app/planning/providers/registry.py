@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from app.planning.providers.activity import ActivityProvider
 from app.planning.providers.power_curve import PowerCurveProvider
+from app.planning.providers.resting_hr import RestingHRTrendProvider
 from app.planning.providers.wellness import WellnessProvider
 
 if TYPE_CHECKING:
@@ -49,3 +50,4 @@ registry = MetricRegistry()
 registry.register(ActivityProvider())
 registry.register(WellnessProvider())
 registry.register(PowerCurveProvider())
+registry.register(RestingHRTrendProvider())
