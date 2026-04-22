@@ -1,0 +1,47 @@
+<!-- app/templates/widgets/pmc_chart.html -->
+<div class="mb-12 p-6 rounded-lg shadow-inner bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm">
+    <h2 class="text-xl font-semibold mb-4">{{ widget.title }}</h2>
+    <canvas id="pmcChart" height="100"></canvas>
+</div>
+
+<script>
+    (function() {
+        const data = {{ widget.data | tojson }};
+        new Chart(document.getElementById('pmcChart'), {
+            type: 'line',
+            data: {
+                labels: data.dates,
+                datasets: [
+                    {
+                        label: 'Fitness (CTL)',
+                        data: data.ctl,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Fatigue (ATL)',
+                        data: data.atl,
+                        borderColor: '#ef4444',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Form (TSB)',
+                        data: data.tsb,
+                        borderColor: '#eab308',
+                        type: 'line',
+                        fill: false,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: false }
+                }
+            }
+        });
+    })();
+</script>
