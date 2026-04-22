@@ -14,7 +14,9 @@
 - **Structure**: MANDATORY. Follow the **GIVEN-WHEN-THEN** pattern and clearly mark each section with explicit comments (e.g., `# GIVEN`, `# WHEN`, `# THEN`) in every test function.
 - **Coverage**: Maintain high test coverage; verify with `pytest-cov`.
 - **Mocking**: Mock external services (LLMs, Intervals.icu API) using `unittest.mock`.
-- **Mirror Structure**: The `tests/` directory structure and file naming MUST strictly mirror the `app/` directory structure (e.g., `app/path/to/module.py` should be tested in `tests/path/to/test_module.py`).
+- **Mirror Structure**: The `tests/` directory structure and file naming MUST strictly mirror the `app/` directory structure. For example:
+    - `app/path/to/module.py` must be tested in `tests/path/to/test_module.py`.
+    - `app/planning/providers/wellness.py` must be tested in `tests/planning/providers/test_wellness.py`.
 
 ### 🎨 Frontend & Styling
 - **Framework**: **Tailwind CSS**.
