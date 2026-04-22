@@ -1,7 +1,5 @@
 """Wellness metric provider."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast, override
 

@@ -1,7 +1,5 @@
 """PMC (Performance Management Chart) metric provider."""
 
-from __future__ import annotations
-
 import math
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, override

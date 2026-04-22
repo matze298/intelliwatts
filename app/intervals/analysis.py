@@ -1,7 +1,5 @@
 """Calculate the sports science analysis."""
 
-from __future__ import annotations
-
 import math
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime, timedelta
