@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov", "requests-mock"]
+test = ["pytest", "pytest-asyncio", "pytest-cov", "requests-mock"]
 dev = ["black", "prek", "ruff", "ty"]
 
 # Hatch configuration
