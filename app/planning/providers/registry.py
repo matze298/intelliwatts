@@ -78,7 +78,7 @@ class MetricRegistry:
             results: Mapping of provider names to their calculation results.
 
         Returns:
-            str: Combined context string from all providers.
+            Combined context string from all providers.
         """
         contexts: list[str] = []
         for provider in self.providers:

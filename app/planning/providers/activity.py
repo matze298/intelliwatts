@@ -58,7 +58,7 @@ class ActivityProvider(MetricProvider[ActivityResult]):
             power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
-            ActivityResult: The structured calculation result.
+            The structured calculation result.
         """
         # 1. Pull pre-computed load from PMC provider results if available
         chronic = 0.0

@@ -76,7 +76,7 @@ class RestingHRTrendProvider(MetricProvider[RestingHRResult | None]):
             result: The result from the calculate method.
 
         Returns:
-            str: A formatted string containing the resting HR context.
+            A formatted string containing the resting HR context.
         """
         if result is None:
             return "No resting HR data available."

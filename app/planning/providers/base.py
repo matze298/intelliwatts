@@ -33,7 +33,7 @@ class MetricProvider(Protocol[T_co]):
         """Returns the unique name of the provider.
 
         Returns:
-            str: The provider name.
+            The provider name.
         """
         ...
 
@@ -57,7 +57,7 @@ class MetricProvider(Protocol[T_co]):
             power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
-            T_co: The calculation result.
+            The calculation result.
         """
         ...
 
@@ -68,7 +68,7 @@ class MetricProvider(Protocol[T_co]):
             result: The result from the calculate method.
 
         Returns:
-            str: A formatted string containing the metric context.
+            A formatted string containing the metric context.
         """
         ...
 
@@ -79,6 +79,6 @@ class MetricProvider(Protocol[T_co]):
             result: The result from the calculate method.
 
         Returns:
-            DashboardWidget | None: The widget data or None if not applicable.
+            The widget data or None if not applicable.
         """
         ...

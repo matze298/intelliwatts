@@ -56,7 +56,7 @@ class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
             power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
-            FTPTrajectoryResult | None: The structured calculation result.
+            The structured calculation result.
         """
         if not ftp_trajectory:
             return None

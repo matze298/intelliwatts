@@ -31,7 +31,7 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
         """Returns the provider name.
 
         Returns:
-            str: The provider name.
+            The provider name.
         """
         return "wellness"
 
@@ -56,7 +56,7 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
-            WellnessResult | None: The structured calculation result.
+            The structured calculation result.
         """
         if not wellness_summary:
             return None
@@ -76,7 +76,7 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             result: The result from the calculate method.
 
         Returns:
-            str: A formatted string containing the wellness context.
+            A formatted string containing the wellness context.
         """
         if result is None:
             return "No wellness data available."

@@ -58,7 +58,7 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
             power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
-            PowerCurveResult | None: The structured calculation result.
+            The structured calculation result.
         """
         # For now, bridge from analysis passed in kwargs (Phase 3 will move this)
         if not power_curve:
