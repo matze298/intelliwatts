@@ -98,70 +98,8 @@
             {% endfor %}
         </div>
 
-        <!-- 3. Wellness & Athlete Profile -->
-        <h2 class="text-2xl font-bold text-slate-200 mb-6">🩺 Wellness & Profile</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <!-- Readiness Card -->
-            <div class="p-6 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm border border-blue-400">
-                <h2 class="text-lg font-bold mb-4 text-blue-300">Readiness</h2>
-                {% if analysis.wellness_summary %}
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-slate-400">HRV (7d Avg)</span>
-                        <span class="text-xl font-bold text-blue-500">{{ "%.1f"|format(analysis.wellness_summary.hrv_7d or 0) }}ms</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-slate-400">Resting HR</span>
-                        <span class="text-xl font-bold text-red-500">{{ "%.0f"|format(analysis.wellness_summary.resting_hr_7d or 0) }} bpm</span>
-                    </div>
-                </div>
-                {% else %}
-                <p class="text-sm text-gray-500 italic">No wellness data available</p>
-                {% endif %}
-            </div>
-
-            <!-- FTP Trajectory Card -->
-            <div class="p-6 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm border border-green-400">
-                <h2 class="text-lg font-bold mb-4 text-green-300">FTP Trajectory (4w)</h2>
-                {% if analysis.ftp_trajectory and analysis.ftp_trajectory.current_ftp %}
-                <div class="space-y-2">
-                    <p class="text-3xl font-bold text-green-500">{{ analysis.ftp_trajectory.current_ftp }}W</p>
-                    <p class="text-sm {% if analysis.ftp_trajectory.change_pct >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-medium">
-                        {% if analysis.ftp_trajectory.change_pct >= 0 %}+{% endif %}{{ analysis.ftp_trajectory.change_pct }}% since last month
-                    </p>
-                </div>
-                {% else %}
-                <p class="text-sm text-gray-500 italic">No FTP trend data available</p>
-                {% endif %}
-            </div>
-
-            <!-- Power Curve Peaks -->
-            <div class="p-6 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm border border-yellow-400">
-                <h2 class="text-lg font-bold mb-4 text-yellow-300">Peak Power (90d)</h2>
-                {% if analysis.power_curve %}
-                <div class="grid grid-cols-2 gap-2 text-center">
-                    <div class="bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm p-2 rounded">
-                        <p class="text-xs text-slate-400">5s</p>
-                        <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_5s or '-' }}W</p>
-                    </div>
-                    <div class="bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm p-2 rounded">
-                        <p class="text-xs text-slate-400">1m</p>
-                        <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_1m or '-' }}W</p>
-                    </div>
-                    <div class="bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm p-2 rounded">
-                        <p class="text-xs text-slate-400">5m</p>
-                        <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_5m or '-' }}W</p>
-                    </div>
-                    <div class="bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm p-2 rounded">
-                        <p class="text-xs text-slate-400">20m</p>
-                        <p class="font-bold text-slate-200">{{ analysis.power_curve.peak_20m or '-' }}W</p>
-                    </div>
-                </div>
-                {% else %}
-                <p class="text-sm text-gray-500 italic">No power curve data available</p>
-                {% endif %}
-            </div>
-        </div>
+        <!-- 3. Activity Metrics -->
+        <h2 class="text-2xl font-bold text-slate-200 mb-6">📊 Activity Metrics</h2>
     </div>
 
     <script>

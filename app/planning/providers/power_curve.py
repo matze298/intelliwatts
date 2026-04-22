@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, override
 
-from app.planning.providers.base import MetricProvider
+from app.planning.providers.base import DashboardWidget, MetricProvider
 
 if TYPE_CHECKING:
     import polars as pl
@@ -33,7 +33,7 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
         """Returns the provider name.
 
         Returns:
-            str: The provider name.
+            The provider name.
         """
         return "power_curve"
 
@@ -60,7 +60,6 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
         Returns:
             The structured calculation result.
         """
-        # For now, bridge from analysis passed in kwargs (Phase 3 will move this)
         if not power_curve:
             return None
 
@@ -81,7 +80,7 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
             result: The result from the calculate method.
 
         Returns:
-            str: A formatted string containing the power curve context.
+            A formatted string containing the power curve context.
         """
         if result is None:
             return "No power curve data available."
@@ -97,10 +96,22 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
         )
 
     @override
-    def get_dashboard_widget(self, result: PowerCurveResult | None) -> None:
+    def get_dashboard_widget(self, result: PowerCurveResult | None) -> DashboardWidget | None:
         """Format the calculation result for the dashboard.
 
         Args:
             result: The result from the calculate method.
+
+        Returns:
+            The dashboard widget.
         """
-        return
+        if result is None or result.peak_20m is None:
+            return None
+
+        return DashboardWidget(
+            name="power_curve",
+            title="Power Peaks",
+            value=f"{result.peak_20m} W",
+            trend="20m Peak",
+            trend_positive=True,
+        )
