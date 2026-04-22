@@ -28,17 +28,14 @@ async def test_ftp_trajectory_provider_context() -> None:
 
 def test_ftp_trajectory_provider_no_data() -> None:
     """Test that FTPTrajectoryProvider handles missing data gracefully."""
-    # GIVEN: An analysis result with no FTP trajectory.
+    # GIVEN: An empty daily series.
     client = MagicMock(spec=IntervalsClient)
-    analysis = MagicMock()
-    analysis.ftp_trajectory = None
-    analysis.daily_series = []
+    daily_df = pl.DataFrame([])
 
     provider = FTPTrajectoryProvider()
 
     # WHEN: Calculating FTP trajectory result with no data.
-    daily_df = pl.DataFrame(analysis.daily_series)
-    result = provider.calculate(daily_df, client=client, ftp_trajectory=None)
+    result = provider.calculate(daily_df, client=client)
 
     # THEN: Result should be None.
     assert result is None

@@ -149,44 +149,6 @@
             // Chart Data
             const analysis = {{ analysis | tojson }};
 
-            // PMC Chart
-            new Chart(document.getElementById('pmcChart'), {
-                type: 'line',
-                data: {
-                    labels: analysis.daily_series.map(d => d.date),
-                    datasets: [
-                        {
-                            label: 'Fitness (CTL)',
-                            data: analysis.daily_series.map(d => d.ctl),
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Fatigue (ATL)',
-                            data: analysis.daily_series.map(d => d.atl),
-                            borderColor: '#ef4444',
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Form (TSB)',
-                            data: analysis.daily_series.map(d => d.tsb),
-                            borderColor: '#eab308',
-                            type: 'line',
-                            fill: false,
-                            tension: 0.4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: { beginAtZero: false }
-                    }
-                }
-            });
-
             // Weekly Chart
             new Chart(document.getElementById('weeklyChart'), {
                 type: 'bar',

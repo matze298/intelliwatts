@@ -41,9 +41,6 @@ class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
         provider_results: dict[str, Any] | None = None,
-        wellness_summary: dict[str, Any] | None = None,
-        ftp_trajectory: dict[str, Any] | None = None,
-        power_curve: dict[str, Any] | None = None,
     ) -> FTPTrajectoryResult | None:
         """Perform calculations on raw data and return a structured result.
 
@@ -51,23 +48,11 @@ class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
             provider_results: Mapping of previous provider results.
-            wellness_summary: Legacy wellness summary from analysis.py.
-            ftp_trajectory: Legacy FTP trajectory from analysis.py.
-            power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
             The structured calculation result.
         """
-        # 1. Handle legacy fallback
-        if ftp_trajectory:
-            return FTPTrajectoryResult(
-                current_ftp=ftp_trajectory.get("current_ftp"),
-                ftp_4w_ago=ftp_trajectory.get("ftp_4w_ago"),
-                change_pct=ftp_trajectory.get("change_pct"),
-                days_analyzed=FTP_TRAJECTORY_LOOKBACK_DAYS,
-            )
-
-        # 2. Calculate from daily_df
+        # Calculate from daily_df
         if daily_df.is_empty() or "ftp" not in daily_df.columns:
             return None
 

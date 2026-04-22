@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, override
 
-from app.intervals.analysis import TrainingLoad
+from app.intervals.models import TrainingLoad
 from app.intervals.parser.activity import parse_activities
 from app.planning.providers.interfaces import MetricProvider
 
@@ -41,9 +41,6 @@ class ActivityProvider(MetricProvider[ActivityResult]):
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
         provider_results: dict[str, Any] | None = None,
-        wellness_summary: dict[str, Any] | None = None,
-        ftp_trajectory: dict[str, Any] | None = None,
-        power_curve: dict[str, Any] | None = None,
     ) -> ActivityResult:
         """Perform calculations on raw data and return a structured result.
 
@@ -51,9 +48,6 @@ class ActivityProvider(MetricProvider[ActivityResult]):
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
             provider_results: Mapping of previous provider results.
-            wellness_summary: Legacy wellness summary from analysis.py.
-            ftp_trajectory: Legacy FTP trajectory from analysis.py.
-            power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
             The structured calculation result.

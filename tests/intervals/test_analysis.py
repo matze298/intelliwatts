@@ -3,11 +3,11 @@
 import pytest
 
 from app.intervals.analysis import (
-    AnalysisResult,
     calculate_watts_per_kg,
     compute_analysis,
     compute_load,
 )
+from app.intervals.models import AnalysisResult
 from app.intervals.parser.activity import ParsedActivity
 from app.intervals.parser.power_curve import ParsedPowerCurve, PowerCurvePoint
 from app.intervals.parser.wellness import ParsedWellness

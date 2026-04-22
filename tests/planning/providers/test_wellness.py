@@ -6,29 +6,24 @@ import polars as pl
 import pytest
 
 from app.intervals.client import IntervalsClient
-from app.planning.providers.wellness import WellnessProvider
+from app.planning.providers.wellness import WellnessProvider, WellnessResult
 
 
 @pytest.mark.asyncio
 async def test_wellness_provider_context() -> None:
     """Test that WellnessProvider returns the correct context string."""
-    # GIVEN: A mocked analysis result with wellness trends.
-    client = MagicMock(spec=IntervalsClient)
-    analysis = MagicMock()
-    analysis.wellness_summary = {
-        "hrv_7d": 60.0,
-        "hrv_42d": 65.0,
-        "resting_hr_7d": 50.0,
-        "resting_hr_42d": 52.0,
-    }
-    analysis.daily_series = []
+    # GIVEN: A result object for testing provide_context.
+
+    result = WellnessResult(
+        hrv_7d=60.0,
+        hrv_42d=65.0,
+        rhr_7d=50.0,
+        rhr_42d=52.0,
+    )
 
     provider = WellnessProvider()
 
     # WHEN: Generating wellness context.
-    daily_df = pl.DataFrame(analysis.daily_series)
-    result = provider.calculate(daily_df, client=client, wellness_summary=analysis.wellness_summary)
-    assert result is not None
     context = await provider.provide_context(result)
 
     # THEN: The context should include HRV and RHR averages from analysis.
@@ -41,17 +36,14 @@ async def test_wellness_provider_context() -> None:
 
 def test_wellness_provider_no_data() -> None:
     """Test that WellnessProvider handles missing data gracefully."""
-    # GIVEN: An analysis result with no wellness summary.
+    # GIVEN: An empty daily series.
     client = MagicMock(spec=IntervalsClient)
-    analysis = MagicMock()
-    analysis.wellness_summary = None
-    analysis.daily_series = []
+    daily_df = pl.DataFrame([])
 
     provider = WellnessProvider()
 
     # WHEN: Calculating wellness result with no data.
-    daily_df = pl.DataFrame(analysis.daily_series)
-    result = provider.calculate(daily_df, client=client, wellness_summary=analysis.wellness_summary)
+    result = provider.calculate(daily_df, client=client)
 
     # THEN: Result should be None.
     assert result is None

@@ -35,18 +35,12 @@ class MetricRegistry:
         self,
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
-        wellness_summary: dict[str, Any] | None = None,
-        ftp_trajectory: dict[str, Any] | None = None,
-        power_curve: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], list[DashboardWidget]]:
         """Run calculations for all providers and collect results/widgets.
 
         Args:
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
-            wellness_summary: Legacy wellness summary from analysis.py.
-            ftp_trajectory: Legacy FTP trajectory from analysis.py.
-            power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
             tuple[dict[str, Any], list[DashboardWidget]]: A tuple containing:
@@ -60,9 +54,6 @@ class MetricRegistry:
                 daily_df,
                 client=client,
                 provider_results=results,
-                wellness_summary=wellness_summary,
-                ftp_trajectory=ftp_trajectory,
-                power_curve=power_curve,
             )
             results[provider.get_name()] = res
             widget = provider.get_dashboard_widget(res)

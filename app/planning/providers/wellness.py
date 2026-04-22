@@ -39,9 +39,6 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
         provider_results: dict[str, Any] | None = None,
-        wellness_summary: dict[str, Any] | None = None,
-        ftp_trajectory: dict[str, Any] | None = None,
-        power_curve: dict[str, Any] | None = None,
     ) -> WellnessResult | None:
         """Perform calculations on raw data and return a structured result.
 
@@ -49,23 +46,11 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
             provider_results: Mapping of previous provider results.
-            wellness_summary: Legacy wellness summary from analysis.py.
-            ftp_trajectory: Legacy FTP trajectory from analysis.py.
-            power_curve: Legacy power curve summary from analysis.py.
 
         Returns:
             The structured calculation result.
         """
-        # If legacy summary is provided, use it
-        if wellness_summary:
-            return WellnessResult(
-                hrv_7d=wellness_summary.get("hrv_7d"),
-                hrv_42d=wellness_summary.get("hrv_42d"),
-                rhr_7d=wellness_summary.get("resting_hr_7d"),
-                rhr_42d=wellness_summary.get("resting_hr_42d"),
-            )
-
-        # Otherwise calculate from daily_df if columns exist
+        # Calculate from daily_df if columns exist
         if "hrv" not in daily_df.columns or "resting_hr" not in daily_df.columns:
             return None
 
