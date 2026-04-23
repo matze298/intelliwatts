@@ -175,3 +175,38 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     # THEN it should render successfully
     assert resp.status_code == 200
     assert "Dashboard" in resp.text
+
+
+@patch("app.services.planner.generate_plan")
+@patch("app.services.planner.IntervalsClient")
+def test_planning_flow(
+    mock_client_class: MagicMock,  # noqa: ARG001
+    mock_gen_plan: MagicMock,
+    client: TestClient,
+    mock_llm_response: LLMResponse,
+) -> None:
+    """Tests the Planning flow (Web and API) with mocks.
+
+    Args:
+        mock_client_class: Mock for IntervalsClient class.
+        mock_gen_plan: Mock for generate_plan.
+        client: The test client.
+        mock_llm_response: Mocked LLM response.
+    """
+    # GIVEN an authenticated user
+    email = "journey@example.com"
+    password = "password123"  # noqa: S105
+    client.post("/login", data={"email": email, "password": password})
+    mock_gen_plan.return_value = mock_llm_response
+
+    # WHEN generating a plan via WEB
+    resp = client.post("/generate", data={"max_hours": "10", "max_sessions": "5"}, follow_redirects=True)
+    # THEN it should render successfully
+    assert resp.status_code == 200
+    assert "Weekly Plan" in resp.text
+
+    # AND generating via API
+    resp = client.post("/api/generate-plan")
+    # THEN it should return JSON
+    assert resp.status_code == 200
+    assert "plan" in resp.json()
