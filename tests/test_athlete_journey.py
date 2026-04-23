@@ -88,3 +88,27 @@ def mock_llm_response() -> LLMResponse:
         plan="## Weekly Plan\n\n- Monday: Easy Run",
         prompt=[{"role": "user", "content": "test"}],
     )
+
+
+def test_authentication_flow(client: TestClient) -> None:
+    """Tests the Register -> Login flow.
+
+    Args:
+        client: The test client.
+    """
+    # GIVEN a fresh app
+    email = "journey@example.com"
+    password = "password123"  # noqa: S105
+
+    # WHEN registering
+    resp = client.post("/register", data={"email": email, "password": password}, follow_redirects=True)
+    # THEN it should redirect to login
+    assert resp.status_code == 200
+    assert "login" in str(resp.url).lower()
+
+    # AND logging in
+    resp = client.post("/login", data={"email": email, "password": password}, follow_redirects=True)
+    # THEN it should redirect to home and set cookie
+    assert resp.status_code == 200
+    assert resp.url.path == "/"
+    assert "access_token" in client.cookies
