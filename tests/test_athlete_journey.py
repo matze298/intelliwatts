@@ -5,15 +5,26 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import Session, delete
 
+from app.db import engine
 from app.intervals.parser.activity import ParsedActivity
 from app.intervals.parser.power_curve import ParsedPowerCurve, PowerCurvePoint
 from app.intervals.parser.wellness import ParsedWellness
 from app.main import app
+from app.models.user import User
 from app.planning.llm import LLMResponse
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+
+@pytest.fixture(autouse=True)
+def clear_db() -> None:
+    """Clears the database before each test."""
+    with Session(engine) as session:
+        session.exec(delete(User))
+        session.commit()
 
 
 @pytest.fixture
@@ -98,7 +109,7 @@ def test_authentication_flow(client: TestClient) -> None:
         client: The test client.
     """
     # GIVEN a fresh app
-    email = "journey@example.com"
+    email = "auth_journey@example.com"
     password = "password123"  # noqa: S105
 
     # WHEN registering
@@ -145,8 +156,9 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
         mock_power_curves: Mocked power curves.
     """
     # GIVEN an authenticated user
-    email = "journey@example.com"
+    email = "dashboard_journey@example.com"
     password = "password123"  # noqa: S105
+    client.post("/register", data={"email": email, "password": password})
     client.post("/login", data={"email": email, "password": password})
 
     mock_parse_a.return_value = mock_activities
@@ -194,8 +206,9 @@ def test_planning_flow(
         mock_llm_response: Mocked LLM response.
     """
     # GIVEN an authenticated user
-    email = "journey@example.com"
+    email = "planning_journey@example.com"
     password = "password123"  # noqa: S105
+    client.post("/register", data={"email": email, "password": password})
     client.post("/login", data={"email": email, "password": password})
     mock_gen_plan.return_value = mock_llm_response
 
@@ -210,3 +223,30 @@ def test_planning_flow(
     # THEN it should return JSON
     assert resp.status_code == 200
     assert "plan" in resp.json()
+
+
+def test_secrets_flow(client: TestClient) -> None:
+    """Tests the Secrets storage flow.
+
+    Args:
+        client: The test client.
+    """
+    # GIVEN an authenticated user
+    email = "secrets_journey@example.com"
+    password = "password123"  # noqa: S105
+    client.post("/register", data={"email": email, "password": password})
+    client.post("/login", data={"email": email, "password": password})
+
+    # WHEN storing secrets
+    resp = client.post(
+        "/secrets/store",
+        params={
+            "athlete_id": "123",
+            "intervals_api_key": "abc",
+            "openai_api_key": "sk-123",
+        },
+    )
+
+    # THEN it should be successful
+    assert resp.status_code == 200
+    assert resp.json() == {"stored": True}
