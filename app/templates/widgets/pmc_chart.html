@@ -1,7 +1,9 @@
 <!-- app/templates/widgets/pmc_chart.html -->
-<div class="mb-12 p-6 rounded-lg shadow-inner bg-slate-500 bg-opacity-10 border border-slate-700 shadow-sm">
-    <h2 class="text-xl font-semibold mb-4">{{ widget.title }}</h2>
-    <canvas id="pmcChart" height="100"></canvas>
+<div class="p-8 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 space-y-6">
+    <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">📊 Performance Management</h2>
+    <div class="relative w-full overflow-hidden">
+        <canvas id="pmcChart" height="120"></canvas>
+    </div>
 </div>
 
 <script>
@@ -18,13 +20,17 @@
                         borderColor: '#3b82f6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         fill: true,
-                        tension: 0.4
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 0
                     },
                     {
                         label: 'Fatigue (ATL)',
                         data: data.atl,
                         borderColor: '#ef4444',
-                        tension: 0.4
+                        tension: 0.4,
+                        borderWidth: 1.5,
+                        pointRadius: 0
                     },
                     {
                         label: 'Form (TSB)',
@@ -32,14 +38,37 @@
                         borderColor: '#eab308',
                         type: 'line',
                         fill: false,
-                        tension: 0.4
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointRadius: 0
                     }
                 ]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#94a3b8',
+                            usePointStyle: true,
+                            boxWidth: 6,
+                            padding: 20,
+                            font: { weight: 'bold', size: 10 }
+                        }
+                    }
+                },
                 scales: {
-                    y: { beginAtZero: false }
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#64748b', font: { size: 10 } }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        ticks: { color: '#64748b', font: { size: 10 } }
+                    }
                 }
             }
         });
