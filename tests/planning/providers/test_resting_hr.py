@@ -1,5 +1,7 @@
 """Tests for the resting HR trend provider."""
 
+import asyncio
+
 from app.planning.providers.resting_hr import RestingHRResult, RestingHRTrendProvider
 
 
@@ -20,3 +22,16 @@ def test_resting_hr_widget() -> None:
 
     # THEN returns None (no widget for resting_hr currently)
     assert widget is None
+
+
+def test_resting_hr_increasing_trend() -> None:
+    """Tests the increasing trend detection."""
+    # GIVEN an increasing HR calculation
+    provider = RestingHRTrendProvider()
+    result = RestingHRResult(current_hr=55.0, avg_hr=52.0, is_increasing=True, recent_trend=[52.0, 55.0])
+
+    # WHEN providing context
+    # THEN it should report increased status
+    context = asyncio.run(provider.provide_context(result))
+
+    assert "Resting HR is increased" in context

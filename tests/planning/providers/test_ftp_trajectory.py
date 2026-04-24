@@ -24,3 +24,16 @@ def test_ftp_trajectory_widget() -> None:
     assert widget.value == "260 W"
     assert widget.trend == "+10.0 W"
     assert widget.trend_positive is True
+
+
+def test_ftp_trajectory_empty() -> None:
+    """Tests the FTP trajectory with empty data."""
+    # GIVEN no FTP data
+    provider = FTPTrajectoryProvider()
+    result = None
+
+    # WHEN formatting for dashboard
+    widget = provider.get_dashboard_widget(result)
+
+    # THEN returns None
+    assert widget is None

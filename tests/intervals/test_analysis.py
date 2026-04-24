@@ -245,3 +245,23 @@ def test_compute_power_curve_summary() -> None:
     # THEN basic result is returned
     assert isinstance(analysis, AnalysisResult)
     assert "power_curve" in analysis.provider_results
+
+
+def test_compute_analysis_empty() -> None:
+    """Test compute analysis with empty inputs."""
+    # GIVEN no inputs
+    # WHEN computing analysis
+    result = compute_analysis([], wellness_data=[], power_curve=[])
+    # THEN returns empty result
+    assert isinstance(result, AnalysisResult)
+    assert not result.provider_results
+
+
+def test_compute_load_no_pmc() -> None:
+    """Test compute load when PMC provider returns no data."""
+    # GIVEN no activities (so no PMC)
+    # WHEN computing load
+    load = compute_load([])
+    # THEN returns zero load
+    assert load.chronic == 0.0
+    assert load.acute == 0.0
