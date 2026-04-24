@@ -3,11 +3,11 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, override
 
+import polars as pl
+
 from app.planning.providers.interfaces import DashboardWidget, MetricProvider
 
 if TYPE_CHECKING:
-    import polars as pl
-
     from app.intervals.client import IntervalsClient
 
 # Constants for training styles
@@ -57,8 +57,8 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         Returns:
             The structured calculation result.
         """
-        hr_totals = _sum_zones(daily_df, "hr_zone_times")
-        power_totals = _sum_zones(daily_df, "power_zone_times")
+        hr_totals = self._sum_zones_polars(daily_df, "hr_zone_times")
+        power_totals = self._sum_zones_polars(daily_df, "power_zone_times")
 
         hr_sum_secs = sum(hr_totals)
         power_sum_secs = sum(power_totals)
@@ -73,7 +73,7 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         elif len(power_zones_pct) >= MIN_ZONES_FOR_POLARIZED:
             polarized_score = power_zones_pct[0] + power_zones_pct[1]
 
-        style = _detect_style(polarized_score)
+        style = self._detect_style(polarized_score)
 
         return IntensityResult(
             hr_zones_pct=hr_zones_pct,
@@ -83,6 +83,70 @@ class IntensityProvider(MetricProvider[IntensityResult]):
             polarized_score=polarized_score,
             style=style,
         )
+
+    @staticmethod
+    def _sum_zones_polars(daily_df: pl.DataFrame, col_name: str) -> list[int]:
+        """Sum zone times across all days using Polars for better performance.
+
+        Args:
+            daily_df: The daily dataframe.
+            col_name: The column name to sum.
+
+        Returns:
+            The list of summed zone times.
+        """
+        if col_name not in daily_df.columns:
+            return []
+
+        # Robust extraction and flattening using Polars
+        try:
+            # Keep track of which activity each zone belongs to for index-wise summing
+            # We convert to a dedicated dataframe to maintain structure
+            df_zones = daily_df.select(col_name).filter(pl.col(col_name).is_not_null())
+            if df_zones.is_empty():
+                return []
+
+            # Explode once to handle the aggregation (one row per activity)
+            df_zones = df_zones.explode(col_name)
+
+            # Now we have one row per activity, where col_name is list[int] or list[dict]
+            # Add a unique ID per activity
+            df_zones = df_zones.with_row_index("activity_id").explode(col_name)
+
+            # Now we have one row per zone per activity.
+            # col_name is now scalar (int or dict)
+
+            # Extract 'secs' if it's a dict
+            if df_zones[col_name].dtype == pl.Struct:
+                # Handle struct/dict from Power zones
+                df_zones = df_zones.with_columns(val=pl.col(col_name).struct.field("secs").fill_null(0))
+            else:
+                df_zones = df_zones.with_columns(val=pl.col(col_name).fill_null(0).cast(pl.Int64))
+
+            # Add zone index within each activity to sum corresponding zones
+            df_zones = df_zones.with_columns(zone_idx=pl.int_range(0, pl.len()).over("activity_id"))
+
+            # Sum by zone index
+            res = df_zones.group_by("zone_idx").agg(pl.col("val").sum()).sort("zone_idx")
+            return res["val"].to_list()
+        except pl.exceptions.ColumnNotFoundError, pl.exceptions.ComputeError, pl.exceptions.SchemaError:
+            return []
+
+    @staticmethod
+    def _detect_style(polarized_score: float) -> str:
+        """Detect the training style based on the polarized score.
+
+        Args:
+            polarized_score: The percentage of time in Z1 and Z2.
+
+        Returns:
+            The detected training style name.
+        """
+        if polarized_score > HIGHLY_POLARIZED_THRESHOLD:
+            return "Highly Polarized"
+        if polarized_score < THRESHOLD_PYRAMIDAL_THRESHOLD:
+            return "Threshold/Pyramidal"
+        return "Base Building"
 
     @override
     async def provide_context(self, result: IntensityResult) -> str:
@@ -135,80 +199,3 @@ class IntensityProvider(MetricProvider[IntensityResult]):
                 "polarized_score": result.polarized_score,
             },
         )
-
-
-def _sum_zones(daily_df: pl.DataFrame, col_name: str) -> list[int]:
-    """Sum zone times across all days.
-
-    Args:
-        daily_df: The daily dataframe.
-        col_name: The column name to sum.
-
-    Returns:
-        The list of summed zone times.
-    """
-    if col_name not in daily_df.columns:
-        return []
-
-    raw_data = daily_df[col_name].to_list()
-    flattened = _flatten_zone_data(raw_data)
-
-    if not flattened:
-        return []
-
-    # Calculate max length once
-    max_len = max(len(row) for row in flattened)
-    totals = [0] * max_len
-    for row in flattened:
-        for i, val in enumerate(row):
-            if val is not None:
-                if isinstance(val, dict):
-                    totals[i] += val.get("secs", 0)
-                elif isinstance(val, (int, float)):
-                    totals[i] += int(val)
-    return totals
-
-
-def _flatten_zone_data(raw_data: list[Any]) -> list[list[Any]]:
-    """Flatten nested zone data from aggregation.
-
-    Args:
-        raw_data: List of potentially nested zone time data.
-
-    Returns:
-        Flattened list of lists.
-    """
-    flattened = []
-    for item in raw_data:
-        if item is None:
-            continue
-        if not isinstance(item, list):
-            continue
-
-        # Determine if this 'item' is a single row or a list of rows (from agg)
-        # A row is a list of scalars (ints/floats) or a list of dicts.
-        is_collection_of_rows = any(isinstance(sub, list) for sub in item)
-
-        if is_collection_of_rows:
-            # Use list comprehension and extend for cleaner code
-            flattened.extend([sub for sub in item if isinstance(sub, list)])
-        else:
-            # It's a single row
-            flattened.append(item)
-    return flattened
-
-
-def _detect_style(polarized_score: float) -> str:
-    """Detect the training style based on the polarized score.
-
-    Args:
-        polarized_score: The percentage of time in Z1 and Z2.
-
-    Returns:
-        The detected training style name.
-    """
-    if polarized_score > HIGHLY_POLARIZED_THRESHOLD:
-        return "Highly Polarized"
-    if polarized_score < THRESHOLD_PYRAMIDAL_THRESHOLD:
-        return "Threshold/Pyramidal"
-    return "Base Building"
