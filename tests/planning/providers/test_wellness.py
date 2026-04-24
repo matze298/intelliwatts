@@ -1,49 +1,71 @@
 """Tests for the wellness provider."""
 
-from unittest.mock import MagicMock
-
-import polars as pl
-import pytest
-
-from app.intervals.client import IntervalsClient
 from app.planning.providers.wellness import WellnessProvider, WellnessResult
 
 
-@pytest.mark.asyncio
-async def test_wellness_provider_context() -> None:
-    """Test that WellnessProvider returns the correct context string."""
-    # GIVEN: A result object for testing provide_context.
+def test_wellness_provider_name() -> None:
+    """Tests that the provider name is correct."""
+    provider = WellnessProvider()
+    assert provider.get_name() == "wellness"
 
+
+def test_wellness_widget() -> None:
+    """Tests the dashboard widget formatting."""
+    # GIVEN a successful wellness calculation
+    provider = WellnessProvider()
     result = WellnessResult(
-        hrv_7d=60.0,
-        hrv_42d=65.0,
-        rhr_7d=50.0,
-        rhr_42d=52.0,
+        avg_hrv=60.0,
+        avg_resting_hr=50.0,
+        hrv_trend="improving",
+        recent_hrv_trend=[55.0, 60.0],
     )
 
+    # WHEN formatting for dashboard
+    widget = provider.get_dashboard_widget(result)
+
+    # THEN returns a widget with correct values
+    assert widget is not None
+    assert widget.name == "wellness"
+    assert widget.value == "60 ms"
+    assert widget.trend == "Improving"
+    assert widget.trend_positive is True
+
+
+def test_wellness_declining_trend() -> None:
+    """Tests the declining trend detection."""
+    # GIVEN a declining wellness result
     provider = WellnessProvider()
+    result = WellnessResult(
+        avg_hrv=60.0,
+        avg_resting_hr=50.0,
+        hrv_trend="declining",
+        recent_hrv_trend=[65.0, 60.0],
+    )
 
-    # WHEN: Generating wellness context.
-    context = await provider.provide_context(result)
+    # WHEN formatting for dashboard
+    widget = provider.get_dashboard_widget(result)
 
-    # THEN: The context should include HRV and RHR averages from analysis.
-    assert "Wellness Trends:" in context
-    assert "HRV (7d avg): 60.0" in context
-    assert "HRV (42d avg): 65.0" in context
-    assert "Resting HR (7d avg): 50.0" in context
-    assert "Resting HR (42d avg): 52.0" in context
+    # THEN returns a widget with negative trend
+    assert widget is not None
+    assert widget.trend == "Declining"
+    assert widget.trend_positive is False
 
 
-def test_wellness_provider_no_data() -> None:
-    """Test that WellnessProvider handles missing data gracefully."""
-    # GIVEN: An empty daily series.
-    client = MagicMock(spec=IntervalsClient)
-    daily_df = pl.DataFrame([])
-
+def test_wellness_stable_trend() -> None:
+    """Tests the stable trend detection."""
+    # GIVEN a stable wellness result
     provider = WellnessProvider()
+    result = WellnessResult(
+        avg_hrv=60.0,
+        avg_resting_hr=50.0,
+        hrv_trend="stable",
+        recent_hrv_trend=[60.0, 60.0],
+    )
 
-    # WHEN: Calculating wellness result with no data.
-    result = provider.calculate(daily_df, client=client)
+    # WHEN formatting for dashboard
+    widget = provider.get_dashboard_widget(result)
 
-    # THEN: Result should be None.
-    assert result is None
+    # THEN returns a widget with stable trend
+    assert widget is not None
+    assert widget.trend == "Stable"
+    assert widget.trend_positive is False

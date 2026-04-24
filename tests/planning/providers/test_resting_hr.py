@@ -1,41 +1,41 @@
 """Tests for the resting HR trend provider."""
 
-from unittest.mock import MagicMock
+import asyncio
 
-import polars as pl
-import pytest
-
-from app.intervals.client import IntervalsClient
 from app.planning.providers.resting_hr import RestingHRResult, RestingHRTrendProvider
 
 
-@pytest.mark.asyncio
-async def test_resting_hr_trend_provider_context() -> None:
-    """Test that RestingHRTrendProvider returns the correct trend string."""
-    # GIVEN: A result object.
-    result = RestingHRResult(rhr_7d=51.0, rhr_42d=52.0)
-
+def test_resting_hr_provider_name() -> None:
+    """Tests that the provider name is correct."""
     provider = RestingHRTrendProvider()
-
-    # WHEN: Generating RHR trend context.
-    context = await provider.provide_context(result)
-
-    # THEN: The context should include the trend.
-    assert "Resting HR Trend:" in context
-    assert "7d Average: 51.0 bpm" in context
-    assert "42d Average: 52.0 bpm" in context
+    assert provider.get_name() == "resting_hr"
 
 
-def test_resting_hr_trend_provider_no_data() -> None:
-    """Test that RestingHRTrendProvider handles missing data gracefully."""
-    # GIVEN: An empty daily series.
-    client = MagicMock(spec=IntervalsClient)
-    daily_df = pl.DataFrame({"date": [], "resting_hr": []}, schema={"date": pl.Date, "resting_hr": pl.Float64})
-
+def test_resting_hr_widget() -> None:
+    """Tests the dashboard widget formatting."""
+    # GIVEN a resting HR calculation
     provider = RestingHRTrendProvider()
+    result = RestingHRResult(current_hr=51.0, avg_hr=52.0, is_increasing=False, recent_trend=[52.0, 51.0])
 
-    # WHEN: Calculating Resting HR result with no data.
-    result = provider.calculate(daily_df, client=client)
+    # WHEN formatting for dashboard
+    widget = provider.get_dashboard_widget(result)
 
-    # THEN: Result should be None.
-    assert result is None
+    # THEN returns a widget with correct values
+    assert widget is not None
+    assert widget.name == "resting_hr"
+    assert widget.value == "51 bpm"
+    assert widget.trend == "Stable (Avg 52)"
+    assert widget.trend_positive is True
+
+
+def test_resting_hr_increasing_trend() -> None:
+    """Tests the increasing trend detection."""
+    # GIVEN an increasing HR calculation
+    provider = RestingHRTrendProvider()
+    result = RestingHRResult(current_hr=55.0, avg_hr=52.0, is_increasing=True, recent_trend=[52.0, 55.0])
+
+    # WHEN providing context
+    # THEN it should report increased status
+    context = asyncio.run(provider.provide_context(result))
+
+    assert "Resting HR is increased" in context

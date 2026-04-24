@@ -10,19 +10,21 @@ if TYPE_CHECKING:
 
     from app.intervals.client import IntervalsClient
 
+RECENT_DAYS = 7
+
 
 @dataclass(frozen=True)
 class WellnessResult:
     """Result of the wellness calculation."""
 
-    hrv_7d: float | None
-    hrv_42d: float | None
-    rhr_7d: float | None
-    rhr_42d: float | None
+    avg_hrv: float
+    avg_resting_hr: float
+    hrv_trend: str  # "improving", "declining", "stable"
+    recent_hrv_trend: list[float]
 
 
 class WellnessProvider(MetricProvider[WellnessResult | None]):
-    """Provides wellness-related context."""
+    """Provides wellness context for the last days."""
 
     @override
     def get_name(self) -> str:
@@ -50,25 +52,42 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
         Returns:
             The structured calculation result.
         """
-        # Calculate from daily_df if columns exist
-        if "hrv" not in daily_df.columns or "resting_hr" not in daily_df.columns:
+        if "hrv" not in daily_df.columns:
             return None
 
-        hrv_7d = daily_df["hrv"].tail(7).mean()
-        hrv_42d = daily_df["hrv"].tail(42).mean()
-        rhr_7d = daily_df["resting_hr"].tail(7).mean()
-        rhr_42d = daily_df["resting_hr"].tail(42).mean()
+        # Filter out nulls
+        df = daily_df.filter(daily_df["hrv"].is_not_null())
+        if df.is_empty():
+            return None
+
+        avg_hrv = cast("float", df["hrv"].mean())
+        avg_resting_hr = cast("float", df["resting_hr"].mean()) if "resting_hr" in df.columns else 0.0
+
+        # Simple trend analysis
+        if len(df) >= RECENT_DAYS:
+            recent_hrv_series = df["hrv"][-RECENT_DAYS:]
+            recent_hrv = cast("float", recent_hrv_series.mean())
+            if recent_hrv > avg_hrv * 1.05:
+                trend = "improving"
+            elif recent_hrv < avg_hrv * 0.95:
+                trend = "declining"
+            else:
+                trend = "stable"
+            recent_hrv_trend = recent_hrv_series.to_list()
+        else:
+            trend = "stable"
+            recent_hrv_trend = df["hrv"].to_list()
 
         return WellnessResult(
-            hrv_7d=float(cast("float", hrv_7d)) if hrv_7d is not None else None,
-            hrv_42d=float(cast("float", hrv_42d)) if hrv_42d is not None else None,
-            rhr_7d=float(cast("float", rhr_7d)) if rhr_7d is not None else None,
-            rhr_42d=float(cast("float", rhr_42d)) if rhr_42d is not None else None,
+            avg_hrv=avg_hrv,
+            avg_resting_hr=avg_resting_hr,
+            hrv_trend=trend,
+            recent_hrv_trend=recent_hrv_trend,
         )
 
     @override
     async def provide_context(self, result: WellnessResult | None) -> str:
-        """Provides wellness context based on the analysis.
+        """Provides wellness context.
 
         Args:
             result: The result from the calculate method.
@@ -79,43 +98,35 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
         if result is None:
             return "No wellness data available."
 
-        hrv_7d = result.hrv_7d or 0.0
-        hrv_42d = result.hrv_42d or 0.0
-        rhr_7d = result.rhr_7d or 0.0
-        rhr_42d = result.rhr_42d or 0.0
-
+        trend_str = ", ".join([f"{v:.0f}" for v in result.recent_hrv_trend])
         return (
-            "Wellness Trends:\n"
-            f"- HRV (7d avg): {hrv_7d:.1f}\n"
-            f"- HRV (42d avg): {hrv_42d:.1f}\n"
-            f"- Resting HR (7d avg): {rhr_7d:.1f}\n"
-            f"- Resting HR (42d avg): {rhr_42d:.1f}"
+            "Wellness Metrics:\n"
+            f"- Average HRV: {result.avg_hrv:.1f}\n"
+            f"- Average Resting HR: {result.avg_resting_hr:.1f} bpm\n"
+            f"- HRV Trend Status: {result.hrv_trend.capitalize()}\n"
+            f"- Recent HRV Trend (Last days): [{trend_str}]"
         )
 
     @override
-    def get_dashboard_widget(self, result: WellnessResult | None) -> DashboardWidget | None:
+    def get_dashboard_widget(
+        self, result: WellnessResult | None, display_days: int | None = None
+    ) -> DashboardWidget | None:
         """Format the calculation result for the dashboard.
 
         Args:
             result: The result from the calculate method.
+            display_days: Optional number of days to display.
 
         Returns:
-            The dashboard widget or None.
+            The dashboard widget.
         """
-        if result is None or result.hrv_7d is None:
+        if result is None:
             return None
-
-        hrv_trend = ""
-        trend_pos = None
-        if result.hrv_7d and result.hrv_42d:
-            diff = result.hrv_7d - result.hrv_42d
-            hrv_trend = f"{'+' if diff >= 0 else ''}{diff:.1f} vs 42d"
-            trend_pos = diff >= 0
 
         return DashboardWidget(
             name="wellness",
-            title="Readiness (HRV)",
-            value=f"{result.hrv_7d:.0f} ms",
-            trend=hrv_trend,
-            trend_positive=trend_pos,
+            title="Readiness",
+            value=f"{result.avg_hrv:.0f} ms",
+            trend=result.hrv_trend.capitalize(),
+            trend_positive=result.hrv_trend == "improving",
         )

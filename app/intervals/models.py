@@ -1,7 +1,7 @@
 """Models for intervals analysis."""
 
 from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     import polars as pl
@@ -35,35 +35,9 @@ class TrainingLoad:
 
 
 @dataclass(frozen=True)
-class ActivitySummary:
-    """Summary of activities."""
-
-    total_duration_h: float
-    total_distance_km: float
-    total_elevation_gain: float
-    total_calories: float
-    total_training_stress: float
-    activity_count: int
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert the summary to a dictionary.
-
-        Returns:
-            The summary as a serializable dictionary.
-        """
-        return asdict(self)
-
-
-@dataclass(frozen=True)
 class AnalysisResult:
     """Result of the sports science analysis."""
 
-    daily_series: list[dict[str, Any]]
-    weekly_series: list[dict[str, Any]]
-    summary: ActivitySummary
-    hr_intensity_distribution: list[float]
-    power_intensity_distribution: list[float]
-    activity_type_distribution: dict[str, int]
     provider_results: dict[str, Any] = field(default_factory=dict)
     widgets: list[DashboardWidget] = field(default_factory=list)
 
@@ -83,3 +57,19 @@ class PMCResult:
     ctl: pl.Series
     atl: pl.Series
     tsb: pl.Series
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self:
+        """Create a PMCResult from a dictionary.
+
+        Args:
+            data: The dictionary containing PMC data.
+
+        Returns:
+            A PMCResult instance.
+        """
+        return cls(
+            ctl=data["ctl"],
+            atl=data["atl"],
+            tsb=data["tsb"],
+        )

@@ -9,6 +9,10 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] **Database Migrations:** Initialized **Alembic** to safely manage schema changes (Task 6).
 - [x] **Integration Test Suite:** Implemented "The Athlete's Journey" full-flow integration test with mocked external APIs.
 
+## 📊 Analytics & Insights
+- [ ] **Activity History:** Implement a provider-based activity history list with detailed drill-downs.
+- [ ] **Zone Distribution Plots:** Add dynamic providers for Heart Rate and Power intensity zone distribution charts.
+
 ## Proposed Data Integration
 
 ### 1. Readiness & Recovery Metrics [DONE]

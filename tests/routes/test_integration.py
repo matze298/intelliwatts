@@ -165,28 +165,42 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     mock_parse_w.return_value = mock_wellness
     mock_parse_pc.return_value = mock_power_curves
     mock_compute.return_value.to_dict.return_value = {
-        "daily_series": [],
-        "weekly_series": [],
-        "summary": {
-            "total_duration_h": 5.0,
-            "total_distance_km": 100.0,
-            "total_elevation_gain": 1000.0,
-            "total_calories": 2500.0,
-            "total_training_stress": 300.0,
-            "activity_count": 3,
-        },
-        "hr_intensity_distribution": [0.0] * 7,
-        "power_intensity_distribution": [0.0] * 7,
-        "activity_type_distribution": {"Ride": 3},
-        "widgets": [],
+        "provider_results": {},
+        "widgets": [
+            {
+                "name": "activity",
+                "title": "Recent Training",
+                "value": "100 TSS",
+                "trend": "1.0 hours",
+                "trend_positive": True,
+            },
+            {
+                "name": "resting_hr",
+                "title": "Heart Rate",
+                "value": "50 bpm",
+                "trend": "Stable",
+                "trend_positive": True,
+            },
+            {
+                "name": "test_widget",
+                "title": "Test Title",
+                "value": "123",
+                "trend": "Up",
+                "trend_positive": True,
+            },
+        ],
     }
 
     # WHEN visiting the dashboard
     resp = client.get("/dashboard")
 
-    # THEN it should render successfully
+    # THEN it should render successfully and contain widget info
     assert resp.status_code == 200
     assert "Dashboard" in resp.text
+    assert "Recent Training" in resp.text
+    assert "Heart Rate" in resp.text
+    assert "100 TSS" in resp.text
+    assert "50 bpm" in resp.text
 
 
 @patch("app.services.planner.generate_plan")
