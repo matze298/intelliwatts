@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from app.planning.providers.activity import ActivityProvider
 from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider
+from app.planning.providers.intensity import IntensityProvider
 from app.planning.providers.pmc import PMCProvider
 from app.planning.providers.power_curve import PowerCurveProvider
 from app.planning.providers.resting_hr import RestingHRTrendProvider
@@ -89,4 +90,5 @@ registry.register(WellnessProvider())
 registry.register(PowerCurveProvider())
 registry.register(RestingHRTrendProvider())
 registry.register(FTPTrajectoryProvider())
+registry.register(IntensityProvider())
 registry.register(PMCProvider())

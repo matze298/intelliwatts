@@ -10,6 +10,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] **Integration Test Suite:** Implemented "The Athlete's Journey" full-flow integration test with mocked external APIs.
 
 ## 📊 Analytics & Insights
+- [x] **Intensity Distribution:** Implemented a dynamic provider and interactive dashboard widget for HR/Power zone tracking.
 - [ ] **Activity History:** Implement a provider-based activity history list with detailed drill-downs.
 - [ ] **Zone Distribution Plots:** Add dynamic providers for Heart Rate and Power intensity zone distribution charts.
 

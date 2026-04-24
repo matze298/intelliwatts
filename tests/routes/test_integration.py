@@ -164,43 +164,65 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     mock_parse_a.return_value = mock_activities
     mock_parse_w.return_value = mock_wellness
     mock_parse_pc.return_value = mock_power_curves
-    mock_compute.return_value.to_dict.return_value = {
+
+    # Setup mock analysis object with both dict and attribute access for the template
+    mock_analysis = MagicMock()
+    widgets = [
+        {
+            "name": "activity",
+            "title": "Recent Training",
+            "value": "100 TSS",
+            "trend": "1.0 hours",
+            "trend_positive": True,
+        },
+        {
+            "name": "resting_hr",
+            "title": "Heart Rate",
+            "value": "50 bpm",
+            "trend": "Stable",
+            "trend_positive": True,
+        },
+        {
+            "name": "intensity",
+            "title": "Intensity Distribution",
+            "value": "85.7%",
+            "trend": "Polarized",
+            "trend_positive": True,
+            "custom_template": "widgets/intensity_chart.html",
+            "data": {
+                "hr_zones": [25.0, 60.0, 5.0, 10.0, 0.0, 0.0, 0.0],
+                "power_zones": [],
+                "style": "Highly Polarized",
+                "polarized_score": 85.0,
+            },
+        },
+        {
+            "name": "test_widget",
+            "title": "Test Title",
+            "value": "123",
+            "trend": "Up",
+            "trend_positive": True,
+        },
+    ]
+    mock_analysis.widgets = widgets
+    mock_analysis.to_dict.return_value = {
         "provider_results": {},
-        "widgets": [
-            {
-                "name": "activity",
-                "title": "Recent Training",
-                "value": "100 TSS",
-                "trend": "1.0 hours",
-                "trend_positive": True,
-            },
-            {
-                "name": "resting_hr",
-                "title": "Heart Rate",
-                "value": "50 bpm",
-                "trend": "Stable",
-                "trend_positive": True,
-            },
-            {
-                "name": "test_widget",
-                "title": "Test Title",
-                "value": "123",
-                "trend": "Up",
-                "trend_positive": True,
-            },
-        ],
+        "widgets": widgets,
     }
+    mock_compute.return_value = mock_analysis
 
     # WHEN visiting the dashboard
     resp = client.get("/dashboard")
 
     # THEN it should render successfully and contain widget info
     assert resp.status_code == 200
-    assert "Dashboard" in resp.text
+    assert "Performance Center" in resp.text
     assert "Recent Training" in resp.text
     assert "Heart Rate" in resp.text
     assert "100 TSS" in resp.text
     assert "50 bpm" in resp.text
+    assert "Training Intensity" in resp.text
+    assert "Highly Polarized" in resp.text
 
 
 @patch("app.services.planner.generate_plan")

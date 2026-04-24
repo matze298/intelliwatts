@@ -1,0 +1,100 @@
+<!-- app/templates/widgets/intensity_chart.html -->
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">Training Intensity</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Time-in-zone distribution and training style.</p>
+        </div>
+        <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
+            <button id="toggle-hr" onclick="updateIntensityChart('hr')" class="px-3 py-1 text-xs font-bold rounded-md transition-all bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-blue-400">Heart Rate</button>
+            <button id="toggle-power" onclick="updateIntensityChart('power')" class="px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">Power</button>
+        </div>
+    </div>
+
+    <div class="relative h-32 w-full">
+        <canvas id="intensityChart"></canvas>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-500/20 p-4 rounded-xl">
+            <h3 class="text-xs font-black uppercase text-blue-600 dark:text-blue-400 mb-1">Training Style</h3>
+            <p class="text-lg font-bold text-slate-800 dark:text-slate-100">{{ widget.data.style }}</p>
+        </div>
+        <div class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-500/20 p-4 rounded-xl">
+            <h3 class="text-xs font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1">Polarized Score</h3>
+            <p class="text-lg font-bold text-slate-800 dark:text-slate-100">{{ widget.data.polarized_score | round(1) }}% <span class="text-xs font-normal text-slate-500">(Z1+Z2)</span></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const ctx = document.getElementById('intensityChart').getContext('2d');
+        const hrData = {{ widget.data.hr_zones | tojson }};
+        const powerData = {{ widget.data.power_zones | tojson }};
+        
+        const labels = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'Z8', 'Z9', 'Z10'];
+        const colors = [
+            '#94a3b8', '#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#7f1d1d', '#4c0519', '#1e1b4b', '#000000'
+        ];
+
+        window.intensityChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Zones'],
+                datasets: hrData.map((val, i) => ({
+                    label: labels[i],
+                    data: [val],
+                    backgroundColor: colors[i],
+                    barPercentage: 0.8,
+                    categoryPercentage: 1.0
+                }))
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.raw}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { stacked: true, display: false, max: 100 },
+                    y: { stacked: true, display: false }
+                },
+                layout: { padding: 0 }
+            }
+        });
+
+        window.updateIntensityChart = function(type) {
+            const data = type === 'hr' ? hrData : powerData;
+            const btnHr = document.getElementById('toggle-hr');
+            const btnPower = document.getElementById('toggle-power');
+
+            // Update button styles
+            if (type === 'hr') {
+                btnHr.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-blue-400";
+                btnPower.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
+            } else {
+                btnPower.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-blue-400";
+                btnHr.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
+            }
+
+            // Update Chart
+            window.intensityChart.data.datasets = data.map((val, i) => ({
+                label: labels[i],
+                data: [val],
+                backgroundColor: colors[i],
+                barPercentage: 0.8,
+                categoryPercentage: 1.0
+            }));
+            window.intensityChart.update();
+        };
+    })();
+</script>

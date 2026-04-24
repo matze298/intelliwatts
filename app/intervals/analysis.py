@@ -91,6 +91,8 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
         pl.sum("training_stress"),
         pl.sum("duration_h"),
         pl.sum("distance_km"),
+        pl.col("hr_zone_times"),
+        pl.col("power_zone_times"),
     ])
     return df, daily
 
