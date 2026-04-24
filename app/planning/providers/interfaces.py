@@ -64,11 +64,12 @@ class MetricProvider(Protocol[T_co]):
         """
         ...
 
-    def get_dashboard_widget(self, result: T_co) -> DashboardWidget | None:
+    def get_dashboard_widget(self, result: T_co, display_days: int | None = None) -> DashboardWidget | None:
         """Format the calculation result for the dashboard.
 
         Args:
             result: The result from the calculate method.
+            display_days: Optional number of days to display.
 
         Returns:
             The widget data or None if not applicable.

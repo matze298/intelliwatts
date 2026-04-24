@@ -35,12 +35,14 @@ class MetricRegistry:
         self,
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
+        display_days: int | None = None,
     ) -> tuple[dict[str, Any], list[DashboardWidget]]:
         """Run calculations for all providers and collect results/widgets.
 
         Args:
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
+            display_days: Optional number of days to display in widgets.
 
         Returns:
             tuple[dict[str, Any], list[DashboardWidget]]: A tuple containing:
@@ -56,7 +58,7 @@ class MetricRegistry:
                 provider_results=results,
             )
             results[provider.get_name()] = res
-            widget = provider.get_dashboard_widget(res)
+            widget = provider.get_dashboard_widget(res, display_days=display_days)
             if widget:
                 widgets.append(widget)
         return results, widgets

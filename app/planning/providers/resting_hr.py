@@ -1,4 +1,4 @@
-"""Resting HR trend provider."""
+"""Resting heart rate trend metric provider."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast, override
@@ -13,21 +13,22 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class RestingHRResult:
-    """Result of the resting HR calculation."""
+    """Result of the resting heart rate trend calculation."""
 
-    rhr_7d: float
-    rhr_42d: float
+    current_hr: float
+    avg_hr: float
+    is_increasing: bool
 
 
 class RestingHRTrendProvider(MetricProvider[RestingHRResult | None]):
-    """Provides resting HR trend context."""
+    """Provides resting heart rate trend context."""
 
     @override
     def get_name(self) -> str:
         """Returns the provider name.
 
         Returns:
-            str: The provider name.
+            The provider name.
         """
         return "resting_hr"
 
@@ -46,40 +47,52 @@ class RestingHRTrendProvider(MetricProvider[RestingHRResult | None]):
             provider_results: Mapping of previous provider results.
 
         Returns:
-            RestingHRResult | None: The structured calculation result.
+            The structured calculation result.
         """
-        if daily_df is None or daily_df.is_empty() or "resting_hr" not in daily_df.columns:
+        if "resting_hr" not in daily_df.columns:
             return None
 
-        # Simple calculation if not already provided in wellness_summary
-        rhr_7d = daily_df["resting_hr"].tail(7).mean()
-        rhr_42d = daily_df["resting_hr"].tail(42).mean()
+        # Filter out nulls
+        hr_df = daily_df.filter(daily_df["resting_hr"].is_not_null())
+        if hr_df.is_empty():
+            return None
+
+        current_hr = cast("float", hr_df["resting_hr"][-1])
+        avg_hr = cast("float", hr_df["resting_hr"].mean())
 
         return RestingHRResult(
-            rhr_7d=float(cast("float", rhr_7d)) if rhr_7d is not None else 0.0,
-            rhr_42d=float(cast("float", rhr_42d)) if rhr_42d is not None else 0.0,
+            current_hr=current_hr,
+            avg_hr=avg_hr,
+            is_increasing=current_hr > avg_hr,
         )
 
     @override
     async def provide_context(self, result: RestingHRResult | None) -> str:
-        """Provides resting HR context.
+        """Provides resting heart rate context.
 
         Args:
             result: The result from the calculate method.
 
         Returns:
-            A formatted string containing the resting HR context.
+            A formatted string containing the resting heart rate context.
         """
         if result is None:
-            return "No resting HR data available."
+            return "No resting heart rate data available."
 
-        return f"Resting HR Trend:\n- 7d Average: {result.rhr_7d:.1f} bpm\n- 42d Average: {result.rhr_42d:.1f} bpm"
+        status = "increased" if result.is_increasing else "decreased/stable"
+        return (
+            "Physiological Trends:\n"
+            f"- Current Resting HR: {result.current_hr:.0f} bpm\n"
+            f"- Baseline (Avg): {result.avg_hr:.1f} bpm\n"
+            f"- Status: Resting HR is {status} compared to baseline."
+        )
 
     @override
-    def get_dashboard_widget(self, result: RestingHRResult | None) -> None:
+    def get_dashboard_widget(self, result: RestingHRResult | None, display_days: int | None = None) -> None:
         """Format the calculation result for the dashboard.
 
         Args:
             result: The result from the calculate method.
+            display_days: Optional number of days to display.
         """
         return

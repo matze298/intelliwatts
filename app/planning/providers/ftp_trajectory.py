@@ -3,24 +3,20 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, override
 
-import polars as pl
-
 from app.planning.providers.interfaces import DashboardWidget, MetricProvider
 
 if TYPE_CHECKING:
-    from app.intervals.client import IntervalsClient
+    import polars as pl
 
-FTP_TRAJECTORY_LOOKBACK_DAYS = 28
+    from app.intervals.client import IntervalsClient
 
 
 @dataclass(frozen=True)
 class FTPTrajectoryResult:
     """Result of the FTP trajectory calculation."""
 
-    current_ftp: float | None
-    ftp_4w_ago: float | None
-    change_pct: float | None
-    days_analyzed: int
+    dates: list[str]
+    ftp_values: list[float]
 
 
 class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
@@ -52,33 +48,18 @@ class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
         Returns:
             The structured calculation result.
         """
-        # Calculate from daily_df
-        if daily_df.is_empty() or "ftp" not in daily_df.columns:
+        # FTP trajectory depends on the 'ftp' column being present in daily_df
+        if "ftp" not in daily_df.columns:
             return None
 
-        # Forward fill FTP to handle days without activities
-        df_ftp = daily_df.select(["date", "ftp"]).with_columns(pl.col("ftp").forward_fill())
-
-        if df_ftp["ftp"].null_count() == len(df_ftp):
+        # Filter to dates where FTP is not null
+        ftp_df = daily_df.filter(daily_df["ftp"].is_not_null())
+        if ftp_df.is_empty():
             return None
-
-        current_ftp = float(df_ftp["ftp"].tail(1).item())
-
-        # Look back 4 weeks
-        ftp_4w_ago = None
-        if len(df_ftp) > FTP_TRAJECTORY_LOOKBACK_DAYS:
-            val = df_ftp["ftp"].gather(len(df_ftp) - (FTP_TRAJECTORY_LOOKBACK_DAYS + 1)).item()
-            ftp_4w_ago = float(val) if val is not None else None
-
-        change_pct = None
-        if current_ftp and ftp_4w_ago and ftp_4w_ago > 0:
-            change_pct = ((current_ftp - ftp_4w_ago) / ftp_4w_ago) * 100
 
         return FTPTrajectoryResult(
-            current_ftp=current_ftp,
-            ftp_4w_ago=ftp_4w_ago,
-            change_pct=change_pct,
-            days_analyzed=FTP_TRAJECTORY_LOOKBACK_DAYS,
+            dates=ftp_df["date"].dt.strftime("%Y-%m-%d").to_list(),
+            ftp_values=ftp_df["ftp"].to_list(),
         )
 
     @override
@@ -89,40 +70,48 @@ class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
             result: The result from the calculate method.
 
         Returns:
-            A formatted string containing the FTP context.
+            A formatted string containing the FTP trajectory context.
         """
-        if result is None or result.current_ftp is None:
-            return "Current FTP data unavailable."
+        if result is None or not result.ftp_values:
+            return "No FTP trajectory data available."
+
+        initial_ftp = result.ftp_values[0]
+        current_ftp = result.ftp_values[-1]
+        change = current_ftp - initial_ftp
+        change_pct = (change / initial_ftp) * 100 if initial_ftp > 0 else 0
 
         return (
-            f"FTP History (Last {result.days_analyzed} days):\n"
-            f"- Current: {result.current_ftp:.0f}W\n"
-            f"- Range: {result.ftp_4w_ago or '?'}W -> {result.current_ftp:.0f}W"
+            f"FTP Trajectory (Last {len(result.dates)} days):\n"
+            f"- Starting FTP: {initial_ftp:.1f}W\n"
+            f"- Current FTP: {current_ftp:.1f}W\n"
+            f"- Total Change: {change:+.1f}W ({change_pct:+.1f}%)"
         )
 
     @override
-    def get_dashboard_widget(self, result: FTPTrajectoryResult | None) -> DashboardWidget | None:
+    def get_dashboard_widget(
+        self, result: FTPTrajectoryResult | None, display_days: int | None = None
+    ) -> DashboardWidget | None:
         """Format the calculation result for the dashboard.
 
         Args:
             result: The result from the calculate method.
+            display_days: Optional number of days to display.
 
         Returns:
             The dashboard widget.
         """
-        if result is None or result.current_ftp is None:
+        if result is None or not result.ftp_values:
             return None
 
-        trend_str = ""
-        trend_pos = None
-        if result.change_pct is not None:
-            trend_str = f"{'+' if result.change_pct >= 0 else ''}{result.change_pct:.1f}% vs 4w"
-            trend_pos = result.change_pct >= 0
+        current_ftp = result.ftp_values[-1]
+        initial_ftp = result.ftp_values[0]
+        change = current_ftp - initial_ftp
 
         return DashboardWidget(
             name="ftp_trajectory",
-            title="FTP Trajectory",
-            value=f"{result.current_ftp:.0f} W",
-            trend=trend_str,
-            trend_positive=trend_pos,
+            title="FTP Trend",
+            value=f"{current_ftp:.0f} W",
+            trend=f"{change:+.1f} W",
+            trend_positive=change >= 0,
+            data={"dates": result.dates, "values": result.ftp_values},
         )

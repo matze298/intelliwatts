@@ -165,19 +165,7 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     mock_parse_w.return_value = mock_wellness
     mock_parse_pc.return_value = mock_power_curves
     mock_compute.return_value.to_dict.return_value = {
-        "daily_series": [],
-        "weekly_series": [],
-        "summary": {
-            "total_duration_h": 5.0,
-            "total_distance_km": 100.0,
-            "total_elevation_gain": 1000.0,
-            "total_calories": 2500.0,
-            "total_training_stress": 300.0,
-            "activity_count": 3,
-        },
-        "hr_intensity_distribution": [0.0] * 7,
-        "power_intensity_distribution": [0.0] * 7,
-        "activity_type_distribution": {"Ride": 3},
+        "provider_results": {},
         "widgets": [],
     }
 

@@ -58,14 +58,16 @@ class ActivitySummary:
 class AnalysisResult:
     """Result of the sports science analysis."""
 
-    daily_series: list[dict[str, Any]]
-    weekly_series: list[dict[str, Any]]
-    summary: ActivitySummary
-    hr_intensity_distribution: list[float]
-    power_intensity_distribution: list[float]
-    activity_type_distribution: dict[str, int]
     provider_results: dict[str, Any] = field(default_factory=dict)
     widgets: list[DashboardWidget] = field(default_factory=list)
+
+    # Legacy fields (marked as optional for backward compatibility during migration)
+    daily_series: list[dict[str, Any]] = field(default_factory=list)
+    weekly_series: list[dict[str, Any]] = field(default_factory=list)
+    summary: ActivitySummary | None = None
+    hr_intensity_distribution: list[float] = field(default_factory=list)
+    power_intensity_distribution: list[float] = field(default_factory=list)
+    activity_type_distribution: dict[str, int] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the analysis result to a dictionary.

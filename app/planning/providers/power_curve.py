@@ -102,11 +102,14 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
         )
 
     @override
-    def get_dashboard_widget(self, result: PowerCurveResult | None) -> DashboardWidget | None:
+    def get_dashboard_widget(
+        self, result: PowerCurveResult | None, display_days: int | None = None
+    ) -> DashboardWidget | None:
         """Format the calculation result for the dashboard.
 
         Args:
             result: The result from the calculate method.
+            display_days: Optional number of days to display.
 
         Returns:
             The dashboard widget.

@@ -1,41 +1,26 @@
 """Tests for the FTP trajectory provider."""
 
-from unittest.mock import MagicMock
-
-import polars as pl
-import pytest
-
-from app.intervals.client import IntervalsClient
 from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider, FTPTrajectoryResult
 
 
-@pytest.mark.asyncio
-async def test_ftp_trajectory_provider_context() -> None:
-    """Test that FTPTrajectoryProvider returns the correct context string."""
-    # GIVEN: A result object for testing provide_context
-    result = FTPTrajectoryResult(current_ftp=260.0, ftp_4w_ago=250.0, change_pct=4.0, days_analyzed=30)
-
+def test_ftp_trajectory_provider_name() -> None:
+    """Tests that the provider name is correct."""
     provider = FTPTrajectoryProvider()
-
-    # WHEN: Generating FTP trajectory context.
-    context = await provider.provide_context(result)
-
-    # THEN: The context should include the current FTP and historical FTP.
-    assert "FTP History (Last 30 days):" in context
-    assert "Current: 260W" in context
-    assert "Range: 250.0W -> 260W" in context
+    assert provider.get_name() == "ftp_trajectory"
 
 
-def test_ftp_trajectory_provider_no_data() -> None:
-    """Test that FTPTrajectoryProvider handles missing data gracefully."""
-    # GIVEN: An empty daily series.
-    client = MagicMock(spec=IntervalsClient)
-    daily_df = pl.DataFrame([])
-
+def test_ftp_trajectory_widget() -> None:
+    """Tests the dashboard widget formatting."""
+    # GIVEN a successful FTP calculation
     provider = FTPTrajectoryProvider()
+    result = FTPTrajectoryResult(dates=["2026-04-01", "2026-04-20"], ftp_values=[250.0, 260.0])
 
-    # WHEN: Calculating FTP trajectory result with no data.
-    result = provider.calculate(daily_df, client=client)
+    # WHEN formatting for dashboard
+    widget = provider.get_dashboard_widget(result)
 
-    # THEN: Result should be None.
-    assert result is None
+    # THEN returns a widget with correct values
+    assert widget is not None
+    assert widget.name == "ftp_trajectory"
+    assert widget.value == "260 W"
+    assert widget.trend == "+10.0 W"
+    assert widget.trend_positive is True
