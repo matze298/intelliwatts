@@ -156,12 +156,16 @@ def _sum_zones(daily_df: pl.DataFrame, col_name: str) -> list[int]:
     if not flattened:
         return []
 
+    # Calculate max length once
     max_len = max(len(row) for row in flattened)
     totals = [0] * max_len
     for row in flattened:
         for i, val in enumerate(row):
             if val is not None:
-                totals[i] += val.get("secs", 0) if isinstance(val, dict) else val
+                if isinstance(val, dict):
+                    totals[i] += val.get("secs", 0)
+                elif isinstance(val, (int, float)):
+                    totals[i] += int(val)
     return totals
 
 
@@ -178,9 +182,18 @@ def _flatten_zone_data(raw_data: list[Any]) -> list[list[Any]]:
     for item in raw_data:
         if item is None:
             continue
-        if isinstance(item, list) and len(item) > 0 and isinstance(item[0], list):
-            flattened.extend([sub for sub in item if sub])
-        elif isinstance(item, list):
+        if not isinstance(item, list):
+            continue
+
+        # Determine if this 'item' is a single row or a list of rows (from agg)
+        # A row is a list of scalars (ints/floats) or a list of dicts.
+        is_collection_of_rows = any(isinstance(sub, list) for sub in item)
+
+        if is_collection_of_rows:
+            # Use list comprehension and extend for cleaner code
+            flattened.extend([sub for sub in item if isinstance(sub, list)])
+        else:
+            # It's a single row
             flattened.append(item)
     return flattened
 
