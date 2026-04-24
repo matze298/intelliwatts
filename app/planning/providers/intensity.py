@@ -15,6 +15,9 @@ HIGHLY_POLARIZED_THRESHOLD = 85
 THRESHOLD_PYRAMIDAL_THRESHOLD = 70
 MIN_ZONES_FOR_POLARIZED = 2
 
+# Power zone indices (0-based)
+POWER_ZONE_SS_IDX = 7  # Z8 is "Sweet Spot" in Intervals.icu (overlaps with Z3/Z4)
+
 
 @dataclass(frozen=True)
 class IntensityResult:
@@ -22,6 +25,7 @@ class IntensityResult:
 
     hr_zones_pct: list[float]
     power_zones_pct: list[float]
+    power_ss_pct: float  # Sweet Spot % (for display only, excluded from total)
     hr_total_mins: float
     power_total_mins: float
     polarized_score: float  # % of low intensity (Z1-Z2)
@@ -60,11 +64,24 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         hr_totals = self._sum_zones_polars(daily_df, "hr_zone_times")
         power_totals = self._sum_zones_polars(daily_df, "power_zone_times")
 
+        # HR Calculation
         hr_sum_secs = sum(hr_totals)
-        power_sum_secs = sum(power_totals)
-
         hr_zones_pct = [round((z / hr_sum_secs) * 100, 1) if hr_sum_secs > 0 else 0.0 for z in hr_totals]
-        power_zones_pct = [round((z / power_sum_secs) * 100, 1) if power_sum_secs > 0 else 0.0 for z in power_totals]
+
+        # Power Calculation (Handle Sweet Spot overlap)
+        # Z8 (SS) overlaps, so we exclude it from the total to get a 100% distribution of "standard" zones
+        power_totals_standard = list(power_totals)
+        power_ss_secs = 0.0
+        if len(power_totals_standard) > POWER_ZONE_SS_IDX:
+            power_ss_secs = float(power_totals_standard[POWER_ZONE_SS_IDX])
+            power_totals_standard[POWER_ZONE_SS_IDX] = 0  # Zero out SS for total calculation
+
+        power_sum_secs_total = sum(power_totals_standard)
+        power_zones_pct = [
+            round((z / power_sum_secs_total) * 100, 1) if power_sum_secs_total > 0 else 0.0
+            for z in power_totals_standard
+        ]
+        power_ss_pct = round((power_ss_secs / power_sum_secs_total) * 100, 1) if power_sum_secs_total > 0 else 0.0
 
         # Calculate polarized score (Z1 + Z2)
         polarized_score = 0.0
@@ -78,8 +95,9 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         return IntensityResult(
             hr_zones_pct=hr_zones_pct,
             power_zones_pct=power_zones_pct,
+            power_ss_pct=power_ss_pct,
             hr_total_mins=round(hr_sum_secs / 60, 1),
-            power_total_mins=round(power_sum_secs / 60, 1),
+            power_total_mins=round(power_sum_secs_total / 60, 1),
             polarized_score=polarized_score,
             style=style,
         )
@@ -100,28 +118,26 @@ class IntensityProvider(MetricProvider[IntensityResult]):
 
         # Robust extraction and flattening using Polars
         try:
-            # Keep track of which activity each zone belongs to for index-wise summing
-            # We convert to a dedicated dataframe to maintain structure
+            # Filter non-null and ensure column is actually a list type before exploding
+            # This prevents "InvalidOperationError: explode operation not supported for dtype null"
             df_zones = daily_df.select(col_name).filter(pl.col(col_name).is_not_null())
+
             if df_zones.is_empty():
                 return []
 
+            # Aggregation means col_name is list[list[int]] or list[int]
             # Explode once to handle the aggregation (one row per activity)
-            df_zones = df_zones.explode(col_name)
+            df_zones = df_zones.explode(col_name).filter(pl.col(col_name).is_not_null())
 
-            # Now we have one row per activity, where col_name is list[int] or list[dict]
+            if df_zones.is_empty():
+                return []
+
+            # Now we have one row per activity, where col_name is list[int]
             # Add a unique ID per activity
             df_zones = df_zones.with_row_index("activity_id").explode(col_name)
 
-            # Now we have one row per zone per activity.
-            # col_name is now scalar (int or dict)
-
-            # Extract 'secs' if it's a dict
-            if df_zones[col_name].dtype == pl.Struct:
-                # Handle struct/dict from Power zones
-                df_zones = df_zones.with_columns(val=pl.col(col_name).struct.field("secs").fill_null(0))
-            else:
-                df_zones = df_zones.with_columns(val=pl.col(col_name).fill_null(0).cast(pl.Int64))
+            # Extract values, handling potential null elements within the lists
+            df_zones = df_zones.with_columns(val=pl.col(col_name).fill_null(0).cast(pl.Int64))
 
             # Add zone index within each activity to sum corresponding zones
             df_zones = df_zones.with_columns(zone_idx=pl.int_range(0, pl.len()).over("activity_id"))
@@ -171,6 +187,9 @@ class IntensityProvider(MetricProvider[IntensityResult]):
             high = sum(result.hr_zones_pct[high_start_idx:]) if len(result.hr_zones_pct) > high_start_idx else 0
             context += f"- Heart Rate: {low:.1f}% Low / {mid:.1f}% Mid / {high:.1f}% High\n"
 
+        if result.power_zones_pct:
+            context += f"- Power Style: {result.style} (SS: {result.power_ss_pct}%)\n"
+
         context += f"Overall Style: {result.style}"
         return context
 
@@ -195,6 +214,7 @@ class IntensityProvider(MetricProvider[IntensityResult]):
             data={
                 "hr_zones": result.hr_zones_pct,
                 "power_zones": result.power_zones_pct,
+                "power_ss": result.power_ss_pct,
                 "style": result.style,
                 "polarized_score": result.polarized_score,
             },

@@ -51,6 +51,7 @@ async def test_intensity_context() -> None:
     result = IntensityResult(
         hr_zones_pct=[25.0, 60.0, 5.0, 10.0, 0.0, 0.0, 0.0],
         power_zones_pct=[],
+        power_ss_pct=0.0,
         hr_total_mins=100.0,
         power_total_mins=0.0,
         polarized_score=85.0,

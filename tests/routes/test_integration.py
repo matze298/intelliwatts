@@ -192,6 +192,7 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
             "data": {
                 "hr_zones": [25.0, 60.0, 5.0, 10.0, 0.0, 0.0, 0.0],
                 "power_zones": [],
+                "power_ss": 0.0,
                 "style": "Highly Polarized",
                 "polarized_score": 85.0,
             },
