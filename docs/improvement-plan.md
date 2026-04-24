@@ -7,6 +7,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] **Metric Provider Framework:** Moved from monolithic summary logic to a pluggable "Metric Kernel" architecture.
 - [x] **Stateless Orchestration:** Decoupled training plan generation from mutable global state.
 - [x] **Database Migrations:** Initialized **Alembic** to safely manage schema changes (Task 6).
+- [x] **Integration Test Suite:** Implemented "The Athlete's Journey" full-flow integration test with mocked external APIs.
 
 ## Proposed Data Integration
 
