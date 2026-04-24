@@ -1,7 +1,7 @@
 """Models for intervals analysis."""
 
 from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     import polars as pl
@@ -57,3 +57,19 @@ class PMCResult:
     ctl: pl.Series
     atl: pl.Series
     tsb: pl.Series
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self:
+        """Create a PMCResult from a dictionary.
+
+        Args:
+            data: The dictionary containing PMC data.
+
+        Returns:
+            A PMCResult instance.
+        """
+        return cls(
+            ctl=data["ctl"],
+            atl=data["atl"],
+            tsb=data["tsb"],
+        )

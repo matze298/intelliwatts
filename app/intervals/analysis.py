@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
-from app.intervals.models import AnalysisResult, TrainingLoad
+from app.intervals.models import AnalysisResult, PMCResult, TrainingLoad
 from app.planning.providers.registry import registry
 
 if TYPE_CHECKING:
@@ -136,19 +136,16 @@ def compute_load(activities: list[ParsedActivity], client: IntervalsClient | Non
     if not pmc_res:
         return TrainingLoad(chronic=0.0, acute=0.0)
 
-    # Result is a PMCResult dataclass or dict depending on serialization
+    # Normalized result as a PMCResult instance
+    if isinstance(pmc_res, dict):
+        pmc_res = PMCResult.from_dict(pmc_res)
+
     try:
-        # In-memory it is likely a PMCResult object
         chronic = pmc_res.ctl[-1] if pmc_res.ctl else 0.0
         acute = pmc_res.atl[-1] if pmc_res.atl else 0.0
     except AttributeError, KeyError, IndexError, TypeError:
-        # Fallback for serialized dict or other issues
-        try:
-            chronic = pmc_res["ctl"][-1]
-            acute = pmc_res["atl"][-1]
-        except KeyError, IndexError, TypeError:
-            chronic = 0.0
-            acute = 0.0
+        chronic = 0.0
+        acute = 0.0
 
     return TrainingLoad(chronic=chronic, acute=acute)
 

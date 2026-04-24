@@ -1,5 +1,6 @@
 """Tests the intervals analysis module."""
 
+import math
 from unittest.mock import MagicMock
 
 import pytest
@@ -142,7 +143,7 @@ def test_calculate_watts_per_kg_success() -> None:
     result = calculate_watts_per_kg(weight, power)
 
     # THEN return the correct ratio (250 / 70 = 3.5714...)
-    assert result == 3.5714285714285716
+    assert math.isclose(result, 3.5714285714285716, rel_tol=1e-9)
 
 
 def test_calculate_watts_per_kg_zero_weight() -> None:
