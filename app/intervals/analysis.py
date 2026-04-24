@@ -1,6 +1,6 @@
 """Calculate the sports science analysis."""
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from logging import getLogger
 from typing import TYPE_CHECKING
 
@@ -44,7 +44,7 @@ def compute_analysis(
     _, daily = _init_activities_df(activities)
 
     # 2. Determine full date range and join all dates
-    min_date, max_date = _get_analysis_range(daily, wellness_data, display_days)
+    min_date, max_date = _get_analysis_range(daily, wellness_data)
 
     if min_date is None or max_date is None:
         return AnalysisResult()
@@ -96,14 +96,13 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
 
 
 def _get_analysis_range(
-    daily: pl.DataFrame, wellness_data: list[ParsedWellness] | None, display_days: int | None
+    daily: pl.DataFrame, wellness_data: list[ParsedWellness] | None
 ) -> tuple[date | None, date | None]:
     """Determine the date range for analysis.
 
     Args:
         daily: The daily aggregated activities.
         wellness_data: Optional wellness data.
-        display_days: Number of days to include in display.
 
     Returns:
         A tuple of (min_date, max_date).
@@ -115,10 +114,7 @@ def _get_analysis_range(
     if not dates:
         return None, None
 
-    max_date = max(dates)
-    min_date = max_date - timedelta(days=display_days - 1) if display_days else min(dates)
-
-    return min_date, max_date
+    return min(dates), max(dates)
 
 
 def compute_load(activities: list[ParsedActivity], client: IntervalsClient | None = None) -> TrainingLoad:
