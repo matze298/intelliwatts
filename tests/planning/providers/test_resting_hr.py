@@ -20,8 +20,12 @@ def test_resting_hr_widget() -> None:
     # WHEN formatting for dashboard
     widget = provider.get_dashboard_widget(result)
 
-    # THEN returns None (no widget for resting_hr currently)
-    assert widget is None
+    # THEN returns a widget with correct values
+    assert widget is not None
+    assert widget.name == "resting_hr"
+    assert widget.value == "51 bpm"
+    assert widget.trend == "Stable (Avg 52)"
+    assert widget.trend_positive is True
 
 
 def test_resting_hr_increasing_trend() -> None:

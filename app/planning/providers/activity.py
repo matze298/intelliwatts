@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, override
 import polars as pl
 
 from app.intervals.models import TrainingLoad
-from app.planning.providers.interfaces import MetricProvider
+from app.planning.providers.interfaces import DashboardWidget, MetricProvider
 
 if TYPE_CHECKING:
     from app.intervals.client import IntervalsClient
@@ -113,11 +113,23 @@ class ActivityProvider(MetricProvider[ActivityResult]):
         )
 
     @override
-    def get_dashboard_widget(self, result: ActivityResult, display_days: int | None = None) -> None:
+    def get_dashboard_widget(self, result: ActivityResult, display_days: int | None = None) -> DashboardWidget | None:
         """Format the calculation result for the dashboard.
 
         Args:
             result: The result from the calculate method.
             display_days: Optional number of days to display.
+
+        Returns:
+            The dashboard widget.
         """
-        return
+        if not result.has_activities:
+            return None
+
+        return DashboardWidget(
+            name="activity",
+            title="Recent Training",
+            value=f"{result.tss_7d:.0f} TSS",
+            trend=f"{result.hours_7d:.1f} hours",
+            trend_positive=True,
+        )

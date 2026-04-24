@@ -9,7 +9,7 @@
 </head>
 
 <body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen">
-    <!-- Navigation (Shared with plan.html) -->
+    <!-- Navigation -->
     <nav class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
@@ -23,6 +23,11 @@
                     <a href="/" class="text-slate-400 hover:text-white transition-colors text-sm font-medium">Weekly Plan</a>
                     <a href="/dashboard" class="text-white border-b-2 border-blue-500 pb-1 transition-colors text-sm font-medium">Dashboard</a>
                     <a href="/secrets" class="text-slate-400 hover:text-white transition-colors text-sm font-medium">Settings</a>
+                    <select id="theme-switcher" class="bg-gray-800 text-pink-500 border border-pink-500 rounded px-2 py-1 text-xs">
+                        <option value="pro">Professional</option>
+                        <option value="retro">Retro90s</option>
+                        <option value="minimal">Minimalistic</option>
+                    </select>
                     <a href="/logout" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-all">Logout</a>
                 </div>
             </div>
@@ -50,16 +55,29 @@
             <input type="range" id="daysSlider" min="7" max="90" value="42" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
         </div>
 
-        <!-- Dynamic Metric Widgets -->
+        <!-- Dynamic Metric Widgets Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {% for widget in analysis.widgets %}
+                {% if not widget.custom_template %}
+                    {{ render_widget(widget) }}
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <!-- Large Custom Charts -->
         <div class="space-y-12">
             {% for widget in analysis.widgets %}
-                {{ render_widget(widget) }}
+                {% if widget.custom_template %}
+                    <div class="bg-slate-800/50 border border-slate-700 p-8 rounded-3xl backdrop-blur-sm">
+                        {{ render_widget(widget) }}
+                    </div>
+                {% endif %}
             {% endfor %}
         </div>
 
         <!-- Activity History (Optional / Placeholder) -->
         <div class="mt-12">
-            <h2 class="text-2xl font-bold text-slate-200 mb-6">📊 Activity History</h2>
+            <h2 class="text-2xl font-bold text-slate-200 mb-6 italic">📊 Activity History</h2>
             <div class="bg-slate-800/30 border border-dashed border-slate-700 p-12 rounded-2xl text-center">
                 <p class="text-slate-500 font-medium italic">Detailed activity breakdowns coming soon.</p>
             </div>
@@ -68,10 +86,32 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // Theme Switching
+            const themeStylesheet = document.getElementById('theme-stylesheet');
+            const themeSwitcher = document.getElementById('theme-switcher');
+            const savedTheme = localStorage.getItem('selectedTheme') || 'pro';
+            themeSwitcher.value = savedTheme;
+            updateTheme(savedTheme);
+
+            themeSwitcher.addEventListener('change', (event) => {
+                const selectedTheme = event.target.value;
+                localStorage.setItem('selectedTheme', selectedTheme);
+                updateTheme(selectedTheme);
+            });
+
+            function updateTheme(theme) {
+                if (theme === 'pro') {
+                    themeStylesheet.href = '/static/tailwind-pro.css';
+                } else if (theme === 'retro') {
+                    themeStylesheet.href = '/static/tailwind-retro.css';
+                } else if (theme === 'minimal') {
+                    themeStylesheet.href = '/static/tailwind-minimal.css';
+                }
+            }
+
+            // Days Slider
             const slider = document.getElementById('daysSlider');
             const valueDisplay = document.getElementById('daysValue');
-
-            // Set initial slider value from URL
             const urlParams = new URLSearchParams(window.location.search);
             const daysParam = urlParams.get('days');
             if (daysParam) {

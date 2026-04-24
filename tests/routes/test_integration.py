@@ -168,12 +168,26 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
         "provider_results": {},
         "widgets": [
             {
+                "name": "activity",
+                "title": "Recent Training",
+                "value": "100 TSS",
+                "trend": "1.0 hours",
+                "trend_positive": True,
+            },
+            {
+                "name": "resting_hr",
+                "title": "Heart Rate",
+                "value": "50 bpm",
+                "trend": "Stable",
+                "trend_positive": True,
+            },
+            {
                 "name": "test_widget",
                 "title": "Test Title",
                 "value": "123",
                 "trend": "Up",
                 "trend_positive": True,
-            }
+            },
         ],
     }
 
@@ -183,8 +197,10 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     # THEN it should render successfully and contain widget info
     assert resp.status_code == 200
     assert "Dashboard" in resp.text
-    assert "Test Title" in resp.text
-    assert "123" in resp.text
+    assert "Recent Training" in resp.text
+    assert "Heart Rate" in resp.text
+    assert "100 TSS" in resp.text
+    assert "50 bpm" in resp.text
 
 
 @patch("app.services.planner.generate_plan")

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast, override
 
-from app.planning.providers.interfaces import MetricProvider
+from app.planning.providers.interfaces import DashboardWidget, MetricProvider
 
 if TYPE_CHECKING:
     import polars as pl
@@ -95,11 +95,26 @@ class RestingHRTrendProvider(MetricProvider[RestingHRResult | None]):
         )
 
     @override
-    def get_dashboard_widget(self, result: RestingHRResult | None, display_days: int | None = None) -> None:
+    def get_dashboard_widget(
+        self, result: RestingHRResult | None, display_days: int | None = None
+    ) -> DashboardWidget | None:
         """Format the calculation result for the dashboard.
 
         Args:
             result: The result from the calculate method.
             display_days: Optional number of days to display.
+
+        Returns:
+            The dashboard widget.
         """
-        return
+        if result is None:
+            return None
+
+        status = "Increased" if result.is_increasing else "Stable"
+        return DashboardWidget(
+            name="resting_hr",
+            title="Heart Rate",
+            value=f"{result.current_hr:.0f} bpm",
+            trend=f"{status} (Avg {result.avg_hr:.0f})",
+            trend_positive=not result.is_increasing,
+        )
