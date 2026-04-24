@@ -20,6 +20,7 @@ class WellnessResult:
     avg_hrv: float
     avg_resting_hr: float
     hrv_trend: str  # "improving", "declining", "stable"
+    recent_hrv_trend: list[float]
 
 
 class WellnessProvider(MetricProvider[WellnessResult | None]):
@@ -64,20 +65,24 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
 
         # Simple trend analysis
         if len(df) >= RECENT_DAYS:
-            recent_hrv = cast("float", df["hrv"][-RECENT_DAYS:].mean())
+            recent_hrv_series = df["hrv"][-RECENT_DAYS:]
+            recent_hrv = cast("float", recent_hrv_series.mean())
             if recent_hrv > avg_hrv * 1.05:
                 trend = "improving"
             elif recent_hrv < avg_hrv * 0.95:
                 trend = "declining"
             else:
                 trend = "stable"
+            recent_hrv_trend = recent_hrv_series.to_list()
         else:
             trend = "stable"
+            recent_hrv_trend = df["hrv"].to_list()
 
         return WellnessResult(
             avg_hrv=avg_hrv,
             avg_resting_hr=avg_resting_hr,
             hrv_trend=trend,
+            recent_hrv_trend=recent_hrv_trend,
         )
 
     @override
@@ -93,11 +98,13 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
         if result is None:
             return "No wellness data available."
 
+        trend_str = ", ".join([f"{v:.0f}" for v in result.recent_hrv_trend])
         return (
             "Wellness Metrics:\n"
             f"- Average HRV: {result.avg_hrv:.1f}\n"
             f"- Average Resting HR: {result.avg_resting_hr:.1f} bpm\n"
-            f"- HRV Trend: {result.hrv_trend.capitalize()}"
+            f"- HRV Trend Status: {result.hrv_trend.capitalize()}\n"
+            f"- Recent HRV Trend (Last days): [{trend_str}]"
         )
 
     @override

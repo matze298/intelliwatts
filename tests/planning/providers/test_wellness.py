@@ -17,6 +17,7 @@ def test_wellness_widget() -> None:
         avg_hrv=60.0,
         avg_resting_hr=50.0,
         hrv_trend="improving",
+        recent_hrv_trend=[55.0, 60.0],
     )
 
     # WHEN formatting for dashboard

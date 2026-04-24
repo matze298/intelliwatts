@@ -18,6 +18,7 @@ class RestingHRResult:
     current_hr: float
     avg_hr: float
     is_increasing: bool
+    recent_trend: list[float]
 
 
 class RestingHRTrendProvider(MetricProvider[RestingHRResult | None]):
@@ -60,10 +61,14 @@ class RestingHRTrendProvider(MetricProvider[RestingHRResult | None]):
         current_hr = cast("float", hr_df["resting_hr"][-1])
         avg_hr = cast("float", hr_df["resting_hr"].mean())
 
+        # Get last 7 days for trend context
+        recent_trend = hr_df["resting_hr"][-7:].to_list()
+
         return RestingHRResult(
             current_hr=current_hr,
             avg_hr=avg_hr,
             is_increasing=current_hr > avg_hr,
+            recent_trend=recent_trend,
         )
 
     @override
@@ -80,11 +85,13 @@ class RestingHRTrendProvider(MetricProvider[RestingHRResult | None]):
             return "No resting heart rate data available."
 
         status = "increased" if result.is_increasing else "decreased/stable"
+        trend_str = ", ".join([f"{v:.0f}" for v in result.recent_trend])
         return (
             "Physiological Trends:\n"
             f"- Current Resting HR: {result.current_hr:.0f} bpm\n"
             f"- Baseline (Avg): {result.avg_hr:.1f} bpm\n"
-            f"- Status: Resting HR is {status} compared to baseline."
+            f"- Status: Resting HR is {status} compared to baseline.\n"
+            f"- Recent Trend (Last 7 days): [{trend_str}]"
         )
 
     @override

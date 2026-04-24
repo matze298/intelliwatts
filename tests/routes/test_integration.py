@@ -166,15 +166,25 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     mock_parse_pc.return_value = mock_power_curves
     mock_compute.return_value.to_dict.return_value = {
         "provider_results": {},
-        "widgets": [],
+        "widgets": [
+            {
+                "name": "test_widget",
+                "title": "Test Title",
+                "value": "123",
+                "trend": "Up",
+                "trend_positive": True,
+            }
+        ],
     }
 
     # WHEN visiting the dashboard
     resp = client.get("/dashboard")
 
-    # THEN it should render successfully
+    # THEN it should render successfully and contain widget info
     assert resp.status_code == 200
     assert "Dashboard" in resp.text
+    assert "Test Title" in resp.text
+    assert "123" in resp.text
 
 
 @patch("app.services.planner.generate_plan")

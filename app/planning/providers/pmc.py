@@ -25,8 +25,8 @@ class PMCResult:
 class PMCProvider(MetricProvider[PMCResult]):
     """Provides PMC (Fitness, Fatigue, Form) context."""
 
-    CHRONIC_DAYS = 42
-    ACUTE_DAYS = 7
+    _chronic_days = 42
+    _acute_days = 7
 
     @override
     def get_name(self) -> str:
@@ -55,8 +55,8 @@ class PMCProvider(MetricProvider[PMCResult]):
             The structured calculation result.
         """
         # Compute CTL, ATL using exponentially weighted moving averages
-        alpha_ctl = 1 - math.exp(-1 / self.CHRONIC_DAYS)
-        alpha_atl = 1 - math.exp(-1 / self.ACUTE_DAYS)
+        alpha_ctl = 1 - math.exp(-1 / self._chronic_days)
+        alpha_atl = 1 - math.exp(-1 / self._acute_days)
 
         pmc_df = daily_df.select([
             pl.col("date"),

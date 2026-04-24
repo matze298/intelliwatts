@@ -87,7 +87,11 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
         return df, df
 
     df = pl.from_dicts([a.__dict__ for a in activities]).with_columns(pl.col("date").str.to_date("%Y-%m-%d"))
-    daily = df.group_by("date").agg(pl.sum("training_stress"))
+    daily = df.group_by("date").agg([
+        pl.sum("training_stress"),
+        pl.sum("duration_h"),
+        pl.sum("distance_km"),
+    ])
     return df, daily
 
 

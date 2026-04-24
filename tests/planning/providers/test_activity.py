@@ -37,7 +37,7 @@ async def test_activity_provider_context() -> None:
     provider = ActivityProvider()
 
     # WHEN: Calculating and generating activity context for the last 7 days.
-    daily_df = pl.DataFrame([{"date": today_str, "training_stress": 100.0}]).with_columns(
+    daily_df = pl.DataFrame([{"date": today_str, "training_stress": 100.0, "duration_h": 1.0}]).with_columns(
         pl.col("date").str.to_date("%Y-%m-%d")
     )
     provider_results = {"pmc": MagicMock(ctl=[50.0], atl=[60.0])}

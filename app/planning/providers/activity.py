@@ -61,6 +61,7 @@ class ActivityProvider(MetricProvider[ActivityResult]):
         recent_df = daily_df.filter(pl.col("date") > seven_days_ago)
 
         tss_7d = round(recent_df["training_stress"].sum(), 1)
+        hours_7d = round(recent_df["duration_h"].sum(), 1)
 
         # Get latest load (from PMC provider if available)
         load = TrainingLoad(0, 0)
@@ -68,10 +69,6 @@ class ActivityProvider(MetricProvider[ActivityResult]):
             pmc_res = provider_results["pmc"]
             with contextlib.suppress(AttributeError, IndexError):
                 load = TrainingLoad(chronic=pmc_res.ctl[-1], acute=pmc_res.atl[-1])
-
-        # TODO(matze): Enhance daily_df to include more metrics (e.g. duration_h)
-        # https://github.com/matze298/intelliwatts/issues/0
-        hours_7d = 0.0
 
         return ActivityResult(
             load=load,
