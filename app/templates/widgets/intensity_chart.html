@@ -11,34 +11,35 @@
         </div>
     </div>
 
-    <div class="flex flex-col lg:flex-row items-center gap-8">
-        <div class="relative h-64 w-64 flex-shrink-0">
+    <div class="flex flex-col md:flex-row items-center gap-12 py-4">
+        <!-- Strictly constrained container for the doughnut -->
+        <div class="relative w-48 h-48 flex-shrink-0 mx-auto md:mx-0">
             <canvas id="intensityChart"></canvas>
             <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span id="center-style" class="text-xs font-black uppercase text-slate-400 tracking-tighter">Base</span>
-                <span id="center-score" class="text-2xl font-black text-slate-800 dark:text-white">85%</span>
+                <span id="center-style" class="text-[10px] font-black uppercase text-slate-400 tracking-tight">Style</span>
+                <span id="center-score" class="text-xl font-black text-slate-800 dark:text-white leading-none">0%</span>
             </div>
         </div>
 
         <div class="flex-1 w-full space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-500/20 p-4 rounded-2xl">
-                    <h3 class="text-xs font-black uppercase text-blue-600 dark:text-blue-400 mb-1">Training Style</h3>
-                    <p id="style-text" class="text-lg font-bold text-slate-800 dark:text-slate-100">{{ widget.data.style }}</p>
+                    <h3 class="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Training Style</h3>
+                    <p id="style-text" class="text-base font-bold text-slate-800 dark:text-slate-100">{{ widget.data.style }}</p>
                 </div>
                 <div class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-500/20 p-4 rounded-2xl">
-                    <h3 class="text-xs font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1">Polarized Score</h3>
-                    <p id="score-text" class="text-lg font-bold text-slate-800 dark:text-slate-100">{{ widget.data.polarized_score | round(1) }}%</p>
+                    <h3 class="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1 tracking-wider">Polarized Score</h3>
+                    <p id="score-text" class="text-base font-bold text-slate-800 dark:text-slate-100">{{ widget.data.polarized_score | round(1) }}%</p>
                 </div>
             </div>
             
             <div id="ss-container" class="hidden bg-pink-50 dark:bg-pink-900/10 border border-pink-100 dark:border-pink-500/10 p-4 rounded-2xl transition-all">
                 <div class="flex justify-between items-center">
                     <div>
-                        <h3 class="text-xs font-black uppercase text-pink-600 dark:text-pink-400 mb-1">Sweet Spot (Z8)</h3>
-                        <p class="text-sm text-slate-500 dark:text-slate-400">Overlaps with Z3/Z4. Excluded from total.</p>
+                        <h3 class="text-[10px] font-black uppercase text-pink-600 dark:text-pink-400 mb-1 tracking-wider">Sweet Spot (Z8)</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Overlaps with Z3/Z4. Excluded from total.</p>
                     </div>
-                    <p class="text-xl font-black text-pink-500">{{ widget.data.power_ss | round(1) }}%</p>
+                    <p class="text-lg font-black text-pink-500">{{ widget.data.power_ss | round(1) }}%</p>
                 </div>
             </div>
         </div>
@@ -66,16 +67,17 @@
                     data: hrData,
                     backgroundColor: colors.slice(0, hrData.length),
                     borderWidth: 0,
-                    hoverOffset: 10,
-                    cutout: '75%'
+                    hoverOffset: 4,
+                    cutout: '80%'
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
                 plugins: {
                     legend: { display: false },
                     tooltip: {
+                        enabled: true,
                         callbacks: {
                             label: function(context) {
                                 return ` ${context.label}: ${context.raw}%`;
@@ -86,8 +88,12 @@
             }
         });
 
-        document.getElementById('center-style').textContent = style.split(' ')[0];
-        document.getElementById('center-score').textContent = Math.round(score) + '%';
+        const updateCenter = (currentStyle, currentScore) => {
+            document.getElementById('center-style').textContent = currentStyle.split(' ')[0];
+            document.getElementById('center-score').textContent = Math.round(currentScore) + '%';
+        };
+
+        updateCenter(style, score);
 
         window.updateIntensityChart = function(type) {
             const data = type === 'hr' ? hrData : powerData;
@@ -99,10 +105,12 @@
                 btnHr.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-blue-400";
                 btnPower.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
                 ssContainer.classList.add('hidden');
+                updateCenter(style, score);
             } else {
                 btnPower.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-blue-400";
                 btnHr.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
                 ssContainer.classList.remove('hidden');
+                updateCenter("Power", score); // Center text can be adapted if needed
             }
 
             window.intensityChart.data.labels = labels.slice(0, data.length);
