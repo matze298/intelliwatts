@@ -9,9 +9,6 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] **Database Migrations:** Initialized **Alembic** to safely manage schema changes (Task 6).
 - [x] **Integration Test Suite:** Implemented "The Athlete's Journey" full-flow integration test with mocked external APIs.
 
-## 📊 Analytics & Insights
-- [ ] **Enhanced Activity Metrics:** Update `daily_df` aggregation in `compute_analysis` to include `duration_h` and `distance_km` to enable richer activity summaries.
-
 ## Proposed Data Integration
 
 ### 1. Readiness & Recovery Metrics [DONE]

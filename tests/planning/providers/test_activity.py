@@ -37,17 +37,18 @@ async def test_activity_provider_context() -> None:
     provider = ActivityProvider()
 
     # WHEN: Calculating and generating activity context for the last 7 days.
-    daily_df = pl.DataFrame([{"date": today_str, "training_stress": 100.0, "duration_h": 1.0}]).with_columns(
-        pl.col("date").str.to_date("%Y-%m-%d")
-    )
+    daily_df = pl.DataFrame([
+        {"date": today_str, "training_stress": 100.0, "duration_h": 1.0, "distance_km": 30.0}
+    ]).with_columns(pl.col("date").str.to_date("%Y-%m-%d"))
     provider_results = {"pmc": MagicMock(ctl=[50.0], atl=[60.0])}
     result = provider.calculate(daily_df, client=client, provider_results=provider_results)
     context = await provider.provide_context(result)
 
-    # THEN: The context should include TSS, hours, and load metrics from analysis.
+    # THEN: The context should include TSS, hours, distance, and load metrics from analysis.
     assert "Recent Training (Last 7 Days):" in context
     assert "Total TSS: 100.0" in context
-    assert "Total Hours: 1.0" in context
+    assert "Total Hours: 1.0h" in context
+    assert "Total Distance: 30.0km" in context
     assert "Training Load:" in context
     assert "Chronic (CTL): 50.0" in context
     assert "Acute (ATL): 60.0" in context

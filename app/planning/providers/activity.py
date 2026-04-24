@@ -20,6 +20,7 @@ class ActivityResult:
     load: TrainingLoad
     tss_7d: float
     hours_7d: float
+    distance_7d: float
     has_activities: bool
 
 
@@ -55,13 +56,20 @@ class ActivityProvider(MetricProvider[ActivityResult]):
         # Filter to last 7 days for summary metrics
         today = daily_df["date"].max()
         if today is None:
-            return ActivityResult(load=TrainingLoad(0, 0), tss_7d=0, hours_7d=0, has_activities=False)
+            return ActivityResult(
+                load=TrainingLoad(0, 0),
+                tss_7d=0,
+                hours_7d=0,
+                distance_7d=0,
+                has_activities=False,
+            )
 
         seven_days_ago = today - pl.duration(days=7)
         recent_df = daily_df.filter(pl.col("date") > seven_days_ago)
 
-        tss_7d = round(recent_df["training_stress"].sum(), 1)
-        hours_7d = round(recent_df["duration_h"].sum(), 1)
+        tss_7d = round(float(recent_df["training_stress"].sum()), 1)
+        hours_7d = round(float(recent_df["duration_h"].sum()), 1)
+        distance_7d = round(float(recent_df["distance_km"].sum()), 1)
 
         # Get latest load (from PMC provider if available)
         load = TrainingLoad(0, 0)
@@ -74,6 +82,7 @@ class ActivityProvider(MetricProvider[ActivityResult]):
             load=load,
             tss_7d=tss_7d,
             hours_7d=hours_7d,
+            distance_7d=distance_7d,
             has_activities=True,
         )
 
@@ -90,11 +99,13 @@ class ActivityProvider(MetricProvider[ActivityResult]):
         load = result.load
         tss_7d = result.tss_7d
         hours_7d = result.hours_7d
+        distance_7d = result.distance_7d
 
         return (
             "Recent Training (Last 7 Days):\n"
             f"- Total TSS: {tss_7d:.1f}\n"
-            f"- Total Hours: {hours_7d}\n\n"
+            f"- Total Hours: {hours_7d}h\n"
+            f"- Total Distance: {distance_7d}km\n\n"
             "Training Load:\n"
             f"- Chronic (CTL): {load.chronic:.1f}\n"
             f"- Acute (ATL): {load.acute:.1f}\n"
