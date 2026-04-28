@@ -276,8 +276,8 @@ def test_secrets_flow(client: TestClient) -> None:
 
     # WHEN storing secrets
     resp = client.post(
-        "/secrets/store",
-        params={
+        "/api/secrets",
+        json={
             "athlete_id": "123",
             "intervals_api_key": "abc",
             "openai_api_key": "sk-123",
