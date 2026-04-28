@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Intensity distribution metric provider."""
 
 from dataclasses import dataclass
@@ -117,36 +116,38 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         if col_name not in daily_df.columns:
             return []
 
-        # Robust extraction and flattening using Polars
+        # Data contains list[list[int]] because of daily aggregation
+        # Flatten to list[int] per row (activity), then sum across rows
         try:
-            # Filter non-null and ensure column is actually a list type before exploding
-            # This prevents "InvalidOperationError: explode operation not supported for dtype null"
-            df_zones = daily_df.select(col_name).filter(pl.col(col_name).is_not_null())
+            # col_name is list[list[int]], explode it to get list[int] per row
+            df_zones = daily_df.select(col_name).explode(col_name).drop_nulls()
 
             if df_zones.is_empty():
                 return []
 
-            # Aggregation means col_name is list[list[int]] or list[int]
-            # Explode once to handle the aggregation (one row per activity)
-            df_zones = df_zones.explode(col_name).filter(pl.col(col_name).is_not_null())
-
-            if df_zones.is_empty():
+            # Each row is now list[int] (the zones for one activity)
+            # Find the max length of lists to ensure we sum all zones
+            max_zones = df_zones.select(pl.col(col_name).list.len()).max().item() or 0
+            if max_zones == 0:
                 return []
 
-            # Now we have one row per activity, where col_name is list[int]
-            # Add a unique ID per activity
-            df_zones = df_zones.with_row_index("activity_id").explode(col_name)
+            # Pad lists to max length with zeros, then sum horizontally
+            # We can use list.to_struct() then sum_horizontal for a very efficient approach
+            res = (
+                df_zones
+                .select(
+                    pl
+                    .col(col_name)
+                    .list.slice(0, max_zones)  # Ensure all lists are consistent
+                    .list.to_struct(upper_bound=max_zones)
+                )
+                .unnest(col_name)
+                .sum()
+                .transpose()
+            )
 
-            # Extract values, handling potential null elements within the lists
-            df_zones = df_zones.with_columns(val=pl.col(col_name).fill_null(0).cast(pl.Int64))
-
-            # Add zone index within each activity to sum corresponding zones
-            df_zones = df_zones.with_columns(zone_idx=pl.int_range(0, pl.len()).over("activity_id"))
-
-            # Sum by zone index
-            res = df_zones.group_by("zone_idx").agg(pl.col("val").sum()).sort("zone_idx")
-            return res["val"].to_list()
-        except pl.exceptions.ColumnNotFoundError, pl.exceptions.ComputeError, pl.exceptions.SchemaError:
+            return res.select(pl.col("column_0").cast(pl.Int64)).to_series().to_list()
+        except pl.exceptions.ColumnNotFoundError, pl.exceptions.ComputeError:
             return []
 
     @staticmethod
