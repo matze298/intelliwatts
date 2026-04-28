@@ -32,5 +32,11 @@ def test_activity_type_calculation() -> None:
 
 def test_activity_type_provider_name() -> None:
     """Tests that the provider name is correct."""
+    # GIVEN an ActivityTypeProvider
     provider = ActivityTypeProvider()
-    assert provider.get_name() == "activity_type"
+
+    # WHEN getting the name
+    name = provider.get_name()
+
+    # THEN it should be "activity_type"
+    assert name == "activity_type"
