@@ -19,7 +19,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 ### 1. Readiness & Recovery Metrics [DONE]
 - [x] **HRV (Heart Rate Variability):** Use as a primary daily readiness indicator.
 - [x] **Resting Heart Rate (RHR):** Monitor for deviations signaling overtraining or illness.
-- [x] **RHR Trend:** 7-day trend visualization for the LLM (Task 7).
+- [x] **Wellness Trends:** Consolidated HRV and Resting HR into a dual-axis longitudinal dashboard chart with 7-day rolling averages.
 - [ ] **Subjective Wellness Data:** Integrate fatigue and sleep quality scores into the LLM context.
 
 ### 2. Athlete Context & Historical Trends

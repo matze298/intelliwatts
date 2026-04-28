@@ -5,9 +5,10 @@ This document outlines potential enhancements for the IntelliWatts dashboard, ca
 ## 🟢 Category 1: Possible with Existing Data
 These features can be implemented using the data already parsed from Intervals.icu (Activities, Wellness, Power Curves).
 
-### 1. Interactive Intensity Distribution
+### 1. Interactive Intensity Distribution ✅
+*   **Status:** COMPLETED
 *   **Data:** `hr_zone_times` and `power_zone_times` from `ParsedActivity`.
-*   **Visualization:** A stacked bar chart or radar chart showing time spent in zones over the selected lookback period.
+*   **Visualization:** Interactive doughnut chart with toggle between HR and Power.
 *   **Value:** Helps athletes verify if they are training at the intended intensity (e.g., following a 80/20 polarized model).
 
 ### 2. Longitudinal HRV & Resting HR Trends
