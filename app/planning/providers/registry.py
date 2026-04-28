@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, Any
 
 from app.planning.providers.activity import ActivityProvider
+from app.planning.providers.activity_type import ActivityTypeProvider
 from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider
 from app.planning.providers.intensity import IntensityProvider
 from app.planning.providers.pmc import PMCProvider
@@ -86,6 +87,7 @@ class MetricRegistry:
 registry = MetricRegistry()
 registry.register(PMCProvider())
 registry.register(ActivityProvider())
+registry.register(ActivityTypeProvider())
 registry.register(WellnessProvider())
 registry.register(PowerCurveProvider())
 registry.register(FTPTrajectoryProvider())
