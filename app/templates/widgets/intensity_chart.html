@@ -24,11 +24,11 @@
         <div class="w-full max-w-lg space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl">
-                    <h3 class="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Training Style</h3>
+                    <h3 class="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Training Style (Power)</h3>
                     <p id="style-text" class="text-base font-bold text-slate-800 dark:text-slate-100">{{ widget.data.style }}</p>
                 </div>
                 <div class="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl">
-                    <h3 class="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1 tracking-wider">Polarized Score</h3>
+                    <h3 class="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1 tracking-wider">Polarized Score (Power)</h3>
                     <p id="score-text" class="text-base font-bold text-slate-800 dark:text-slate-100">{{ widget.data.polarized_score | round(1) }}%</p>
                 </div>
             </div>
@@ -88,12 +88,12 @@
             }
         });
 
-        const updateCenter = (currentStyle, currentScore) => {
-            document.getElementById('center-style').textContent = currentStyle.split(' ')[0];
+        const updateCenter = (displayText, currentScore) => {
+            document.getElementById('center-style').textContent = displayText;
             document.getElementById('center-score').textContent = Math.round(currentScore) + '%';
         };
 
-        updateCenter(style, score);
+        updateCenter(style.split(' ')[0], score);
 
         window.updateIntensityChart = function(type) {
             const data = type === 'hr' ? hrData : powerData;
@@ -105,18 +105,19 @@
                 btnHr.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-blue-400";
                 btnPower.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
                 ssContainer.classList.add('hidden');
-                updateCenter(style, score);
             } else {
                 btnPower.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-blue-400";
                 btnHr.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
                 ssContainer.classList.remove('hidden');
-                updateCenter("Power", score); 
             }
 
             window.intensityChart.data.labels = labels.slice(0, data.length);
             window.intensityChart.data.datasets[0].data = data;
             window.intensityChart.data.datasets[0].backgroundColor = colors.slice(0, data.length);
             window.intensityChart.update();
+            
+            // Always show power-based style in center as per refined logic
+            updateCenter(style.split(' ')[0], score);
         };
     })();
 </script>

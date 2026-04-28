@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Intensity distribution metric provider."""
 
 from dataclasses import dataclass
@@ -83,14 +84,14 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         ]
         power_ss_pct = round((power_ss_secs / power_sum_secs_total) * 100, 1) if power_sum_secs_total > 0 else 0.0
 
-        # Calculate polarized score (Z1 + Z2)
+        # Calculate polarized score (Z1 + Z2) using Power ONLY
+        # Heart rate zones are separate and not used for the aggregate polarization score/style
         polarized_score = 0.0
-        if len(hr_zones_pct) >= MIN_ZONES_FOR_POLARIZED:
-            polarized_score = hr_zones_pct[0] + hr_zones_pct[1]
-        elif len(power_zones_pct) >= MIN_ZONES_FOR_POLARIZED:
+        has_power = len(power_zones_pct) >= MIN_ZONES_FOR_POLARIZED
+        if has_power:
             polarized_score = power_zones_pct[0] + power_zones_pct[1]
 
-        style = self._detect_style(polarized_score)
+        style = self._detect_style(polarized_score, has_data=has_power)
 
         return IntensityResult(
             hr_zones_pct=hr_zones_pct,
@@ -149,15 +150,18 @@ class IntensityProvider(MetricProvider[IntensityResult]):
             return []
 
     @staticmethod
-    def _detect_style(polarized_score: float) -> str:
+    def _detect_style(polarized_score: float, *, has_data: bool = True) -> str:
         """Detect the training style based on the polarized score.
 
         Args:
             polarized_score: The percentage of time in Z1 and Z2.
+            has_data: Whether power data was available to calculate the score.
 
         Returns:
             The detected training style name.
         """
+        if not has_data:
+            return "No Power Data"
         if polarized_score > HIGHLY_POLARIZED_THRESHOLD:
             return "Highly Polarized"
         if polarized_score < THRESHOLD_PYRAMIDAL_THRESHOLD:
@@ -179,6 +183,7 @@ class IntensityProvider(MetricProvider[IntensityResult]):
 
         context = "Intensity Distribution (Last Lookback Period):\n"
         if result.hr_zones_pct:
+            # HR Zones are separate; we show Low/Mid/High summary
             low = sum(result.hr_zones_pct[:MIN_ZONES_FOR_POLARIZED])
             # Z3 is index 2, Z4 is index 3
             mid_idx = 2
@@ -190,7 +195,7 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         if result.power_zones_pct:
             context += f"- Power Style: {result.style} (SS: {result.power_ss_pct}%)\n"
 
-        context += f"Overall Style: {result.style}"
+        context += f"Overall Style (Power-based): {result.style}"
         return context
 
     @override
