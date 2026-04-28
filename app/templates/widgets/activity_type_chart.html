@@ -1,0 +1,56 @@
+<!-- app/templates/widgets/activity_type_chart.html -->
+<div class="p-8 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 space-y-6">
+    <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">🏅 Sport Distribution</h2>
+    <div class="flex flex-col items-center justify-center py-4">
+        <div class="relative w-48 h-48">
+            <canvas id="typeChart"></canvas>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span class="text-[10px] font-black uppercase text-slate-400 tracking-tight">Total</span>
+                <span class="text-xl font-black text-slate-800 dark:text-white leading-none">{{ widget.data.total_hours | round(1) }}h</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const data = {{ widget.data | tojson }};
+        const ctx = document.getElementById('typeChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: [
+                        '#3b82f6', // Blue
+                        '#10b981', // Emerald
+                        '#f59e0b', // Amber
+                        '#ef4444', // Red
+                        '#8b5cf6', // Violet
+                        '#ec4899'  // Pink
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 6,
+                    cutout: '80%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.label}: ${context.raw}h`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    })();
+</script>
