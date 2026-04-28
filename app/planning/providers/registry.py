@@ -84,9 +84,9 @@ class MetricRegistry:
 
 # Global registry instance
 registry = MetricRegistry()
+registry.register(PMCProvider())
 registry.register(ActivityProvider())
 registry.register(WellnessProvider())
 registry.register(PowerCurveProvider())
 registry.register(FTPTrajectoryProvider())
 registry.register(IntensityProvider())
-registry.register(PMCProvider())
