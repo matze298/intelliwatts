@@ -11,7 +11,8 @@ These features can be implemented using the data already parsed from Intervals.i
 *   **Visualization:** Interactive doughnut chart with toggle between HR and Power.
 *   **Value:** Helps athletes verify if they are training at the intended intensity (e.g., following a 80/20 polarized model).
 
-### 2. Longitudinal HRV & Resting HR Trends
+### 2. Longitudinal HRV & Resting HR Trends ✅
+*   **Status:** COMPLETED
 *   **Data:** `hrv` and `resting_hr` from `ParsedWellness`.
 *   **Visualization:** A dual-axis line chart showing daily values with a 7-day rolling average overlay.
 *   **Value:** Better visualization of recovery trends and detection of overtraining or illness.
