@@ -96,6 +96,7 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
             "duration_h": a.duration_h,
             "distance_km": a.distance_km,
             "hr_zone_times": a.hr_zone_times,
+            "type": a.type,
         }
         if a.power_zone_times:
             d["power_zone_times"] = [z.get("secs", 0) for z in a.power_zone_times]
@@ -110,6 +111,8 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
         pl.sum("distance_km"),
         pl.col("hr_zone_times"),
         pl.col("power_zone_times"),
+        pl.col("type").alias("types"),
+        pl.col("duration_h").alias("activity_durations"),
     ])
     return df, daily
 
