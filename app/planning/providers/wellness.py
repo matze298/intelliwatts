@@ -46,6 +46,7 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
         provider_results: dict[str, Any] | None = None,
+        display_days: int | None = None,
     ) -> WellnessResult | None:
         """Perform calculations on raw data and return a structured result.
 
@@ -53,6 +54,7 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
             provider_results: Mapping of previous provider results.
+            display_days: Optional number of days to display.
 
         Returns:
             The structured calculation result.
@@ -64,7 +66,7 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
         # We need enough data for the rolling average
         df = daily_df.select(["date", "hrv", "resting_hr"])
 
-        # Calculate 7-day rolling averages
+        # Calculate 7-day rolling averages on FULL data
         # min_samples=1 ensures we get values even at the start of the series
         df = df.with_columns([
             pl.col("hrv").rolling_mean(window_size=7, min_samples=1).alias("hrv_7d"),
@@ -74,6 +76,14 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
         # Overall averages for the entire period
         avg_hrv = cast("float", df["hrv"].mean()) if "hrv" in df.columns else 0.0
         avg_resting_hr = cast("float", df["resting_hr"].mean()) if "resting_hr" in df.columns else 0.0
+
+        # Filter for display if requested
+        display_df = df
+        if display_days:
+            today = df["date"].max()
+            if today:
+                start_date = today - pl.duration(days=display_days)
+                display_df = df.filter(pl.col("date") > start_date)
 
         # Trend analysis based on last 7 days vs baseline
         if not df.is_empty() and len(df) >= RECENT_DAYS:
@@ -91,11 +101,11 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             recent_hrv_trend = df["hrv"].drop_nulls().to_list() if "hrv" in df.columns else []
 
         return WellnessResult(
-            dates=df["date"].dt.to_string("%Y-%m-%d").to_list(),
-            hrv=df["hrv"].to_list(),
-            hrv_7d=df["hrv_7d"].to_list(),
-            resting_hr=df["resting_hr"].to_list(),
-            resting_hr_7d=df["resting_hr_7d"].to_list(),
+            dates=display_df["date"].dt.to_string("%Y-%m-%d").to_list(),
+            hrv=display_df["hrv"].to_list(),
+            hrv_7d=display_df["hrv_7d"].to_list(),
+            resting_hr=display_df["resting_hr"].to_list(),
+            resting_hr_7d=display_df["resting_hr_7d"].to_list(),
             avg_hrv=avg_hrv or 0.0,
             avg_resting_hr=avg_resting_hr or 0.0,
             hrv_trend=trend,

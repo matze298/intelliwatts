@@ -42,6 +42,7 @@ class ActivityProvider(MetricProvider[ActivityResult]):
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
         provider_results: dict[str, Any] | None = None,
+        display_days: int | None = None,
     ) -> ActivityResult:
         """Perform calculations on raw data and return a structured result.
 
@@ -49,6 +50,7 @@ class ActivityProvider(MetricProvider[ActivityResult]):
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
             provider_results: Mapping of previous provider results.
+            display_days: Optional number of days to display.
 
         Returns:
             The structured calculation result.

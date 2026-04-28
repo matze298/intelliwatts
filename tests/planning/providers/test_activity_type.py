@@ -20,7 +20,7 @@ def test_activity_type_calculation() -> None:
     provider = ActivityTypeProvider()
 
     # WHEN calculating
-    result = provider.calculate(daily_df)
+    result = provider.calculate(daily_df, display_days=None)
 
     # THEN it sums durations by type
     assert result is not None

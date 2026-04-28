@@ -57,6 +57,7 @@ class MetricRegistry:
                 daily_df,
                 client=client,
                 provider_results=results,
+                display_days=display_days,
             )
             results[provider.get_name()] = res
             widget = provider.get_dashboard_widget(res, display_days=display_days)

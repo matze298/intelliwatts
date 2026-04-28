@@ -38,6 +38,7 @@ class ActivityTypeProvider(MetricProvider[ActivityTypeResult | None]):
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
         provider_results: dict[str, Any] | None = None,
+        display_days: int | None = None,
     ) -> ActivityTypeResult | None:
         """Perform calculations on raw data and return a structured result.
 
@@ -45,6 +46,7 @@ class ActivityTypeProvider(MetricProvider[ActivityTypeResult | None]):
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
             provider_results: Mapping of previous provider results.
+            display_days: Optional number of days to display.
 
         Returns:
             The structured calculation result.
@@ -52,9 +54,16 @@ class ActivityTypeProvider(MetricProvider[ActivityTypeResult | None]):
         if "types" not in daily_df.columns or "activity_durations" not in daily_df.columns:
             return None
 
+        df = daily_df
+        if display_days:
+            today = df["date"].max()
+            if today:
+                start_date = today - pl.duration(days=display_days)
+                df = df.filter(pl.col("date") > start_date)
+
         # Reconstruct individual activities by exploding types and durations
         # Each row in daily_df has a list of types and a list of durations
-        df = daily_df.select(["types", "activity_durations"]).explode(["types", "activity_durations"]).drop_nulls()
+        df = df.select(["types", "activity_durations"]).explode(["types", "activity_durations"]).drop_nulls()
 
         if df.is_empty():
             return None

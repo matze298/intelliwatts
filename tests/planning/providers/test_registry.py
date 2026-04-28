@@ -52,12 +52,13 @@ def test_metric_registry_process_analysis() -> None:
         daily_df,
         client=None,
         provider_results=ANY,
+        display_days=None,
     )
-    # p2 was called with p1's result
     provider2.calculate.assert_called_once_with(
         daily_df,
         client=None,
         provider_results=ANY,
+        display_days=None,
     )
 
 

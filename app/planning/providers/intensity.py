@@ -50,6 +50,7 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
         provider_results: dict[str, Any] | None = None,
+        display_days: int | None = None,
     ) -> IntensityResult:
         """Perform calculations on raw data and return a structured result.
 
@@ -57,12 +58,21 @@ class IntensityProvider(MetricProvider[IntensityResult]):
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
             provider_results: Mapping of previous provider results.
+            display_days: Optional number of days to display.
 
         Returns:
             The structured calculation result.
         """
-        hr_totals = self._sum_zones_polars(daily_df, "hr_zone_times")
-        power_totals = self._sum_zones_polars(daily_df, "power_zone_times")
+        # Filter by display_days if provided
+        df = daily_df
+        if display_days:
+            today = df["date"].max()
+            if today:
+                start_date = today - pl.duration(days=display_days)
+                df = df.filter(pl.col("date") > start_date)
+
+        hr_totals = self._sum_zones_polars(df, "hr_zone_times")
+        power_totals = self._sum_zones_polars(df, "power_zone_times")
 
         # HR Calculation
         hr_sum_secs = sum(hr_totals)
