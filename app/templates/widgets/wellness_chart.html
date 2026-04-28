@@ -1,0 +1,135 @@
+<!-- app/templates/widgets/wellness_chart.html -->
+<div class="p-8 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 space-y-6">
+    <div class="flex justify-between items-center">
+        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">📈 Wellness Trends</h2>
+        <div class="flex gap-4">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                <span class="text-xs font-bold text-slate-500 uppercase">HRV (ms)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                <span class="text-xs font-bold text-slate-500 uppercase">Rest HR (bpm)</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="relative w-full h-[400px] overflow-hidden">
+        <canvas id="wellnessChart"></canvas>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const data = {{ widget.data | tojson }};
+        const ctx = document.getElementById('wellnessChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.dates,
+                datasets: [
+                    {
+                        label: 'HRV (Daily)',
+                        data: data.hrv,
+                        borderColor: 'rgba(59, 130, 246, 0.3)',
+                        backgroundColor: 'transparent',
+                        borderWidth: 1,
+                        pointRadius: 2,
+                        yAxisID: 'yHRV',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'HRV (7d Avg)',
+                        data: data.hrv_7d,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'transparent',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        yAxisID: 'yHRV',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Rest HR (Daily)',
+                        data: data.resting_hr,
+                        borderColor: 'rgba(244, 63, 94, 0.3)',
+                        backgroundColor: 'transparent',
+                        borderWidth: 1,
+                        pointRadius: 2,
+                        yAxisID: 'yHR',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Rest HR (7d Avg)',
+                        data: data.resting_hr_7d,
+                        borderColor: '#f43f5e',
+                        backgroundColor: 'transparent',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        yAxisID: 'yHR',
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        display: false // Using custom legend in header
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        padding: 12,
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 13 },
+                        cornerRadius: 8,
+                        boxPadding: 6
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { 
+                            color: '#64748b',
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 10
+                        }
+                    },
+                    yHRV: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'HRV (ms)',
+                            color: '#3b82f6',
+                            font: { weight: 'bold' }
+                        },
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        ticks: { color: '#64748b' }
+                    },
+                    yHR: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Rest HR (bpm)',
+                            color: '#f43f5e',
+                            font: { weight: 'bold' }
+                        },
+                        // Don't draw grid for the second axis to avoid clutter
+                        grid: { drawOnChartArea: false },
+                        ticks: { color: '#64748b' }
+                    }
+                }
+            }
+        });
+    })();
+</script>

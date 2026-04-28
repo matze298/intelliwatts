@@ -7,7 +7,6 @@ from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider
 from app.planning.providers.intensity import IntensityProvider
 from app.planning.providers.pmc import PMCProvider
 from app.planning.providers.power_curve import PowerCurveProvider
-from app.planning.providers.resting_hr import RestingHRTrendProvider
 from app.planning.providers.wellness import WellnessProvider
 
 if TYPE_CHECKING:
@@ -85,10 +84,9 @@ class MetricRegistry:
 
 # Global registry instance
 registry = MetricRegistry()
+registry.register(PMCProvider())
 registry.register(ActivityProvider())
 registry.register(WellnessProvider())
 registry.register(PowerCurveProvider())
-registry.register(RestingHRTrendProvider())
 registry.register(FTPTrajectoryProvider())
 registry.register(IntensityProvider())
-registry.register(PMCProvider())
