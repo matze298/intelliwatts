@@ -176,11 +176,19 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
             "trend_positive": True,
         },
         {
-            "name": "resting_hr",
-            "title": "Heart Rate",
-            "value": "50 bpm",
-            "trend": "Stable",
-            "trend_positive": True,
+            "name": "wellness",
+            "title": "Wellness Trends",
+            "custom_template": "widgets/wellness_chart.html",
+            "data": {
+                "dates": ["2026-04-01"],
+                "hrv": [60.0],
+                "hrv_7d": [60.0],
+                "resting_hr": [50.0],
+                "resting_hr_7d": [50.0],
+                "avg_hrv": 60.0,
+                "avg_resting_hr": 50.0,
+                "hrv_trend": "stable",
+            },
         },
         {
             "name": "intensity",
@@ -197,13 +205,6 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
                 "polarized_score": 85.0,
             },
         },
-        {
-            "name": "test_widget",
-            "title": "Test Title",
-            "value": "123",
-            "trend": "Up",
-            "trend_positive": True,
-        },
     ]
     mock_analysis.widgets = widgets
     mock_analysis.to_dict.return_value = {
@@ -219,9 +220,8 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     assert resp.status_code == 200
     assert "Performance Center" in resp.text
     assert "Recent Training" in resp.text
-    assert "Heart Rate" in resp.text
+    assert "Wellness Trends" in resp.text
     assert "100 TSS" in resp.text
-    assert "50 bpm" in resp.text
     assert "Training Intensity" in resp.text
     assert "Highly Polarized" in resp.text
 
