@@ -1,0 +1,227 @@
+"""Intensity distribution metric provider."""
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, override
+
+import polars as pl
+
+from app.planning.providers.interfaces import DashboardWidget, MetricProvider
+
+if TYPE_CHECKING:
+    from app.intervals.client import IntervalsClient
+
+# Constants for training styles
+HIGHLY_POLARIZED_THRESHOLD = 85
+THRESHOLD_PYRAMIDAL_THRESHOLD = 70
+MIN_ZONES_FOR_POLARIZED = 2
+
+# Power zone indices (0-based)
+POWER_ZONE_SS_IDX = 7  # Z8 is "Sweet Spot" in Intervals.icu (overlaps with Z3/Z4)
+
+
+@dataclass(frozen=True)
+class IntensityResult:
+    """Result of the intensity calculation."""
+
+    hr_zones_pct: list[float]
+    power_zones_pct: list[float]
+    power_ss_pct: float  # Sweet Spot % (for display only, excluded from total)
+    hr_total_mins: float
+    power_total_mins: float
+    polarized_score: float  # % of low intensity (Z1-Z2)
+    style: str
+
+
+class IntensityProvider(MetricProvider[IntensityResult]):
+    """Provides intensity distribution context."""
+
+    @override
+    def get_name(self) -> str:
+        """Returns the provider name.
+
+        Returns:
+            The provider name.
+        """
+        return "intensity"
+
+    @override
+    def calculate(
+        self,
+        daily_df: pl.DataFrame,
+        client: IntervalsClient | None = None,
+        provider_results: dict[str, Any] | None = None,
+    ) -> IntensityResult:
+        """Perform calculations on raw data and return a structured result.
+
+        Args:
+            daily_df: Polars DataFrame containing daily wellness/activity data.
+            client: The Intervals.icu client.
+            provider_results: Mapping of previous provider results.
+
+        Returns:
+            The structured calculation result.
+        """
+        hr_totals = self._sum_zones_polars(daily_df, "hr_zone_times")
+        power_totals = self._sum_zones_polars(daily_df, "power_zone_times")
+
+        # HR Calculation
+        hr_sum_secs = sum(hr_totals)
+        hr_zones_pct = [round((z / hr_sum_secs) * 100, 1) if hr_sum_secs > 0 else 0.0 for z in hr_totals]
+
+        # Power Calculation (Handle Sweet Spot overlap)
+        # Z8 (SS) overlaps, so we exclude it from the total to get a 100% distribution of "standard" zones
+        power_totals_standard = list(power_totals)
+        power_ss_secs = 0.0
+        if len(power_totals_standard) > POWER_ZONE_SS_IDX:
+            power_ss_secs = float(power_totals_standard[POWER_ZONE_SS_IDX])
+            power_totals_standard[POWER_ZONE_SS_IDX] = 0  # Zero out SS for total calculation
+
+        power_sum_secs_total = sum(power_totals_standard)
+        power_zones_pct = [
+            round((z / power_sum_secs_total) * 100, 1) if power_sum_secs_total > 0 else 0.0
+            for z in power_totals_standard
+        ]
+        power_ss_pct = round((power_ss_secs / power_sum_secs_total) * 100, 1) if power_sum_secs_total > 0 else 0.0
+
+        # Calculate polarized score (Z1 + Z2) using Power ONLY
+        # Heart rate zones are separate and not used for the aggregate polarization score/style
+        polarized_score = 0.0
+        has_power = len(power_zones_pct) >= MIN_ZONES_FOR_POLARIZED
+        if has_power:
+            polarized_score = power_zones_pct[0] + power_zones_pct[1]
+
+        style = self._detect_style(polarized_score, has_data=has_power)
+
+        return IntensityResult(
+            hr_zones_pct=hr_zones_pct,
+            power_zones_pct=power_zones_pct,
+            power_ss_pct=power_ss_pct,
+            hr_total_mins=round(hr_sum_secs / 60, 1),
+            power_total_mins=round(power_sum_secs_total / 60, 1),
+            polarized_score=polarized_score,
+            style=style,
+        )
+
+    @staticmethod
+    def _sum_zones_polars(daily_df: pl.DataFrame, col_name: str) -> list[int]:
+        """Sum zone times across all days using Polars for better performance.
+
+        Args:
+            daily_df: The daily dataframe.
+            col_name: The column name to sum.
+
+        Returns:
+            The list of summed zone times.
+        """
+        if col_name not in daily_df.columns:
+            return []
+
+        # Data contains list[list[int]] because of daily aggregation
+        # Flatten to list[int] per row (activity), then sum across rows
+        try:
+            # col_name is list[list[int]], explode it to get list[int] per row
+            df_zones = daily_df.select(col_name).explode(col_name).drop_nulls()
+
+            if df_zones.is_empty():
+                return []
+
+            # Each row is now list[int] (the zones for one activity)
+            # Find the max length of lists to ensure we sum all zones
+            max_zones = df_zones.select(pl.col(col_name).list.len()).max().item() or 0
+            if max_zones == 0:
+                return []
+
+            # Pad lists to max length with zeros, then sum horizontally
+            # We can use list.to_struct() then sum_horizontal for a very efficient approach
+            res = (
+                df_zones
+                .select(
+                    pl
+                    .col(col_name)
+                    .list.slice(0, max_zones)  # Ensure all lists are consistent
+                    .list.to_struct(upper_bound=max_zones)
+                )
+                .unnest(col_name)
+                .sum()
+                .transpose()
+            )
+
+            return res.select(pl.col("column_0").cast(pl.Int64)).to_series().to_list()
+        except pl.exceptions.ColumnNotFoundError, pl.exceptions.ComputeError:
+            return []
+
+    @staticmethod
+    def _detect_style(polarized_score: float, *, has_data: bool = True) -> str:
+        """Detect the training style based on the polarized score.
+
+        Args:
+            polarized_score: The percentage of time in Z1 and Z2.
+            has_data: Whether power data was available to calculate the score.
+
+        Returns:
+            The detected training style name.
+        """
+        if not has_data:
+            return "No Power Data"
+        if polarized_score > HIGHLY_POLARIZED_THRESHOLD:
+            return "Highly Polarized"
+        if polarized_score < THRESHOLD_PYRAMIDAL_THRESHOLD:
+            return "Threshold/Pyramidal"
+        return "Base Building"
+
+    @override
+    async def provide_context(self, result: IntensityResult) -> str:
+        """Provides intensity context.
+
+        Args:
+            result: The result from the calculate method.
+
+        Returns:
+            A formatted string containing the intensity context.
+        """
+        if not result.hr_zones_pct and not result.power_zones_pct:
+            return "No intensity distribution data available."
+
+        context = "Intensity Distribution (Last Lookback Period):\n"
+        if result.hr_zones_pct:
+            # HR Zones are separate; we show Low/Mid/High summary
+            low = sum(result.hr_zones_pct[:MIN_ZONES_FOR_POLARIZED])
+            # Z3 is index 2, Z4 is index 3
+            mid_idx = 2
+            high_start_idx = 3
+            mid = result.hr_zones_pct[mid_idx] if len(result.hr_zones_pct) > mid_idx else 0
+            high = sum(result.hr_zones_pct[high_start_idx:]) if len(result.hr_zones_pct) > high_start_idx else 0
+            context += f"- Heart Rate: {low:.1f}% Low / {mid:.1f}% Mid / {high:.1f}% High\n"
+
+        if result.power_zones_pct:
+            context += f"- Power Style: {result.style} (SS: {result.power_ss_pct}%)\n"
+
+        context += f"Overall Style (Power-based): {result.style}"
+        return context
+
+    @override
+    def get_dashboard_widget(self, result: IntensityResult, display_days: int | None = None) -> DashboardWidget | None:
+        """Format the calculation result for the dashboard.
+
+        Args:
+            result: The result from the calculate method.
+            display_days: Optional number of days to display.
+
+        Returns:
+            The dashboard widget.
+        """
+        if not result.hr_zones_pct and not result.power_zones_pct:
+            return None
+
+        return DashboardWidget(
+            name="intensity",
+            title="Intensity Distribution",
+            custom_template="widgets/intensity_chart.html",
+            data={
+                "hr_zones": result.hr_zones_pct,
+                "power_zones": result.power_zones_pct,
+                "power_ss": result.power_ss_pct,
+                "style": result.style,
+                "polarized_score": result.polarized_score,
+            },
+        )

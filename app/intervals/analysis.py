@@ -86,11 +86,30 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
         df = pl.DataFrame(schema={"date": pl.Date, "training_stress": pl.Float64})
         return df, df
 
-    df = pl.from_dicts([a.__dict__ for a in activities]).with_columns(pl.col("date").str.to_date("%Y-%m-%d"))
+    # Normalize zone data during creation
+    # Power zones come as list of dicts [{"secs": 10}, ...], convert to list of ints
+    data = []
+    for a in activities:
+        d = {
+            "date": a.date,
+            "training_stress": a.training_stress,
+            "duration_h": a.duration_h,
+            "distance_km": a.distance_km,
+            "hr_zone_times": a.hr_zone_times,
+        }
+        if a.power_zone_times:
+            d["power_zone_times"] = [z.get("secs", 0) for z in a.power_zone_times]
+        else:
+            d["power_zone_times"] = []
+        data.append(d)
+
+    df = pl.from_dicts(data).with_columns(pl.col("date").str.to_date("%Y-%m-%d"))
     daily = df.group_by("date").agg([
         pl.sum("training_stress"),
         pl.sum("duration_h"),
         pl.sum("distance_km"),
+        pl.col("hr_zone_times"),
+        pl.col("power_zone_times"),
     ])
     return df, daily
 

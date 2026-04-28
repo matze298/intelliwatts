@@ -59,9 +59,7 @@
         <div class="space-y-12">
             {% for widget in analysis.widgets %}
                 {% if widget.custom_template %}
-                    <div class="bg-white border border-gray-200 p-8 rounded-lg shadow-sm">
-                        {{ render_widget(widget) }}
-                    </div>
+                    {{ render_widget(widget) }}
                 {% endif %}
             {% endfor %}
         </div>
