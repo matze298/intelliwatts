@@ -17,7 +17,8 @@ These features can be implemented using the data already parsed from Intervals.i
 *   **Visualization:** A dual-axis line chart showing daily values with a 7-day rolling average overlay.
 *   **Value:** Better visualization of recovery trends and detection of overtraining or illness.
 
-### 3. Activity Type Analysis
+### 3. Activity Type Analysis ✅
+*   **Status:** COMPLETED
 *   **Data:** `type` and `duration_h` from `ParsedActivity`.
 *   **Visualization:** A donut chart showing the breakdown of training volume by sport (Ride, Run, Swim, etc.).
 *   **Value:** Quick overview of cross-training balance.

@@ -42,6 +42,7 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
         daily_df: pl.DataFrame,
         client: IntervalsClient | None = None,
         provider_results: dict[str, Any] | None = None,
+        display_days: int | None = None,
     ) -> PowerCurveResult | None:
         """Perform calculations on raw data and return a structured result.
 
@@ -49,9 +50,10 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
             daily_df: Polars DataFrame containing daily wellness/activity data.
             client: The Intervals.icu client.
             provider_results: Mapping of previous provider results.
+            display_days: Optional number of days to display.
 
         Returns:
-            The structured calculation result.
+            The structured calculation result or None if no data available.
         """
         # Fetch power curve directly using client
         if client is None:

@@ -28,7 +28,7 @@ def test_wellness_calculation() -> None:
     provider = WellnessProvider()
 
     # WHEN calculating wellness metrics
-    result = provider.calculate(daily_df)
+    result = provider.calculate(daily_df, display_days=None)
 
     # THEN the result should contain correct time series data
     assert result is not None

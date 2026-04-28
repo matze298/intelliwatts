@@ -34,7 +34,7 @@ def test_intensity_calculation() -> None:
     provider = IntensityProvider()
 
     # WHEN: Calculating the intensity distribution
-    result = provider.calculate(daily_df)
+    result = provider.calculate(daily_df, display_days=None)
 
     # THEN: The style should be detected as Highly Polarized (>85% in Z1+Z2) based on Power
     # Low Intensity = (1800 + 4200) / 7000 = 85.7%
