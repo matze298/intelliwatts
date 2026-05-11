@@ -252,7 +252,7 @@ def test_compute_analysis_empty() -> None:
     """Test compute analysis with empty inputs."""
     # GIVEN no inputs
     # WHEN computing analysis
-    result = compute_analysis([], wellness_data=[], power_curve=[])
+    result = compute_analysis([], wellness_data=[])
     # THEN returns empty result
     assert isinstance(result, AnalysisResult)
     assert not result.provider_results

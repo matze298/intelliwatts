@@ -12,7 +12,6 @@ from app.planning.providers.registry import registry
 if TYPE_CHECKING:
     from app.intervals.client import IntervalsClient
     from app.intervals.parser.activity import ParsedActivity
-    from app.intervals.parser.power_curve import ParsedPowerCurve
     from app.intervals.parser.wellness import ParsedWellness
 
 _LOGGER = getLogger(__name__)
@@ -22,7 +21,6 @@ def compute_analysis(
     activities: list[ParsedActivity],
     display_days: int | None = None,
     wellness_data: list[ParsedWellness] | None = None,
-    power_curve: list[ParsedPowerCurve] | None = None,
     client: IntervalsClient | None = None,
 ) -> AnalysisResult:
     """Compute a complete sports science analysis using registered providers.
@@ -31,13 +29,12 @@ def compute_analysis(
         activities: The activities to analyze.
         display_days: The number of days to include in the dashboard widgets.
         wellness_data: Optional wellness data to analyze trends.
-        power_curve: Optional power curve data (handled by provider directly).
         client: Optional Intervals.icu client for provider-specific data fetching.
 
     Returns:
         The analysis result including provider results and widgets.
     """
-    if not activities and not wellness_data and not power_curve:
+    if not activities and not wellness_data:
         return AnalysisResult()
 
     # 1. Initialize DataFrame and daily aggregation
