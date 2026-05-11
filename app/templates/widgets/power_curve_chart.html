@@ -1,0 +1,157 @@
+<!-- app/templates/widgets/power_curve_chart.html -->
+<div class="p-8 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 space-y-4">
+    <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">⚡ Critical Power Heatmap</h2>
+    <div class="h-64">
+        <canvas id="powerCurveChart"></canvas>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const data = {{ widget.data | tojson }};
+
+        const formatPoints = (points) => {
+            if (!points) return [];
+            return points.map(p => ({ x: p.secs, y: p.watts }));
+        };
+
+        const recent90dPoints = formatPoints(data.recent_90d);
+        const seasonPoints = formatPoints(data.season);
+        const allTimePoints = formatPoints(data.all_time);
+
+        new Chart(document.getElementById('powerCurveChart'), {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: 'All-Time',
+                        data: allTimePoints,
+                        borderColor: '#aeaeb2',
+                        borderDash: [5, 5],
+                        borderWidth: 1.5,
+                        fill: false,
+                        pointRadius: 0,
+                        tension: 0.2,
+                        z: 1
+                    },
+                    {
+                        label: 'Season',
+                        data: seasonPoints,
+                        borderColor: '#34c759',
+                        backgroundColor: 'rgba(52, 199, 89, 0.1)',
+                        borderWidth: 2,
+                        fill: 2, // Fill to dataset index 2 (Recent 90d)
+                        pointRadius: 0,
+                        tension: 0.2,
+                        z: 2
+                    },
+                    {
+                        label: 'Recent 90d',
+                        data: recent90dPoints,
+                        borderColor: '#0071e3',
+                        backgroundColor: 'rgba(0, 113, 227, 0.1)',
+                        borderWidth: 3,
+                        fill: 'origin',
+                        pointRadius: 0,
+                        tension: 0.2,
+                        z: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#94a3b8',
+                            usePointStyle: true,
+                            boxWidth: 6,
+                            padding: 20,
+                            font: { weight: 'bold', size: 10 }
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            title: (items) => {
+                                const secs = items[0].parsed.x;
+                                if (secs < 60) return `${secs}s`;
+                                if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+                                return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
+                            },
+                            label: (context) => {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y + 'W';
+                                }
+                                
+                                // Add gap info for Recent 90d
+                                if (context.datasetIndex === 2) {
+                                    const x = context.parsed.x;
+                                    const findWatts = (pts) => pts?.find(p => p.secs === x)?.watts;
+                                    
+                                    const seasonWatts = findWatts(data.season);
+                                    const allTimeWatts = findWatts(data.all_time);
+                                    
+                                    let gapInfo = [];
+                                    if (seasonWatts && seasonWatts > context.parsed.y) {
+                                        gapInfo.push(`-${seasonWatts - context.parsed.y}W vs Season`);
+                                    }
+                                    if (allTimeWatts && allTimeWatts > context.parsed.y) {
+                                        gapInfo.push(`-${allTimeWatts - context.parsed.y}W vs All-Time`);
+                                    }
+                                    
+                                    if (gapInfo.length > 0) {
+                                        label += ` (${gapInfo.join(', ')})`;
+                                    }
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'logarithmic',
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10 },
+                            callback: function(value, index, ticks) {
+                                // Only show specific duration ticks to keep it clean
+                                const labels = {
+                                    1: '1s',
+                                    5: '5s',
+                                    15: '15s',
+                                    30: '30s',
+                                    60: '1m',
+                                    300: '5m',
+                                    600: '10m',
+                                    1200: '20m',
+                                    1800: '30m',
+                                    3600: '1h',
+                                    7200: '2h',
+                                    18000: '5h'
+                                };
+                                return labels[value] || '';
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        ticks: { 
+                            color: '#64748b', 
+                            font: { size: 10 },
+                            callback: (value) => value + 'W'
+                        }
+                    }
+                }
+            }
+        });
+    })();
+</script>
