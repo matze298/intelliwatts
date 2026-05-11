@@ -29,17 +29,18 @@ These features can be implemented using the data already parsed from Intervals.i
 *   **Visualization:** Line chart with logarithmic X-axis and gap shading.
 *   **Value:** Identifies specific duration gaps where the athlete's power is lagging relative to historical benchmarks.
 
+### 5. Weekly Volume Comparison ✅
+*   **Status:** COMPLETED
+*   **Data:** Aggregated `duration_h` or `training_stress` grouped by week.
+*   **Visualization:** Bar chart comparing current week vs. previous 4 weeks.
+*   **Value:** Visualizes training progression and load management.
+
 ---
 
 ## 🟡 Category 2: Requires Minor Logic/Parsing Updates
 These require data that is likely available in the Intervals.icu API but not currently fully extracted or aggregated.
 
-### 1. Weekly Volume Comparison
-*   **Data:** Aggregated `duration_h` or `training_stress` grouped by week.
-*   **Visualization:** Bar chart comparing current week vs. previous 4 weeks.
-*   **Value:** Visualizes training progression and load management.
-
-### 2. Performance Predicted vs. Actual
+### 1. Performance Predicted vs. Actual
 *   **Data:** Requires fetching "Planned" activities from Intervals.icu.
 *   **Visualization:** Grouped bar chart (Planned vs. Completed).
 *   **Value:** High-level compliance monitoring.

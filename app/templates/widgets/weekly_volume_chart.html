@@ -1,0 +1,138 @@
+<!-- app/templates/widgets/weekly_volume_chart.html -->
+<div class="p-8 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 space-y-8">
+    <div class="flex justify-between items-center">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">📊 Weekly Volume</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Volume trends and training stress.</p>
+        </div>
+        <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
+            <button id="toggle-hours" onclick="updateVolumeChart('duration')" class="px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm">Hours</button>
+            <button id="toggle-tss" onclick="updateVolumeChart('tss')" class="px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">TSS</button>
+        </div>
+    </div>
+
+    <div class="relative w-full h-64">
+        <canvas id="weeklyVolumeChart"></canvas>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const data = {{ widget.data | tojson }};
+        const ctx = document.getElementById('weeklyVolumeChart').getContext('2d');
+        
+        const sportColors = {
+            'Ride': '#3b82f6',   // Blue
+            'VirtualRide': '#60a5fa', // Light Blue
+            'Run': '#10b981',    // Emerald
+            'VirtualRun': '#34d399', // Light Emerald
+            'Swim': '#06b6d4',   // Cyan
+            'Walk': '#f59e0b',   // Amber
+            'WeightTraining': '#8b5cf6', // Violet
+            'Yoga': '#d946ef',   // Fuchsia
+            'Other': '#94a3b8'   // Slate
+        };
+
+        const uniqueColors = [
+            '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', 
+            '#f97316', '#d946ef', '#14b8a6', '#6366f1'
+        ];
+
+        function getColor(sport, index) {
+            return sportColors[sport] || uniqueColors[index % uniqueColors.length];
+        }
+
+        const labels = data.weeks.map(w => {
+            const date = new Date(w);
+            return `${date.getMonth() + 1}-${date.getDate()}`;
+        });
+
+        function createDatasets(metric) {
+            const dataSource = metric === 'duration' ? data.duration_by_type : data.tss_by_type;
+            return Object.keys(dataSource).map((sport, index) => ({
+                label: sport,
+                data: dataSource[sport],
+                backgroundColor: getColor(sport, index),
+                borderWidth: 0,
+                borderRadius: 4,
+                stack: 'stack0'
+            }));
+        }
+
+        window.volumeChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: createDatasets('duration')
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { size: 10, weight: 'bold' }
+                        }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { size: 10, weight: 'bold' }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 15,
+                            color: '#94a3b8',
+                            font: { size: 10, weight: 'bold' }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        padding: 12,
+                        cornerRadius: 8,
+                        titleFont: { size: 12, weight: 'bold' },
+                        bodyFont: { size: 12 },
+                        callbacks: {
+                            label: function(context) {
+                                const val = context.raw;
+                                const metric = window.currentVolumeMetric === 'tss' ? 'TSS' : 'h';
+                                return ` ${context.dataset.label}: ${val}${metric}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        window.currentVolumeMetric = 'duration';
+
+        window.updateVolumeChart = function(metric) {
+            window.currentVolumeMetric = metric;
+            const btnHours = document.getElementById('toggle-hours');
+            const btnTss = document.getElementById('toggle-tss');
+
+            if (metric === 'duration') {
+                btnHours.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm";
+                btnTss.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
+            } else {
+                btnTss.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm";
+                btnHours.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
+            }
+
+            window.volumeChart.data.datasets = createDatasets(metric);
+            window.volumeChart.update();
+        };
+    })();
+</script>

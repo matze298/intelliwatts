@@ -210,6 +210,16 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
                 "peak_20m": 250,
             },
         },
+        {
+            "name": "weekly_volume",
+            "title": "Weekly Volume",
+            "custom_template": "widgets/weekly_volume_chart.html",
+            "data": {
+                "weeks": ["2026-03-30", "2026-04-06"],
+                "duration_by_type": {"Ride": [2.0, 3.0]},
+                "tss_by_type": {"Ride": [100.0, 150.0]},
+            },
+        },
     ]
     mock_analysis.widgets = widgets
     mock_analysis.to_dict.return_value = {
@@ -230,6 +240,7 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     assert "Training Intensity" in resp.text
     assert "Highly Polarized" in resp.text
     assert "Critical Power Heatmap" in resp.text
+    assert "Weekly Volume" in resp.text
 
 
 @patch("app.services.planner.generate_plan")

@@ -1,7 +1,8 @@
 """Weekly volume comparison metric provider."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, override
+from datetime import date, timedelta
+from typing import TYPE_CHECKING, Any, cast, override
 
 import polars as pl
 
@@ -59,31 +60,51 @@ class WeeklyVolumeProvider(MetricProvider[WeeklyVolumeResult]):
         ):
             return WeeklyVolumeResult(weeks=[], duration_by_type={}, tss_by_type={}, has_data=False)
 
+        # 1. Prepare and filter data
+        today = cast("date | None", daily_df["date"].max())
         df = daily_df
-
-        # 1. Filter by display days if provided
-        if display_days:
-            today = df["date"].max()
-            if today:
-                start_date = today - pl.duration(days=display_days)
-                df = df.filter(pl.col("date") >= start_date)
+        if display_days and today:
+            num_weeks = (display_days + 6) // 7
+            end_week = pl.Series([today], dtype=pl.Date).dt.truncate("1w")[0]
+            start_week = end_week - timedelta(weeks=num_weeks - 1)
+            df = df.filter(pl.col("date") >= start_week)
 
         if df.is_empty():
             return WeeklyVolumeResult(weeks=[], duration_by_type={}, tss_by_type={}, has_data=False)
 
         # 2. Explode and group by week and type
-        # truncate("1w") in Polars starts on Monday
+        weekly = self._aggregate_weekly(df)
+        if weekly.is_empty():
+            return WeeklyVolumeResult(weeks=[], duration_by_type={}, tss_by_type={}, has_data=False)
+
+        # 3. Ensure all combinations of week and type exist
+        all_weeks = self._get_all_weeks(weekly, display_days, today)
+        all_types = weekly["types"].unique().sort()
+        full_weekly = self._align_to_grid(weekly, all_weeks, all_types)
+
+        # 4. Format for result
+        return self._format_result(full_weekly, all_weeks, all_types)
+
+    @staticmethod
+    def _aggregate_weekly(df: pl.DataFrame) -> pl.DataFrame:
+        """Aggregate data by week and activity type.
+
+        Args:
+            df: The exploded activity DataFrame.
+
+        Returns:
+            A DataFrame aggregated by week and sport type.
+        """
         df_exploded = (
             df
             .select(["date", "types", "activity_durations", "activity_tss"])
             .explode(["types", "activity_durations", "activity_tss"])
             .drop_nulls()
         )
-
         if df_exploded.is_empty():
-            return WeeklyVolumeResult(weeks=[], duration_by_type={}, tss_by_type={}, has_data=False)
+            return pl.DataFrame()
 
-        weekly = (
+        return (
             df_exploded
             .with_columns(pl.col("date").dt.truncate("1w").alias("week"))
             .group_by(["week", "types"])
@@ -94,15 +115,52 @@ class WeeklyVolumeProvider(MetricProvider[WeeklyVolumeResult]):
             .sort("week")
         )
 
-        # 3. Ensure all combinations of week and type exist to avoid missing data points in chart
-        all_weeks = weekly["week"].unique().sort()
-        all_types = weekly["types"].unique().sort()
+    @staticmethod
+    def _get_all_weeks(weekly: pl.DataFrame, display_days: int | None, today: date | None) -> pl.Series:
+        """Generate a continuous sequence of weeks.
 
-        # Create a cartesian product of all weeks and all types
+        Args:
+            weekly: The aggregated weekly DataFrame.
+            display_days: Optional lookback in days.
+            today: The latest date in the data.
+
+        Returns:
+            A Series of week start dates.
+        """
+        if display_days and today:
+            num_weeks = (display_days + 6) // 7
+            end_week_val = pl.Series([today], dtype=pl.Date).dt.truncate("1w")[0]
+            start_week_val = end_week_val - timedelta(weeks=num_weeks - 1)
+            return pl.date_range(
+                cast("date", start_week_val),
+                cast("date", end_week_val),
+                interval="1w",
+                eager=True,
+            ).alias("week")
+
+        min_week = weekly["week"].min()
+        max_week = weekly["week"].max()
+        return pl.date_range(
+            cast("date", min_week),
+            cast("date", max_week),
+            interval="1w",
+            eager=True,
+        ).alias("week")
+
+    @staticmethod
+    def _align_to_grid(weekly: pl.DataFrame, all_weeks: pl.Series, all_types: pl.Series) -> pl.DataFrame:
+        """Align weekly data to a full grid of weeks and types.
+
+        Args:
+            weekly: The aggregated weekly DataFrame.
+            all_weeks: A Series of all weeks in the range.
+            all_types: A Series of all unique activity types.
+
+        Returns:
+            A DataFrame with all combinations of week and sport type.
+        """
         grid = all_weeks.to_frame().join(all_types.to_frame(), how="cross")
-
-        # Join back with calculated totals
-        full_weekly = (
+        return (
             grid
             .join(weekly, on=["week", "types"], how="left")
             .with_columns([
@@ -112,15 +170,26 @@ class WeeklyVolumeProvider(MetricProvider[WeeklyVolumeResult]):
             .sort(["types", "week"])
         )
 
-        # 4. Format for result
+    @staticmethod
+    def _format_result(full_weekly: pl.DataFrame, all_weeks: pl.Series, all_types: pl.Series) -> WeeklyVolumeResult:
+        """Format the aligned data into a WeeklyVolumeResult.
+
+        Args:
+            full_weekly: The aligned DataFrame.
+            all_weeks: A Series of all weeks.
+            all_types: A Series of all unique activity types.
+
+        Returns:
+            A structured WeeklyVolumeResult object.
+        """
         weeks_str = [d.strftime("%Y-%m-%d") for d in all_weeks]
         duration_by_type = {}
         tss_by_type = {}
 
         for t in all_types:
             type_data = full_weekly.filter(pl.col("types") == t)
-            duration_by_type[t] = [round(float(v), 1) for v in type_data["duration"].to_list()]
-            tss_by_type[t] = [round(float(v), 0) for v in type_data["tss"].to_list()]
+            duration_by_type[t] = type_data["duration"].round(1).to_list()
+            tss_by_type[t] = type_data["tss"].round(0).to_list()
 
         return WeeklyVolumeResult(
             weeks=weeks_str,
