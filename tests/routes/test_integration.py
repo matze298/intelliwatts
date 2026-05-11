@@ -199,6 +199,17 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
                 "polarized_score": 85.0,
             },
         },
+        {
+            "name": "power_curve",
+            "title": "Critical Power Heatmap",
+            "custom_template": "widgets/power_curve_chart.html",
+            "data": {
+                "recent_90d": [{"secs": 1, "watts": 1000}],
+                "season": [{"secs": 1, "watts": 1100}],
+                "all_time": [{"secs": 1, "watts": 1200}],
+                "peak_20m": 250,
+            },
+        },
     ]
     mock_analysis.widgets = widgets
     mock_analysis.to_dict.return_value = {
@@ -218,6 +229,7 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     assert "100 TSS" in resp.text
     assert "Training Intensity" in resp.text
     assert "Highly Polarized" in resp.text
+    assert "Critical Power Heatmap" in resp.text
 
 
 @patch("app.services.planner.generate_plan")
