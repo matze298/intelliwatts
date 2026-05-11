@@ -24,7 +24,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 
 ### 2. Athlete Context & Historical Trends
 - [x] **FTP Trajectory:** Provide a 4-week window of FTP changes (Task 8).
-- [x] **Power Curve Metrics:** Incorporate peak power values for key durations (5s, 1m, 5m, 20m).
+- [x] **Power Curve Metrics:** Incorporate peak power values for key durations (5s, 1m, 5m, 20m) and a 90-day interactive heatmap with logarithmic scale.
 - [ ] **Activity Notes:** Utilize unstructured text analysis of athlete-entered comments for qualitative context.
 
 ### 3. Environmental Context

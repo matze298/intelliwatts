@@ -129,31 +129,26 @@ def test_authentication_flow(client: TestClient) -> None:
 @patch("app.routes.web.IntervalsClient")
 @patch("app.routes.web.parse_activities")
 @patch("app.routes.web.parse_wellness_list")
-@patch("app.routes.web.parse_power_curves")
 @patch("app.routes.web.compute_analysis")
 def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     mock_compute: MagicMock,
-    mock_parse_pc: MagicMock,
     mock_parse_w: MagicMock,
     mock_parse_a: MagicMock,
     mock_client_class: MagicMock,  # noqa: ARG001
     client: TestClient,
     mock_activities: list[ParsedActivity],
     mock_wellness: list[ParsedWellness],
-    mock_power_curves: list[ParsedPowerCurve],
 ) -> None:
     """Tests the Dashboard rendering with mocks.
 
     Args:
         mock_compute: Mock for compute_analysis.
-        mock_parse_pc: Mock for parse_power_curves.
         mock_parse_w: Mock for parse_wellness_list.
         mock_parse_a: Mock for parse_activities.
         mock_client_class: Mock for IntervalsClient class.
         client: The test client.
         mock_activities: Mocked activities.
         mock_wellness: Mocked wellness data.
-        mock_power_curves: Mocked power curves.
     """
     # GIVEN an authenticated user
     email = "dashboard_journey@example.com"
@@ -163,7 +158,6 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
 
     mock_parse_a.return_value = mock_activities
     mock_parse_w.return_value = mock_wellness
-    mock_parse_pc.return_value = mock_power_curves
 
     # Setup mock analysis object with both dict and attribute access for the template
     mock_analysis = MagicMock()
@@ -205,6 +199,17 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
                 "polarized_score": 85.0,
             },
         },
+        {
+            "name": "power_curve",
+            "title": "Critical Power Heatmap",
+            "custom_template": "widgets/power_curve_chart.html",
+            "data": {
+                "recent_90d": [{"secs": 1, "watts": 1000}],
+                "season": [{"secs": 1, "watts": 1100}],
+                "all_time": [{"secs": 1, "watts": 1200}],
+                "peak_20m": 250,
+            },
+        },
     ]
     mock_analysis.widgets = widgets
     mock_analysis.to_dict.return_value = {
@@ -224,6 +229,7 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     assert "100 TSS" in resp.text
     assert "Training Intensity" in resp.text
     assert "Highly Polarized" in resp.text
+    assert "Critical Power Heatmap" in resp.text
 
 
 @patch("app.services.planner.generate_plan")

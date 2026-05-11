@@ -23,10 +23,11 @@ These features can be implemented using the data already parsed from Intervals.i
 *   **Visualization:** A donut chart showing the breakdown of training volume by sport (Ride, Run, Swim, etc.).
 *   **Value:** Quick overview of cross-training balance.
 
-### 4. Critical Power "Heatmap"
-*   **Data:** `ParsedPowerCurve` (Season vs. All-time or 90d).
-*   **Visualization:** A line chart with shaded areas representing standard deviations or personal bests.
-*   **Value:** Identifies specific duration gaps where the athlete's power is lagging.
+### 4. Critical Power "Heatmap" ✅
+*   **Status:** COMPLETED
+*   **Data:** `ParsedPowerCurve` (90d, Season, and All-time).
+*   **Visualization:** Line chart with logarithmic X-axis and gap shading.
+*   **Value:** Identifies specific duration gaps where the athlete's power is lagging relative to historical benchmarks.
 
 ---
 

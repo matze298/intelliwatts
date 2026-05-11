@@ -22,6 +22,10 @@ class PowerCurveResult:
     peak_5m: int | None
     peak_20m: int | None
     peak_60m: int | None
+    # New fields for the heatmap
+    recent_90d: list[dict[str, int]] | None = None
+    season: list[dict[str, int]] | None = None
+    all_time: list[dict[str, int]] | None = None
 
 
 class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
@@ -55,29 +59,37 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
         Returns:
             The structured calculation result or None if no data available.
         """
-        # Fetch power curve directly using client
+        # Fetch power curves directly using client in a single call
         if client is None:
             return None
-        raw_curves = client.power_curves(curves="90d")
 
-        curves = parse_power_curves(raw_curves)
-        if not curves:
+        # Fetch all requested curves in one go
+        raw_curves = client.power_curves(curves="90d,s0,all")
+        parsed_curves = parse_power_curves(raw_curves)
+
+        if not parsed_curves:
             return None
-        c = curves[0]
 
-        def _get_peak(secs: int) -> int | None:
-            for p in c.points:
-                if p.secs == secs:
-                    return p.watts
+        # Map curves by their ID for easy access
+        curve_map = {c.id: c for c in parsed_curves}
+
+        c_90d = curve_map.get("90d")
+        c_season = curve_map.get("s0")
+        c_all = curve_map.get("all")
+
+        if not c_90d:
             return None
 
         return PowerCurveResult(
-            peak_1s=_get_peak(1),
-            peak_15s=_get_peak(15),
-            peak_1m=_get_peak(60),
-            peak_5m=_get_peak(300),
-            peak_20m=_get_peak(1200),
-            peak_60m=_get_peak(3600),
+            peak_1s=c_90d.get_watts(1),
+            peak_15s=c_90d.get_watts(15),
+            peak_1m=c_90d.get_watts(60),
+            peak_5m=c_90d.get_watts(300),
+            peak_20m=c_90d.get_watts(1200),
+            peak_60m=c_90d.get_watts(3600),
+            recent_90d=c_90d.to_list(),
+            season=c_season.to_list() if c_season else None,
+            all_time=c_all.to_list() if c_all else None,
         )
 
     @override
@@ -116,13 +128,17 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
         Returns:
             The dashboard widget.
         """
-        if result is None or result.peak_20m is None:
+        if result is None:
             return None
 
         return DashboardWidget(
             name="power_curve",
-            title="Power Peaks",
-            value=f"{result.peak_20m} W",
-            trend="20m Peak",
-            trend_positive=True,
+            title="Critical Power Heatmap",
+            custom_template="widgets/power_curve_chart.html",
+            data={
+                "recent_90d": result.recent_90d,
+                "season": result.season,
+                "all_time": result.all_time,
+                "peak_20m": result.peak_20m,
+            },
         )

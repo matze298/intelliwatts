@@ -14,7 +14,6 @@ from app.db import engine
 from app.intervals.analysis import compute_analysis
 from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
-from app.intervals.parser.power_curve import parse_power_curves
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPhase, TrainingPlan
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
@@ -157,12 +156,10 @@ def _get_analysis(client: IntervalsClient, analysis_days: int) -> AnalysisResult
     lookback_days = max(analysis_days, 42)
     raw_activities = client.activities(days=lookback_days)
     raw_wellness = client.wellness(days=lookback_days)
-    raw_power_curves = client.power_curves(curves="90d")
 
     return compute_analysis(
         parse_activities(raw_activities),
         wellness_data=parse_wellness_list(raw_wellness),
-        power_curve=parse_power_curves(raw_power_curves),
         client=client,
     )
 
