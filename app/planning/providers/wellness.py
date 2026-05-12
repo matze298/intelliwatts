@@ -1,6 +1,7 @@
 """Wellness metric provider."""
 
 from dataclasses import dataclass
+from numbers import Real
 from typing import TYPE_CHECKING, Any, cast, override
 
 import polars as pl
@@ -26,6 +27,10 @@ class WellnessResult:
     avg_resting_hr: float
     hrv_trend: str  # "improving", "declining", "stable"
     recent_hrv_trend: list[float]
+    avg_sleep_quality: float | None
+    avg_fatigue: float | None
+    recent_sleep_quality: list[int]
+    recent_fatigue: list[int]
 
 
 class WellnessProvider(MetricProvider[WellnessResult | None]):
@@ -59,12 +64,17 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
         Returns:
             The structured calculation result.
         """
-        if "hrv" not in daily_df.columns and "resting_hr" not in daily_df.columns:
+        if not {
+            "hrv",
+            "resting_hr",
+            "sleep_quality",
+            "fatigue",
+        }.intersection(daily_df.columns):
             return None
 
         # Work with a subset for trends
         # We need enough data for the rolling average
-        df = daily_df.select(["date", "hrv", "resting_hr"])
+        df = daily_df.select(["date", "hrv", "resting_hr", "sleep_quality", "fatigue"])
 
         # Calculate 7-day rolling averages on FULL data
         # min_samples=1 ensures we get values even at the start of the series
@@ -76,6 +86,8 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
         # Overall averages for the entire period
         avg_hrv = cast("float", df["hrv"].mean()) if "hrv" in df.columns else 0.0
         avg_resting_hr = cast("float", df["resting_hr"].mean()) if "resting_hr" in df.columns else 0.0
+        avg_sleep_quality = self._series_mean(df, "sleep_quality")
+        avg_fatigue = self._series_mean(df, "fatigue")
 
         # Filter for display if requested
         display_df = df
@@ -100,6 +112,9 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             trend = "stable"
             recent_hrv_trend = df["hrv"].drop_nulls().to_list() if "hrv" in df.columns else []
 
+        recent_sleep_quality = self._recent_values(df, "sleep_quality")
+        recent_fatigue = self._recent_values(df, "fatigue")
+
         return WellnessResult(
             dates=display_df["date"].dt.to_string("%Y-%m-%d").to_list(),
             hrv=display_df["hrv"].to_list(),
@@ -110,6 +125,10 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             avg_resting_hr=avg_resting_hr or 0.0,
             hrv_trend=trend,
             recent_hrv_trend=recent_hrv_trend,
+            avg_sleep_quality=avg_sleep_quality,
+            avg_fatigue=avg_fatigue,
+            recent_sleep_quality=recent_sleep_quality,
+            recent_fatigue=recent_fatigue,
         )
 
     @override
@@ -126,13 +145,25 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             return "No wellness data available."
 
         trend_str = ", ".join([f"{v:.0f}" for v in result.recent_hrv_trend])
-        return (
+        context = (
             "Wellness Metrics:\n"
             f"- Average HRV: {result.avg_hrv:.1f}\n"
             f"- Average Resting HR: {result.avg_resting_hr:.1f} bpm\n"
             f"- HRV Trend Status: {result.hrv_trend.capitalize()}\n"
             f"- Recent HRV Trend (Last days): [{trend_str}]"
         )
+        if result.avg_sleep_quality is not None:
+            sleep_quality_trend = ", ".join(str(v) for v in result.recent_sleep_quality)
+            context += (
+                f"\n- Average Sleep Quality: {result.avg_sleep_quality:.1f}/5"
+                f"\n- Recent Sleep Quality (Last days): [{sleep_quality_trend}]"
+            )
+        if result.avg_fatigue is not None:
+            fatigue_trend = ", ".join(str(v) for v in result.recent_fatigue)
+            context += (
+                f"\n- Average Fatigue: {result.avg_fatigue:.1f}/5\n- Recent Fatigue (Last days): [{fatigue_trend}]"
+            )
+        return context
 
     @override
     def get_dashboard_widget(
@@ -166,3 +197,23 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
                 "hrv_trend": result.hrv_trend,
             },
         )
+
+    @staticmethod
+    def _series_mean(df: pl.DataFrame, column_name: str) -> float | None:
+        """Return the mean for a nullable wellness column."""
+        if column_name not in df.columns:
+            return None
+
+        value = df[column_name].mean()
+        if value is None or not isinstance(value, Real):
+            return None
+        return float(value)
+
+    @staticmethod
+    def _recent_values(df: pl.DataFrame, column_name: str) -> list[int]:
+        """Return recent non-null wellness values for context."""
+        if column_name not in df.columns:
+            return []
+
+        values = df[column_name][-RECENT_DAYS:].drop_nulls().to_list()
+        return [int(value) for value in values if isinstance(value, Real)]

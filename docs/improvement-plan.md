@@ -21,7 +21,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] **HRV (Heart Rate Variability):** Use as a primary daily readiness indicator.
 - [x] **Resting Heart Rate (RHR):** Monitor for deviations signaling overtraining or illness.
 - [x] **Wellness Trends:** Consolidated HRV and Resting HR into a dual-axis longitudinal dashboard chart with 7-day rolling averages.
-- [ ] **Subjective Wellness Data:** Integrate fatigue and sleep quality scores into the LLM context.
+- [x] **Subjective Wellness Data:** Integrated fatigue and sleep quality scores into the LLM context.
 
 ### 2. Athlete Context & Historical Trends
 - [x] **FTP Trajectory:** Provide a 4-week window of FTP changes (Task 8).
@@ -50,6 +50,5 @@ Enhance the training plan generation by incorporating advanced physiological met
 
 ## 🛠️ Follow-up Architecture Tasks (Next Steps)
 1.  **[Refactor] Logic De-duplication:** Move shared calculation logic (HRV averages, FTP trends) from `analysis.py` into a shared utility or allow Providers to contribute data back to the `AnalysisResult` used by the dashboard.
-2.  **[Feature] Subjective Data Plugin:** Expand `WellnessProvider` to include sleep scores and fatigue trends.
 3.  **[UI] Theme Consistency:** Ensure the dashboard uses the same request-scoped settings and database preferences as the planner.
 4.  **[API] Intervals.icu Workout Push:** Extend `IntervalsClient` to allow uploading the generated plan back to the athlete's calendar.
