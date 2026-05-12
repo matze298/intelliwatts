@@ -83,6 +83,10 @@ def test_wellness_widget() -> None:
     assert widget.data is not None
     assert widget.data["avg_hrv"] == 60.0
     assert widget.data["hrv_trend"] == "improving"
+    assert widget.data["avg_sleep_quality"] == 4.0
+    assert widget.data["avg_fatigue"] == 2.0
+    assert widget.data["recent_sleep_quality"] == [4, 4]
+    assert widget.data["recent_fatigue"] == [2, 2]
 
 
 @pytest.mark.asyncio

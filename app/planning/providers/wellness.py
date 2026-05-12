@@ -195,6 +195,10 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
                 "avg_hrv": result.avg_hrv,
                 "avg_resting_hr": result.avg_resting_hr,
                 "hrv_trend": result.hrv_trend,
+                "avg_sleep_quality": result.avg_sleep_quality,
+                "avg_fatigue": result.avg_fatigue,
+                "recent_sleep_quality": result.recent_sleep_quality,
+                "recent_fatigue": result.recent_fatigue,
             },
         )
 
