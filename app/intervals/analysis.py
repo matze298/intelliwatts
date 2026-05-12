@@ -110,6 +110,7 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
         pl.col("power_zone_times"),
         pl.col("type").alias("types"),
         pl.col("duration_h").alias("activity_durations"),
+        pl.col("training_stress").alias("activity_tss"),
     ])
     return df, daily
 

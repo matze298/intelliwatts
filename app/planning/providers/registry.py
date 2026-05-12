@@ -8,6 +8,7 @@ from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider
 from app.planning.providers.intensity import IntensityProvider
 from app.planning.providers.pmc import PMCProvider
 from app.planning.providers.power_curve import PowerCurveProvider
+from app.planning.providers.weekly_volume import WeeklyVolumeProvider
 from app.planning.providers.wellness import WellnessProvider
 
 if TYPE_CHECKING:
@@ -89,6 +90,7 @@ registry = MetricRegistry()
 registry.register(PMCProvider())
 registry.register(ActivityProvider())
 registry.register(ActivityTypeProvider())
+registry.register(WeeklyVolumeProvider())
 registry.register(WellnessProvider())
 registry.register(PowerCurveProvider())
 registry.register(FTPTrajectoryProvider())
