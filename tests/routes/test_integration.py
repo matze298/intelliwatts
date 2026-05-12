@@ -220,6 +220,27 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
                 "tss_by_type": {"Ride": [100.0, 150.0]},
             },
         },
+        {
+            "name": "activity_history",
+            "title": "Recent Activity History",
+            "custom_template": "widgets/activity_history.html",
+            "data": {
+                "activities": [
+                    {
+                        "date": "2026-04-01",
+                        "type": "Run",
+                        "duration_h": 0.5,
+                        "training_stress": 50.0,
+                        "distance_km": 5.0,
+                        "avg_power": 100.0,
+                        "avg_hr": 120.0,
+                        "max_hr": 150.0,
+                        "elevation_gain": 100.0,
+                        "ftp": 250.0,
+                    }
+                ]
+            },
+        },
     ]
     mock_analysis.widgets = widgets
     mock_analysis.to_dict.return_value = {
@@ -241,6 +262,7 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     assert "Highly Polarized" in resp.text
     assert "Critical Power Heatmap" in resp.text
     assert "Weekly Volume" in resp.text
+    assert "Recent Activity History" in resp.text
 
 
 @patch("app.services.planner.generate_plan")

@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, Any
 
 from app.planning.providers.activity import ActivityProvider
+from app.planning.providers.activity_history import ActivityHistoryProvider
 from app.planning.providers.activity_type import ActivityTypeProvider
 from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider
 from app.planning.providers.intensity import IntensityProvider
@@ -95,3 +96,4 @@ registry.register(WellnessProvider())
 registry.register(PowerCurveProvider())
 registry.register(FTPTrajectoryProvider())
 registry.register(IntensityProvider())
+registry.register(ActivityHistoryProvider())

@@ -148,3 +148,18 @@ button:active {
     padding: 0.25rem 0.5rem;
     font-size: 0.875rem;
 }
+
+/* Raise contrast for utility-text colors that read too dark on pro surfaces. */
+.text-gray-600,
+.text-gray-700,
+.text-slate-400,
+.text-slate-500,
+.text-slate-600,
+.text-slate-700 {
+    color: #e2e8f0 !important;
+}
+
+.hover\:text-slate-700:hover,
+.hover\:text-blue-800:hover {
+    color: var(--text-primary) !important;
+}
