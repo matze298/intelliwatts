@@ -182,8 +182,9 @@ class WeeklyVolumeProvider(MetricProvider[WeeklyVolumeResult]):
         Returns:
             A structured WeeklyVolumeResult object.
         """
-        weeks_str = [d.strftime("%Y-%m-%d") for d in all_weeks]
+        weeks_str = [d.strftime("%d.%m") for d in all_weeks]
         duration_by_type = {}
+
         tss_by_type = {}
 
         for t in all_types:

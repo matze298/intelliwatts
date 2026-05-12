@@ -43,7 +43,7 @@ def test_weekly_volume_calculation() -> None:
 
     # THEN it should have two weeks
     assert result.has_data
-    assert result.weeks == ["2024-01-01", "2024-01-08"]
+    assert result.weeks == ["01.01", "08.01"]
 
     # AND Ride should have values for both weeks
     assert result.duration_by_type["Ride"] == [2.0, 3.0]
@@ -78,7 +78,7 @@ def test_weekly_volume_monday_start() -> None:
     # THEN it should group by Monday of each week
     # 2024-01-01 is the Monday of the week containing 2024-01-07
     # 2024-01-08 is the Monday of its own week
-    assert result.weeks == ["2024-01-01", "2024-01-08"]
+    assert result.weeks == ["01.01", "08.01"]
 
 
 def test_weekly_volume_gaps_and_display_days() -> None:
@@ -112,7 +112,7 @@ def test_weekly_volume_gaps_and_display_days() -> None:
 
     # THEN it should have four weeks
     assert result.has_data
-    assert result.weeks == ["2024-01-01", "2024-01-08", "2024-01-15", "2024-01-22"]
+    assert result.weeks == ["01.01", "08.01", "15.01", "22.01"]
 
     # AND Ride should have 0.0 for the middle weeks
     assert result.duration_by_type["Ride"] == [2.0, 0.0, 0.0, 2.0]
