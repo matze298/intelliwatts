@@ -27,10 +27,10 @@ class WellnessResult:
     avg_resting_hr: float
     hrv_trend: str  # "improving", "declining", "stable"
     recent_hrv_trend: list[float]
-    avg_sleep_quality: float | None
-    avg_fatigue: float | None
-    recent_sleep_quality: list[int]
-    recent_fatigue: list[int]
+    sleep_rating: list[float | None]
+    sleep_rating_7d: list[float | None]
+    avg_sleep_rating: float | None
+    recent_sleep_rating: list[int]
 
 
 class WellnessProvider(MetricProvider[WellnessResult | None]):
@@ -67,27 +67,26 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
         if not {
             "hrv",
             "resting_hr",
-            "sleep_quality",
-            "fatigue",
+            "sleep_score",
         }.intersection(daily_df.columns):
             return None
 
         # Work with a subset for trends
         # We need enough data for the rolling average
-        df = daily_df.select(["date", "hrv", "resting_hr", "sleep_quality", "fatigue"])
+        df = daily_df.select(["date", "hrv", "resting_hr", "sleep_score"])
 
         # Calculate 7-day rolling averages on FULL data
         # min_samples=1 ensures we get values even at the start of the series
         df = df.with_columns([
             pl.col("hrv").rolling_mean(window_size=7, min_samples=1).alias("hrv_7d"),
             pl.col("resting_hr").rolling_mean(window_size=7, min_samples=1).alias("resting_hr_7d"),
+            pl.col("sleep_score").rolling_mean(window_size=7, min_samples=1).alias("sleep_rating_7d"),
         ])
 
         # Overall averages for the entire period
         avg_hrv = cast("float", df["hrv"].mean()) if "hrv" in df.columns else 0.0
         avg_resting_hr = cast("float", df["resting_hr"].mean()) if "resting_hr" in df.columns else 0.0
-        avg_sleep_quality = self._series_mean(df, "sleep_quality")
-        avg_fatigue = self._series_mean(df, "fatigue")
+        avg_sleep_rating = self._series_mean(df, "sleep_score")
 
         # Filter for display if requested
         display_df = df
@@ -112,8 +111,7 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             trend = "stable"
             recent_hrv_trend = df["hrv"].drop_nulls().to_list() if "hrv" in df.columns else []
 
-        recent_sleep_quality = self._recent_values(df, "sleep_quality")
-        recent_fatigue = self._recent_values(df, "fatigue")
+        recent_sleep_rating = self._recent_values(df, "sleep_score")
 
         return WellnessResult(
             dates=display_df["date"].dt.to_string("%Y-%m-%d").to_list(),
@@ -125,10 +123,10 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             avg_resting_hr=avg_resting_hr or 0.0,
             hrv_trend=trend,
             recent_hrv_trend=recent_hrv_trend,
-            avg_sleep_quality=avg_sleep_quality,
-            avg_fatigue=avg_fatigue,
-            recent_sleep_quality=recent_sleep_quality,
-            recent_fatigue=recent_fatigue,
+            sleep_rating=display_df["sleep_score"].to_list(),
+            sleep_rating_7d=display_df["sleep_rating_7d"].to_list(),
+            avg_sleep_rating=avg_sleep_rating,
+            recent_sleep_rating=recent_sleep_rating,
         )
 
     @override
@@ -152,16 +150,11 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             f"- HRV Trend Status: {result.hrv_trend.capitalize()}\n"
             f"- Recent HRV Trend (Last days): [{trend_str}]"
         )
-        if result.avg_sleep_quality is not None:
-            sleep_quality_trend = ", ".join(str(v) for v in result.recent_sleep_quality)
+        if result.avg_sleep_rating is not None:
+            sleep_rating_trend = ", ".join(str(v) for v in result.recent_sleep_rating)
             context += (
-                f"\n- Average Sleep Quality: {result.avg_sleep_quality:.1f}/5"
-                f"\n- Recent Sleep Quality (Last days): [{sleep_quality_trend}]"
-            )
-        if result.avg_fatigue is not None:
-            fatigue_trend = ", ".join(str(v) for v in result.recent_fatigue)
-            context += (
-                f"\n- Average Fatigue: {result.avg_fatigue:.1f}/5\n- Recent Fatigue (Last days): [{fatigue_trend}]"
+                f"\n- Average Sleep Rating: {result.avg_sleep_rating:.1f}/100"
+                f"\n- Recent Sleep Rating (Last days): [{sleep_rating_trend}]"
             )
         return context
 
@@ -195,10 +188,10 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
                 "avg_hrv": result.avg_hrv,
                 "avg_resting_hr": result.avg_resting_hr,
                 "hrv_trend": result.hrv_trend,
-                "avg_sleep_quality": result.avg_sleep_quality,
-                "avg_fatigue": result.avg_fatigue,
-                "recent_sleep_quality": result.recent_sleep_quality,
-                "recent_fatigue": result.recent_fatigue,
+                "sleep_rating": result.sleep_rating,
+                "sleep_rating_7d": result.sleep_rating_7d,
+                "avg_sleep_rating": result.avg_sleep_rating,
+                "recent_sleep_rating": result.recent_sleep_rating,
             },
         )
 
