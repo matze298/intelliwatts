@@ -18,11 +18,13 @@ def test_wellness_calculation() -> None:
     dates = [f"2026-04-{i + 1:02d}" for i in range(10)]
     hrv = [50.0, 52.0, 54.0, 56.0, 58.0, 60.0, 62.0, 64.0, 66.0, 68.0]
     resting_hr = [60.0] * 10
+    sleep_score = [71, 73, 76, 80, 82, 84, 88, 86, 85, 90]
 
     daily_df = pl.DataFrame({
         "date": pl.Series(dates).str.to_date("%Y-%m-%d"),
         "hrv": hrv,
         "resting_hr": resting_hr,
+        "sleep_score": sleep_score,
     })
 
     provider = WellnessProvider()
@@ -35,6 +37,10 @@ def test_wellness_calculation() -> None:
     assert len(result.dates) == 10
     assert result.hrv == hrv
     assert result.resting_hr == resting_hr
+    assert result.sleep_rating == sleep_score
+    assert result.sleep_rating_7d[-1] == pytest.approx(85.0)
+    assert result.avg_sleep_rating == pytest.approx(81.5)
+    assert result.recent_sleep_rating == [80, 82, 84, 88, 86, 85, 90]
 
     # Check 7d rolling average (last value should be mean of 62, 64, 66, 68, 60, 58, 56... no wait)
     # Mean of [56, 58, 60, 62, 64, 66, 68] = 62.0
@@ -59,6 +65,10 @@ def test_wellness_widget() -> None:
         avg_resting_hr=50.0,
         hrv_trend="improving",
         recent_hrv_trend=[55.0, 60.0],
+        sleep_rating=[80.0, 85.0],
+        sleep_rating_7d=[80.0, 82.5],
+        avg_sleep_rating=82.5,
+        recent_sleep_rating=[80, 85],
     )
 
     # WHEN formatting for dashboard
@@ -71,6 +81,10 @@ def test_wellness_widget() -> None:
     assert widget.data is not None
     assert widget.data["avg_hrv"] == 60.0
     assert widget.data["hrv_trend"] == "improving"
+    assert widget.data["sleep_rating"] == [80.0, 85.0]
+    assert widget.data["sleep_rating_7d"] == [80.0, 82.5]
+    assert widget.data["avg_sleep_rating"] == 82.5
+    assert widget.data["recent_sleep_rating"] == [80, 85]
 
 
 @pytest.mark.asyncio
@@ -88,6 +102,10 @@ async def test_wellness_context() -> None:
         avg_resting_hr=50.0,
         hrv_trend="stable",
         recent_hrv_trend=[60.0, 60.0],
+        sleep_rating=[82.0, 88.0],
+        sleep_rating_7d=[82.0, 85.0],
+        avg_sleep_rating=85.0,
+        recent_sleep_rating=[82, 88],
     )
 
     # WHEN generating context
@@ -97,3 +115,5 @@ async def test_wellness_context() -> None:
     assert "Average HRV: 60.0" in context
     assert "Average Resting HR: 50.0 bpm" in context
     assert "Status: Stable" in context
+    assert "Average Sleep Rating: 85.0/100" in context
+    assert "Recent Sleep Rating (Last days): [82, 88]" in context
