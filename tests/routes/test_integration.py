@@ -265,6 +265,45 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     assert "Recent Activity History" in resp.text
 
 
+@patch("app.routes.web.IntervalsClient")
+@patch("app.routes.web.parse_activities")
+@patch("app.routes.web.parse_wellness_list")
+@patch("app.routes.web.compute_analysis")
+def test_dashboard_flow_passes_days_filter(  # noqa: PLR0913, PLR0917
+    mock_compute: MagicMock,
+    mock_parse_w: MagicMock,
+    mock_parse_a: MagicMock,
+    mock_client_class: MagicMock,  # noqa: ARG001
+    client: TestClient,
+    mock_activities: list[ParsedActivity],
+    mock_wellness: list[ParsedWellness],
+) -> None:
+    """Tests that the dashboard forwards the slider days window to analysis."""
+    # GIVEN an authenticated user and mocked analysis inputs
+    email = "dashboard_days@example.com"
+    password = "password123"  # noqa: S105
+    client.post("/register", data={"email": email, "password": password})
+    client.post("/login", data={"email": email, "password": password})
+
+    mock_parse_a.return_value = mock_activities
+    mock_parse_w.return_value = mock_wellness
+    mock_analysis = MagicMock()
+    mock_analysis.widgets = []
+    mock_analysis.to_dict.return_value = {
+        "provider_results": {},
+        "widgets": [],
+    }
+    mock_compute.return_value = mock_analysis
+
+    # WHEN requesting the dashboard with a specific days value
+    resp = client.get("/dashboard?days=21")
+
+    # THEN the selected days window is forwarded to compute_analysis
+    assert resp.status_code == 200
+    mock_compute.assert_called_once()
+    assert mock_compute.call_args.kwargs["display_days"] == 21
+
+
 @patch("app.services.planner.generate_plan")
 @patch("app.services.planner.IntervalsClient")
 def test_planning_flow(

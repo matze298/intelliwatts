@@ -69,6 +69,35 @@ def test_activity_history_respects_display_days() -> None:
     assert [activity.date for activity in result.activities] == ["2026-04-10"]
 
 
+def test_activity_history_returns_all_activities_within_window() -> None:
+    """Tests that the provider does not cap activities within the selected window."""
+    # GIVEN thirteen activities that all fall inside the selected lookback window
+    dates = [f"2026-04-{day:02d}" for day in range(1, 14)]
+    daily_df = pl.DataFrame({
+        "date": dates,
+        "types": [["Ride"] for _ in dates],
+        "activity_durations": [[1.0] for _ in dates],
+        "activity_tss": [[50.0] for _ in dates],
+        "activity_distances": [[30.0] for _ in dates],
+        "activity_avg_power": [[200.0] for _ in dates],
+        "activity_avg_hr": [[140.0] for _ in dates],
+        "activity_max_hr": [[165.0] for _ in dates],
+        "activity_elevation_gain": [[250.0] for _ in dates],
+        "activity_ftp": [[260.0] for _ in dates],
+    }).with_columns(pl.col("date").str.to_date("%Y-%m-%d"))
+
+    provider = ActivityHistoryProvider()
+
+    # WHEN calculating history for a window that includes all rows
+    result = provider.calculate(daily_df, display_days=20)
+
+    # THEN every activity inside that window is returned
+    assert result is not None
+    assert len(result.activities) == 13
+    assert result.activities[0].date == "2026-04-13"
+    assert result.activities[-1].date == "2026-04-01"
+
+
 @pytest.mark.asyncio
 async def test_activity_history_context() -> None:
     """Tests that the provider emits a compact recent activity summary."""

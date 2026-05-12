@@ -11,8 +11,6 @@ from app.planning.providers.interfaces import DashboardWidget, MetricProvider
 if TYPE_CHECKING:
     from app.intervals.client import IntervalsClient
 
-MAX_ACTIVITY_ROWS = 12
-
 
 @dataclass(frozen=True)
 class ActivityHistoryEntry:
@@ -132,7 +130,7 @@ class ActivityHistoryProvider(MetricProvider[ActivityHistoryResult | None]):
                 elevation_gain=self._to_optional_float(row["activity_elevation_gain"]),
                 ftp=self._to_optional_float(row["activity_ftp"]),
             )
-            for row in exploded.head(MAX_ACTIVITY_ROWS).to_dicts()
+            for row in exploded.to_dicts()
         ]
 
         return ActivityHistoryResult(activities=entries, has_data=bool(entries))
