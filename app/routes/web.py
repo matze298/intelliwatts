@@ -1,6 +1,6 @@
 """Web routes for the app."""
 
-from datetime import timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 
 import markdown
@@ -23,7 +23,9 @@ from app.intervals.analysis import compute_analysis
 from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
+from app.models.plan import TrainingPhase
 from app.models.user import User
+from app.services.long_term_planner import replace_active_phase
 from app.services.plan_loader import load_user_plan
 from app.services.planner import (
     generate_weekly_plan,
@@ -35,6 +37,11 @@ router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="app/templates")
 
 
+def _today() -> date:
+    """Return today's UTC date for planner lifecycle validation."""
+    return datetime.now(UTC).date()
+
+
 def get_optional_user(request: Request) -> User | None:
     """Helper to get user without raising 401.
 
@@ -42,6 +49,55 @@ def get_optional_user(request: Request) -> User | None:
         The user if authenticated, else None.
     """
     return get_current_user_from_token(request, auto_error=False)
+
+
+def _get_active_phase(session: Session, user: User | None) -> TrainingPhase | None:
+    """Return the active phase for the user if one exists."""
+    if not user:
+        return None
+
+    return session.exec(
+        select(TrainingPhase).where(TrainingPhase.user_id == user.id, TrainingPhase.status == "active")
+    ).first()
+
+
+def _phase_form_values(phase: TrainingPhase | None) -> tuple[str, str]:
+    """Return planner form values for the active phase."""
+    if not phase:
+        return "", ""
+    return phase.primary_goal, phase.target_date.isoformat()
+
+
+def _render_plan_page(  # noqa: PLR0913
+    request: Request,
+    *,
+    user: User | None,
+    plan_html: str | None,
+    summary: str | None,
+    prompt: list[dict[str, str]] | None,
+    primary_goal: str = "",
+    target_date: str = "",
+    error: str | None = None,
+) -> HTMLResponse:
+    """Render the planner page with shared context.
+
+    Returns:
+        The rendered planner page.
+    """
+    return templates.TemplateResponse(
+        request,
+        "plan.html",
+        {
+            "plan_html": plan_html,
+            "summary": summary,
+            "prompt": prompt,
+            "primary_goal": primary_goal,
+            "target_date": target_date,
+            "error": error,
+            "settings": request.app.state.settings,
+            "user": user,
+        },
+    )
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -54,23 +110,117 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
     plan_html = None
     summary_html = None
     prompt = None
+    primary_goal = ""
+    target_date = ""
+
+    with Session(engine) as session:
+        phase = _get_active_phase(session, user)
+        primary_goal, target_date = _phase_form_values(phase)
 
     if user:
         loaded = load_user_plan(user)
         plan_html = loaded.plan_html
         prompt = loaded.prompt
 
-    return templates.TemplateResponse(
+    return _render_plan_page(
         request,
-        "plan.html",
-        {
-            "plan_html": plan_html,
-            "summary": summary_html,
-            "prompt": prompt,
-            "settings": request.app.state.settings,
-            "user": user,
-        },
+        user=user,
+        plan_html=plan_html,
+        summary=summary_html,
+        prompt=prompt,
+        primary_goal=primary_goal,
+        target_date=target_date,
     )
+
+
+@router.post("/long-term-plan", response_class=HTMLResponse)
+async def long_term_plan(
+    request: Request,
+    user: Annotated[User, Depends(get_current_user_from_token)],
+) -> Response:
+    """Persist a long-term planning goal and render the planner page.
+
+    Returns:
+        A redirect on success or the rendered planner page on validation errors.
+    """
+    input_data = await request.form()
+    primary_goal = str(input_data.get("primary_goal", "")).strip()
+    raw_target_date = str(input_data.get("target_date", "")).strip()
+
+    if not primary_goal:
+        return _render_plan_page(
+            request,
+            user=user,
+            plan_html=None,
+            summary=None,
+            prompt=None,
+            primary_goal=primary_goal,
+            target_date=raw_target_date,
+            error="Primary goal is required.",
+        )
+
+    if not raw_target_date:
+        return _render_plan_page(
+            request,
+            user=user,
+            plan_html=None,
+            summary=None,
+            prompt=None,
+            primary_goal=primary_goal,
+            target_date=raw_target_date,
+            error="Target date is required.",
+        )
+
+    try:
+        target_date = date.fromisoformat(raw_target_date)
+    except ValueError:
+        return _render_plan_page(
+            request,
+            user=user,
+            plan_html=None,
+            summary=None,
+            prompt=None,
+            primary_goal=primary_goal,
+            target_date=raw_target_date,
+            error="Target date must be a valid date.",
+        )
+
+    start_date = _today()
+    if target_date < start_date:
+        return _render_plan_page(
+            request,
+            user=user,
+            plan_html=None,
+            summary=None,
+            prompt=None,
+            primary_goal=primary_goal,
+            target_date=raw_target_date,
+            error="Target date cannot be in the past.",
+        )
+
+    if target_date <= start_date:
+        return _render_plan_page(
+            request,
+            user=user,
+            plan_html=None,
+            summary=None,
+            prompt=None,
+            primary_goal=primary_goal,
+            target_date=raw_target_date,
+            error="Target date must be after the start date.",
+        )
+
+    with Session(engine) as session:
+        replace_active_phase(
+            session,
+            user_id=user.id,
+            primary_goal=primary_goal,
+            target_date=target_date,
+            start_date=start_date,
+        )
+        session.commit()
+
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -297,17 +447,19 @@ async def generate(
         f"""{result["summary"]}""",
         extensions=["tables", "fenced_code"],
     )
+    primary_goal, target_date = ("", "")
+    with Session(engine) as session:
+        phase = _get_active_phase(session, user)
+        primary_goal, target_date = _phase_form_values(phase)
 
-    return templates.TemplateResponse(
+    return _render_plan_page(
         request,
-        "plan.html",
-        {
-            "plan_html": plan_html,
-            "summary": summary_html,
-            "prompt": result["prompt"],
-            "settings": request.app.state.settings,
-            "user": user,
-        },
+        user=user,
+        plan_html=plan_html,
+        summary=summary_html,
+        prompt=result["prompt"],
+        primary_goal=primary_goal,
+        target_date=target_date,
     )
 
 
@@ -331,15 +483,17 @@ async def update(
         result["plan"],
         extensions=["tables", "fenced_code"],
     )
+    primary_goal, target_date = ("", "")
+    with Session(engine) as session:
+        phase = _get_active_phase(session, user)
+        primary_goal, target_date = _phase_form_values(phase)
 
-    return templates.TemplateResponse(
+    return _render_plan_page(
         request,
-        "plan.html",
-        {
-            "plan_html": plan_html,
-            "summary": None,
-            "prompt": None,
-            "settings": request.app.state.settings,
-            "user": user,
-        },
+        user=user,
+        plan_html=plan_html,
+        summary=None,
+        prompt=None,
+        primary_goal=primary_goal,
+        target_date=target_date,
     )

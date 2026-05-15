@@ -1,9 +1,9 @@
 """Tests for the TrainingPhase and TrainingPlan models."""
 
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
 
-from app.models.plan import TrainingPhase, TrainingPlan
+from app.models.plan import LongTermPlanArtifact, TrainingPhase, TrainingPlan
 
 
 def test_create_phase_and_plan() -> None:
@@ -13,12 +13,17 @@ def test_create_phase_and_plan() -> None:
 
     # WHEN creating a TrainingPhase
     phase = TrainingPhase(
-        user_id=user_id, primary_goal="Build FTP", start_date=date(2026, 4, 20), end_date=date(2026, 5, 17)
+        user_id=user_id,
+        primary_goal="Build FTP",
+        start_date=date(2026, 4, 20),
+        end_date=date(2026, 5, 17),
+        target_date=date(2026, 5, 17),
     )
 
     # THEN it should have the correct status and goal
     assert phase.status == "active"
     assert phase.primary_goal == "Build FTP"
+    assert phase.target_date == date(2026, 5, 17)
 
     # WHEN creating a TrainingPlan linked to that phase
     plan = TrainingPlan(
@@ -34,3 +39,45 @@ def test_create_phase_and_plan() -> None:
     assert len(plan.workout_data) == 1
     assert plan.workout_data[0]["workout_name"] == "Test"
     assert plan.prompt_history[0]["content"] == "hi"
+
+
+def test_create_long_term_plan_artifact() -> None:
+    """Test creating a long-term planning artifact."""
+    # GIVEN a training phase
+    phase = TrainingPhase(
+        user_id=uuid.uuid4(),
+        primary_goal="Peak for gran fondo",
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 8, 1),
+        target_date=date(2026, 8, 1),
+    )
+
+    # WHEN creating a long-term artifact for it
+    artifact = LongTermPlanArtifact(
+        phase_id=phase.id,
+        structured_data={"blocks": [{"name": "Base"}]},
+        summary_markdown="## Long-term plan",
+        prompt_history=[{"role": "user", "content": "Build me to August"}],
+    )
+
+    # THEN it should preserve the structured fields and timestamps
+    assert artifact.phase_id == phase.id
+    assert artifact.structured_data["blocks"][0]["name"] == "Base"
+    assert artifact.summary_markdown == "## Long-term plan"
+    assert artifact.prompt_history[0]["role"] == "user"
+    assert isinstance(artifact.created_at, datetime)
+    assert artifact.created_at.tzinfo == UTC
+    assert isinstance(artifact.updated_at, datetime)
+    assert artifact.updated_at.tzinfo == UTC
+
+
+def test_training_phase_defaults_target_date_to_end_date() -> None:
+    """TrainingPhase should mirror end_date when target_date is omitted."""
+    phase = TrainingPhase(
+        user_id=uuid.uuid4(),
+        primary_goal="Build FTP",
+        start_date=date(2026, 4, 20),
+        end_date=date(2026, 5, 17),
+    )
+
+    assert phase.target_date == date(2026, 5, 17)
