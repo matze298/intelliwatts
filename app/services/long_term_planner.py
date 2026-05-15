@@ -1,7 +1,7 @@
 """Lifecycle helpers for long-term training phases."""
 
 from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import desc
 from sqlmodel import Session, select
@@ -11,6 +11,8 @@ from app.models.plan import LongTermPlanArtifact, TrainingPhase
 
 if TYPE_CHECKING:
     from uuid import UUID
+
+    from sqlalchemy.sql.elements import ColumnElement
 
     from app.models.user import User
 
@@ -116,9 +118,8 @@ def get_current_long_term_plan_artifact(session: Session, *, phase_id: UUID) -> 
     statement = (
         select(LongTermPlanArtifact)
         .where(LongTermPlanArtifact.phase_id == phase_id)
-        .order_by(
-            desc(cast("Any", LongTermPlanArtifact.created_at)), desc(cast("Any", LongTermPlanArtifact.updated_at))
-        )
+        .order_by(desc(cast("ColumnElement[datetime]", LongTermPlanArtifact.created_at)))
+        .order_by(desc(cast("ColumnElement[datetime]", LongTermPlanArtifact.updated_at)))
     )
     return session.exec(statement).first()
 

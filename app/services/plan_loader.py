@@ -1,6 +1,6 @@
 """Service for loading training plans."""
 
-from typing import TYPE_CHECKING, Any, NamedTuple, cast
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 import markdown
 from sqlalchemy import desc
@@ -12,6 +12,10 @@ from app.services.planner import get_or_create_active_phase
 from app.utils.datetime import get_monday, get_utc_now
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
+    from sqlalchemy.sql.elements import ColumnElement
+
     from app.models.user import User
 
 
@@ -41,9 +45,8 @@ def load_user_plan(user: User) -> LoadedPlan:
         artifact_statement = (
             select(LongTermPlanArtifact)
             .where(LongTermPlanArtifact.phase_id == phase.id)
-            .order_by(
-                desc(cast("Any", LongTermPlanArtifact.created_at)), desc(cast("Any", LongTermPlanArtifact.updated_at))
-            )
+            .order_by(desc(cast("ColumnElement[datetime]", LongTermPlanArtifact.created_at)))
+            .order_by(desc(cast("ColumnElement[datetime]", LongTermPlanArtifact.updated_at)))
         )
         artifact = session.exec(artifact_statement).first()
         if artifact:
