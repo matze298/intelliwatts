@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session, create_engine
 
-from app.models.plan import SQLModel, TrainingPhase, TrainingPlan
+from app.models.plan import LongTermPlanArtifact, SQLModel, TrainingPhase, TrainingPlan
 from app.models.user import User
 from app.services.plan_loader import load_user_plan
 
@@ -51,6 +51,16 @@ def test_load_user_plan(session: Session) -> None:
         prompt_history=[{"role": "user", "content": "hi"}],
     )
     session.add(plan)
+    session.add(
+        LongTermPlanArtifact(
+            phase_id=phase.id,
+            structured_data={"version": 1},
+            summary_markdown="# Current long-term plan",
+            prompt_history=[],
+            created_at=datetime(2026, 4, 22, tzinfo=UTC),
+            updated_at=datetime(2026, 4, 22, tzinfo=UTC),
+        )
+    )
     session.commit()
 
     # WHEN loading the user plan (mocking current date to be in that week)
@@ -64,6 +74,8 @@ def test_load_user_plan(session: Session) -> None:
     # THEN it should return the rendered HTML and prompt history
     assert loaded.plan_html is not None
     assert "<h1>Weekly Plan</h1>" in loaded.plan_html
+    assert loaded.long_term_summary_html is not None
+    assert "<h1>Current long-term plan</h1>" in loaded.long_term_summary_html
     assert loaded.prompt == [{"role": "user", "content": "hi"}]
 
 
@@ -80,4 +92,5 @@ def test_load_user_plan_none(session: Session) -> None:
 
     # THEN it should return None values
     assert loaded.plan_html is None
+    assert loaded.long_term_summary_html is None
     assert loaded.prompt is None

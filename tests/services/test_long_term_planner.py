@@ -1,8 +1,8 @@
-"""Tests for long-term planner lifecycle and web flow."""
+"""Tests for long-term planner lifecycle, artifacts, and web flow."""
 
 import asyncio
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
@@ -12,10 +12,14 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, create_engine, select
 from starlette.requests import Request
 
-from app.models.plan import SQLModel, TrainingPhase
+from app.models.plan import LongTermPlanArtifact, SQLModel, TrainingPhase
 from app.models.user import User
 from app.routes import web
-from app.services.long_term_planner import replace_active_phase
+from app.services.long_term_planner import (
+    generate_long_term_plan_artifact,
+    get_current_long_term_plan_artifact,
+    replace_active_phase,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -200,18 +204,86 @@ def test_replace_active_phase_archives_all_currently_active_phases(session: Sess
     assert active[0].id == new_phase.id
 
 
-def test_home_page_renders_long_term_goal_inputs(
+def test_generate_long_term_artifact_for_phase(session: Session) -> None:
+    """Generating a long-term artifact should persist a deterministic summary for the phase."""
+    # GIVEN an active phase with a long-term goal
+    user_id = uuid.uuid4()
+    phase = TrainingPhase(
+        user_id=user_id,
+        primary_goal="Peak for alpine gran fondo",
+        start_date=date(2026, 5, 15),
+        end_date=date(2026, 8, 15),
+        target_date=date(2026, 8, 15),
+        status="active",
+    )
+    session.add(phase)
+    session.commit()
+
+    # WHEN generating the long-term artifact
+    artifact = generate_long_term_plan_artifact(session, phase=phase)
+
+    # THEN the artifact should be persisted with the expected structured fields
+    assert artifact.phase_id == phase.id
+    assert artifact.summary_markdown.startswith("# Long-term plan")
+    assert "Peak for alpine gran fondo" in artifact.summary_markdown
+    assert artifact.structured_data["goal"] == "Peak for alpine gran fondo"
+    assert artifact.structured_data["target_date"] == "2026-08-15"
+    assert len(artifact.structured_data["blocks"]) >= 1
+    assert artifact.prompt_history[0]["role"] == "system"
+
+    stored = session.exec(select(LongTermPlanArtifact).where(LongTermPlanArtifact.phase_id == phase.id)).all()
+    assert len(stored) == 1
+    assert stored[0].id == artifact.id
+
+
+def test_regeneration_preserves_history_and_surfaces_latest_artifact(session: Session) -> None:
+    """Regeneration should keep prior artifacts and pick the most recent one as current."""
+    # GIVEN an active phase with one existing artifact
+    user_id = uuid.uuid4()
+    phase = TrainingPhase(
+        user_id=user_id,
+        primary_goal="Peak for alpine gran fondo",
+        start_date=date(2026, 5, 15),
+        end_date=date(2026, 8, 15),
+        target_date=date(2026, 8, 15),
+        status="active",
+    )
+    session.add(phase)
+    session.commit()
+
+    first = generate_long_term_plan_artifact(session, phase=phase)
+    first.created_at = datetime(2026, 5, 15, 8, 0, tzinfo=UTC)
+    first.updated_at = datetime(2026, 5, 15, 8, 0, tzinfo=UTC)
+    session.add(first)
+    session.commit()
+
+    # WHEN regenerating the long-term artifact
+    second = generate_long_term_plan_artifact(session, phase=phase)
+
+    # THEN history should be preserved and the latest artifact should be current
+    artifacts = session.exec(select(LongTermPlanArtifact).where(LongTermPlanArtifact.phase_id == phase.id)).all()
+    current = get_current_long_term_plan_artifact(session, phase_id=phase.id)
+
+    assert len(artifacts) == 2
+    assert {artifact.id for artifact in artifacts} == {first.id, second.id}
+    assert current is not None
+    assert current.id == second.id
+    assert current.created_at > first.created_at
+
+
+def test_home_page_renders_long_term_goal_inputs_and_current_summary(
     patch_planner_engines: None,  # noqa: ARG001
     monkeypatch: pytest.MonkeyPatch,
     planner_user: User,
     test_app: FastAPI,
 ) -> None:
-    """The planner page should render long-term goal inputs above weekly controls."""
+    """The planner page should render long-term goal inputs and the current long-term summary."""
     # GIVEN an authenticated user and isolated planner dependencies
     monkeypatch.setattr(
         "app.routes.web.load_user_plan",
         lambda _user: SimpleNamespace(
             plan_html=None,
+            long_term_summary_html="<h1>Long-term plan</h1><p>Current macro focus.</p>",
             prompt=None,
         ),
     )
@@ -219,13 +291,15 @@ def test_home_page_renders_long_term_goal_inputs(
     # WHEN loading the home page
     response = web.home(build_request(test_app, method="GET", path="/"), planner_user)
 
-    # THEN the long-term fields should be present before the weekly controls
+    # THEN the long-term controls and current summary should be present
     body = bytes(response.body).decode()
     assert response.status_code == 200
     assert 'action="/long-term-plan"' in body
     assert 'name="primary_goal"' in body
     assert 'name="target_date"' in body
     assert "required" in body
+    assert "Long-term plan" in body
+    assert "Current macro focus." in body
     assert body.index('name="primary_goal"') < body.index('name="max_hours"')
 
 

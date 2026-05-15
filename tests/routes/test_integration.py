@@ -1,12 +1,17 @@
 """Integration test for the athlete's journey."""
 
+import asyncio
+import uuid
 from datetime import date
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlmodel import Session, delete, select
+from starlette.requests import Request
 
 from app.db import engine
 from app.intervals.parser.activity import ParsedActivity
@@ -16,6 +21,8 @@ from app.main import app
 from app.models.plan import LongTermPlanArtifact, TrainingPhase, TrainingPlan
 from app.models.user import User
 from app.planning.llm import LLMResponse
+from app.routes import api as api_routes
+from app.routes import web as web_routes
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -41,6 +48,33 @@ def client() -> Generator[TestClient]:
     """
     with TestClient(app) as c:
         yield c
+
+
+def build_request(app_obj: FastAPI, *, method: str, path: str, body: bytes = b"") -> Request:
+    """Build a Starlette request for direct handler tests.
+
+    Returns:
+        A request object that can be passed to route handlers directly.
+    """
+    headers = []
+    if body:
+        headers = [
+            (b"content-type", b"application/x-www-form-urlencoded"),
+            (b"content-length", str(len(body)).encode()),
+        ]
+
+    async def receive() -> dict[str, object]:
+        await asyncio.sleep(0)
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    scope = {
+        "type": "http",
+        "method": method,
+        "path": path,
+        "headers": headers,
+        "app": app_obj,
+    }
+    return Request(scope, receive)
 
 
 @pytest.fixture
@@ -375,6 +409,52 @@ def test_long_term_goal_flow(client: TestClient, monkeypatch: pytest.MonkeyPatch
     assert phase.primary_goal == "Peak for gravel race"
     assert phase.target_date.isoformat() == "2026-09-20"
     assert phase.status == "active"
+
+
+@pytest.mark.asyncio
+@patch("app.routes.api.generate_long_term_plan_for_user")
+async def test_long_term_plan_api_flow(mock_generate_long_term: MagicMock) -> None:
+    """Tests long-term plan creation and regeneration via API."""
+    mock_generate_long_term.side_effect = [
+        {"artifact_id": "artifact-1", "summary": "# Long-term plan\n\nFirst version"},
+        {"artifact_id": "artifact-2", "summary": "# Long-term plan\n\nSecond version"},
+    ]
+
+    user = User(id=uuid.uuid4(), email="longterm_api@example.com", password_hash="hash")  # noqa: S106
+    create_resp = await api_routes.create_long_term_plan_api(user)
+    regenerate_resp = await api_routes.regenerate_long_term_plan_api(user)
+
+    assert create_resp["artifact_id"] == "artifact-1"
+    assert "First version" in create_resp["summary"]
+    assert regenerate_resp["artifact_id"] == "artifact-2"
+    assert "Second version" in regenerate_resp["summary"]
+
+
+def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The home page should show the current long-term summary for the authenticated user."""
+    test_app = FastAPI()
+    test_app.include_router(web_routes.router)
+    test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
+
+    user = User(id=uuid.uuid4(), email="planner_summary@example.com", password_hash="hash")  # noqa: S106
+
+    monkeypatch.setattr("app.routes.web.engine", engine)
+    monkeypatch.setattr("app.routes.web._get_active_phase", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        "app.routes.web.load_user_plan",
+        lambda _user: SimpleNamespace(
+            plan_html=None,
+            long_term_summary_html="<h1>Long-term plan</h1><p>Current macro focus.</p>",
+            prompt=None,
+        ),
+    )
+
+    resp = web_routes.home(build_request(test_app, method="GET", path="/"), user)
+
+    assert resp.status_code == 200
+    body = bytes(resp.body).decode()
+    assert "Long-term plan" in body
+    assert "Current macro focus." in body
 
 
 def test_secrets_flow(client: TestClient) -> None:
