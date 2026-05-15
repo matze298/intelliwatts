@@ -3,11 +3,11 @@
     <div class="flex justify-between items-center">
         <div>
             <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">🔥 Training Intensity</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400">Time-in-zone distribution and style.</p>
+            <p class="text-sm text-slate-300 dark:text-slate-200">Time-in-zone distribution and style.</p>
         </div>
         <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
             <button id="toggle-hr" onclick="updateIntensityChart('hr')" class="px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm">HR</button>
-            <button id="toggle-power" onclick="updateIntensityChart('power')" class="px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">Power</button>
+            <button id="toggle-power" onclick="updateIntensityChart('power')" class="px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50">Power</button>
         </div>
     </div>
 
@@ -37,7 +37,7 @@
                 <div class="flex justify-between items-center">
                     <div>
                         <h3 class="text-[10px] font-black uppercase text-pink-600 dark:text-pink-400 mb-1 tracking-wider">Sweet Spot (Z8)</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Overlaps with Z3/Z4. Excluded from total.</p>
+                        <p class="text-xs text-slate-300 dark:text-slate-200">Overlaps with Z3/Z4. Excluded from total.</p>
                     </div>
                     <p class="text-lg font-black text-pink-500">{{ widget.data.power_ss | round(1) }}%</p>
                 </div>
@@ -103,11 +103,11 @@
 
             if (type === 'hr') {
                 btnHr.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm";
-                btnPower.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
+                btnPower.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50";
                 ssContainer.classList.add('hidden');
             } else {
                 btnPower.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm";
-                btnHr.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
+                btnHr.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50";
                 ssContainer.classList.remove('hidden');
             }
 

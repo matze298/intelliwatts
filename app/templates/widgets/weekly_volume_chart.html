@@ -3,11 +3,11 @@
     <div class="flex justify-between items-center">
         <div>
             <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">📊 Weekly Volume</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400">Volume trends and training stress.</p>
+            <p class="text-sm text-slate-300 dark:text-slate-200">Volume trends and training stress.</p>
         </div>
         <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
             <button id="toggle-hours" onclick="updateVolumeChart('duration')" class="px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm">Hours</button>
-            <button id="toggle-tss" onclick="updateVolumeChart('tss')" class="px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">TSS</button>
+            <button id="toggle-tss" onclick="updateVolumeChart('tss')" class="px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50">TSS</button>
         </div>
     </div>
 
@@ -125,10 +125,10 @@
 
             if (metric === 'duration') {
                 btnHours.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm";
-                btnTss.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
+                btnTss.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50";
             } else {
                 btnTss.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm";
-                btnHours.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
+                btnHours.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50";
             }
 
             window.volumeChart.data.datasets = createDatasets(metric);

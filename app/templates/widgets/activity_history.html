@@ -1,0 +1,68 @@
+<!-- app/templates/widgets/activity_history.html -->
+<div class="p-8 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 space-y-6">
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">🗂️ Recent Activity History</h2>
+            <p class="text-sm text-slate-300 dark:text-slate-200">Recent sessions with drill-down details from the analysis window.</p>
+        </div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-300 dark:text-slate-200">
+            {{ widget.data.activities|length }} Sessions
+        </p>
+    </div>
+
+    <div class="space-y-3">
+        {% for activity in widget.data.activities %}
+        <details class="group rounded-lg border border-slate-700 bg-slate-900/5 p-4">
+            <summary class="flex cursor-pointer list-none flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div class="space-y-1">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="text-sm font-bold uppercase tracking-wide text-slate-100">{{ activity.type }}</span>
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-300 dark:text-slate-200">{{ activity.date }}</span>
+                    </div>
+                    <p class="text-sm text-slate-300 dark:text-slate-200">Open for session details.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-100">
+                    <span class="rounded-full bg-blue-500/10 px-3 py-1">{{ "%.1f"|format(activity.duration_h) }}h</span>
+                    <span class="rounded-full bg-emerald-500/10 px-3 py-1">{{ "%.0f"|format(activity.training_stress) }} TSS</span>
+                    {% if activity.distance_km is not none %}
+                    <span class="rounded-full bg-slate-800/10 px-3 py-1">{{ "%.1f"|format(activity.distance_km) }}km</span>
+                    {% endif %}
+                </div>
+            </summary>
+
+            <div class="mt-4 grid grid-cols-1 gap-3 border-t border-slate-700 pt-4 sm:grid-cols-2 xl:grid-cols-3">
+                {% if activity.avg_power is not none %}
+                <div class="rounded-md bg-slate-900/5 px-3 py-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-300 dark:text-slate-200">Avg Power</p>
+                    <p class="text-sm font-semibold text-slate-100">{{ "%.0f"|format(activity.avg_power) }} W</p>
+                </div>
+                {% endif %}
+                {% if activity.avg_hr is not none %}
+                <div class="rounded-md bg-slate-900/5 px-3 py-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-300 dark:text-slate-200">Avg HR</p>
+                    <p class="text-sm font-semibold text-slate-100">{{ "%.0f"|format(activity.avg_hr) }} bpm</p>
+                </div>
+                {% endif %}
+                {% if activity.max_hr is not none %}
+                <div class="rounded-md bg-slate-900/5 px-3 py-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-300 dark:text-slate-200">Max HR</p>
+                    <p class="text-sm font-semibold text-slate-100">{{ "%.0f"|format(activity.max_hr) }} bpm</p>
+                </div>
+                {% endif %}
+                {% if activity.elevation_gain is not none %}
+                <div class="rounded-md bg-slate-900/5 px-3 py-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-300 dark:text-slate-200">Elevation Gain</p>
+                    <p class="text-sm font-semibold text-slate-100">{{ "%.0f"|format(activity.elevation_gain) }} m</p>
+                </div>
+                {% endif %}
+                {% if activity.ftp is not none %}
+                <div class="rounded-md bg-slate-900/5 px-3 py-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-300 dark:text-slate-200">FTP</p>
+                    <p class="text-sm font-semibold text-slate-100">{{ "%.0f"|format(activity.ftp) }} W</p>
+                </div>
+                {% endif %}
+            </div>
+        </details>
+        {% endfor %}
+    </div>
+</div>

@@ -12,7 +12,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 ## 📊 Analytics & Insights
 - [x] **Intensity Distribution:** Implemented a dynamic provider and interactive dashboard widget for HR/Power zone tracking.
 - [x] **Weekly Volume Comparison:** Implemented a provider and interactive dashboard widget for stacked training volume (Hours and TSS) by sport type.
-- [ ] **Activity History:** Implement a provider-based activity history list with detailed drill-downs.
+- [x] **Activity History:** Implemented a provider-based activity history list with drill-down details on the dashboard.
 - [ ] **Zone Distribution Plots:** Add dynamic providers for Heart Rate and Power intensity zone distribution charts.
 
 ## Proposed Data Integration
