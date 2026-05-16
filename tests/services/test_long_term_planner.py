@@ -23,18 +23,6 @@ if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
 
-def build_test_app() -> FastAPI:
-    """Build a minimal app for exercising the web router.
-
-    Returns:
-        A FastAPI app configured with the web router.
-    """
-    test_app = FastAPI()
-    test_app.include_router(web.router)
-    test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
-    return test_app
-
-
 def build_request(app: FastAPI, *, method: str, path: str, body: bytes = b"") -> Request:
     """Build a Starlette request for direct route testing.
 
@@ -75,6 +63,57 @@ def session() -> Generator[Session]:
         yield session
 
 
+@pytest.fixture
+def test_app() -> FastAPI:
+    """Provides a minimal app for exercising the web router.
+
+    Returns:
+        A FastAPI app configured with the web router.
+    """
+    test_app = FastAPI()
+    test_app.include_router(web.router)
+    test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
+    return test_app
+
+
+@pytest.fixture
+def planner_test_engine() -> Engine:
+    """Provides an isolated in-memory engine for planner route tests.
+
+    Returns:
+        An in-memory SQLite engine with shared connections enabled.
+    """
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(engine)
+    return engine
+
+
+@pytest.fixture
+def planner_user(planner_test_engine: Engine) -> User:
+    """Provides a persisted user for planner route tests.
+
+    Returns:
+        A stored user instance.
+    """
+    with Session(planner_test_engine) as session:
+        user = User(email="planner@example.com", password_hash="hash")  # noqa: S106
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return user
+
+
+@pytest.fixture
+def patch_planner_engines(monkeypatch: pytest.MonkeyPatch, planner_test_engine: Engine) -> None:
+    """Points planner route dependencies at the isolated test engine."""
+    monkeypatch.setattr("app.routes.web.engine", planner_test_engine)
+    monkeypatch.setattr("app.services.plan_loader.engine", planner_test_engine)
+
+
 def test_replace_active_phase_archives_previous_phase(session: Session) -> None:
     """Replacing the active phase should archive the old one and create a new active phase."""
     # GIVEN an existing active phase
@@ -90,6 +129,7 @@ def test_replace_active_phase_archives_previous_phase(session: Session) -> None:
     session.add(current_phase)
     session.commit()
 
+    # WHEN replacing the active phase with a new goal
     new_phase = replace_active_phase(
         session,
         user_id=user_id,
@@ -116,6 +156,7 @@ def test_replace_active_phase_archives_previous_phase(session: Session) -> None:
 
 def test_replace_active_phase_archives_all_currently_active_phases(session: Session) -> None:
     """Replacing the active phase should archive every active phase for the user."""
+    # GIVEN multiple active phases already exist for the same user
     user_id = uuid.uuid4()
     first_active = TrainingPhase(
         user_id=user_id,
@@ -137,6 +178,7 @@ def test_replace_active_phase_archives_all_currently_active_phases(session: Sess
     session.add(second_active)
     session.commit()
 
+    # WHEN replacing the active phase
     new_phase = replace_active_phase(
         session,
         user_id=user_id,
@@ -146,6 +188,7 @@ def test_replace_active_phase_archives_all_currently_active_phases(session: Sess
     )
     session.commit()
 
+    # THEN every previous active phase should be archived and only the new one stay active
     phases = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user_id)).all()
     archived = [phase for phase in phases if phase.status == "archived"]
     active = [phase for phase in phases if phase.status == "active"]
@@ -157,24 +200,14 @@ def test_replace_active_phase_archives_all_currently_active_phases(session: Sess
     assert active[0].id == new_phase.id
 
 
-def test_home_page_renders_long_term_goal_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_home_page_renders_long_term_goal_inputs(
+    patch_planner_engines: None,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+    planner_user: User,
+    test_app: FastAPI,
+) -> None:
     """The planner page should render long-term goal inputs above weekly controls."""
-    # GIVEN an authenticated user and isolated in-memory database
-    test_engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(test_engine)
-
-    with Session(test_engine) as session:
-        user = User(email="planner@example.com", password_hash="hash")  # noqa: S106
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-
-    monkeypatch.setattr("app.routes.web.engine", test_engine)
-    monkeypatch.setattr("app.services.plan_loader.engine", test_engine)
+    # GIVEN an authenticated user and isolated planner dependencies
     monkeypatch.setattr(
         "app.routes.web.load_user_plan",
         lambda _user: SimpleNamespace(
@@ -184,7 +217,7 @@ def test_home_page_renders_long_term_goal_inputs(monkeypatch: pytest.MonkeyPatch
     )
 
     # WHEN loading the home page
-    response = web.home(build_request(build_test_app(), method="GET", path="/"), user)
+    response = web.home(build_request(test_app, method="GET", path="/"), planner_user)
 
     # THEN the long-term fields should be present before the weekly controls
     body = bytes(response.body).decode()
@@ -197,30 +230,18 @@ def test_home_page_renders_long_term_goal_inputs(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.asyncio
-async def test_long_term_plan_post_redirects_after_success(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_long_term_plan_post_redirects_after_success(
+    patch_planner_engines: None,  # noqa: ARG001
+    planner_test_engine: Engine,
+    planner_user: User,
+    test_app: FastAPI,
+) -> None:
     """Posting the long-term plan form should persist the phase and redirect to home."""
-    # GIVEN an authenticated user and isolated in-memory database
-    test_engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(test_engine)
-
-    with Session(test_engine) as session:
-        user = User(email="planner-post@example.com", password_hash="hash")  # noqa: S106
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-
-    monkeypatch.setattr("app.routes.web.engine", test_engine)
-    monkeypatch.setattr("app.services.plan_loader.engine", test_engine)
-
     # WHEN submitting a new long-term goal
     body = b"primary_goal=Peak+for+gravel+race&target_date=2026-09-20"
     response = await web.long_term_plan(
-        build_request(build_test_app(), method="POST", path="/long-term-plan", body=body),
-        user,
+        build_request(test_app, method="POST", path="/long-term-plan", body=body),
+        planner_user,
     )
 
     # THEN it should redirect instead of rendering directly
@@ -228,8 +249,8 @@ async def test_long_term_plan_post_redirects_after_success(monkeypatch: pytest.M
     assert response.headers["location"] == "/"
 
     # AND the active phase should be stored for the user
-    with Session(test_engine) as session:
-        phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user.id)).one()
+    with Session(planner_test_engine) as session:
+        phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == planner_user.id)).one()
 
     assert phase.primary_goal == "Peak for gravel race"
     assert phase.target_date == date(2026, 9, 20)
@@ -247,39 +268,31 @@ async def test_long_term_plan_post_redirects_after_success(monkeypatch: pytest.M
         (b"primary_goal=Peak+for+race&target_date=2026-05-15", "Target date must be after the start date."),
     ],
 )
-async def test_long_term_plan_post_validates_bad_input(
+async def test_long_term_plan_post_validates_bad_input(  # noqa: PLR0913, PLR0917
+    patch_planner_engines: None,  # noqa: ARG001
     monkeypatch: pytest.MonkeyPatch,
+    planner_test_engine: Engine,
+    planner_user: User,
+    test_app: FastAPI,
     form_body: bytes,
     error_message: str,
 ) -> None:
     """Invalid long-term form input should re-render the page instead of raising."""
-    test_engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(test_engine)
-
-    with Session(test_engine) as session:
-        user = User(email="planner-invalid@example.com", password_hash="hash")  # noqa: S106
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-
-    monkeypatch.setattr("app.routes.web.engine", test_engine)
-    monkeypatch.setattr("app.services.plan_loader.engine", test_engine)
+    # GIVEN an authenticated user, isolated planner dependencies, and invalid form input
     monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 15))
 
+    # WHEN submitting the invalid long-term goal form
     response = await web.long_term_plan(
-        build_request(build_test_app(), method="POST", path="/long-term-plan", body=form_body),
-        user,
+        build_request(test_app, method="POST", path="/long-term-plan", body=form_body),
+        planner_user,
     )
 
+    # THEN the page should re-render with the validation error and no phase should persist
     body_text = bytes(response.body).decode()
     assert response.status_code == 200
     assert error_message in body_text
 
-    with Session(test_engine) as session:
-        phases = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user.id)).all()
+    with Session(planner_test_engine) as session:
+        phases = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == planner_user.id)).all()
 
     assert phases == []

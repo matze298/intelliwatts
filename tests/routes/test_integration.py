@@ -1,17 +1,19 @@
 """Integration test for the athlete's journey."""
 
+from datetime import date
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, delete
+from sqlmodel import Session, delete, select
 
 from app.db import engine
 from app.intervals.parser.activity import ParsedActivity
 from app.intervals.parser.power_curve import ParsedPowerCurve, PowerCurvePoint
 from app.intervals.parser.wellness import ParsedWellness
 from app.main import app
+from app.models.plan import LongTermPlanArtifact, TrainingPhase, TrainingPlan
 from app.models.user import User
 from app.planning.llm import LLMResponse
 
@@ -23,6 +25,9 @@ if TYPE_CHECKING:
 def clear_db() -> None:
     """Clears the database before each test."""
     with Session(engine) as session:
+        session.exec(delete(LongTermPlanArtifact))
+        session.exec(delete(TrainingPlan))
+        session.exec(delete(TrainingPhase))
         session.exec(delete(User))
         session.commit()
 
@@ -338,6 +343,38 @@ def test_planning_flow(
     # THEN it should return JSON
     assert resp.status_code == 200
     assert "plan" in resp.json()
+
+
+def test_long_term_goal_flow(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests the long-term goal flow through the real planner endpoints."""
+    # GIVEN an authenticated user and a stable planner start date
+    email = "long_term_goal@example.com"
+    password = "password123"  # noqa: S105
+    client.post("/register", data={"email": email, "password": password})
+    client.post("/login", data={"email": email, "password": password})
+    monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 15))
+
+    # WHEN saving a long-term goal through the planner form
+    resp = client.post(
+        "/long-term-plan",
+        data={"primary_goal": "Peak for gravel race", "target_date": "2026-09-20"},
+        follow_redirects=True,
+    )
+
+    # THEN the user should land back on the planner page with the saved values visible
+    assert resp.status_code == 200
+    assert 'value="Peak for gravel race"' in resp.text
+    assert 'value="2026-09-20"' in resp.text
+
+    with Session(engine) as session:
+        user = session.exec(select(User).where(User.email == email)).one()
+        phase = session.exec(
+            select(TrainingPhase).where(TrainingPhase.user_id == user.id, TrainingPhase.status == "active")
+        ).one()
+
+    assert phase.primary_goal == "Peak for gravel race"
+    assert phase.target_date.isoformat() == "2026-09-20"
+    assert phase.status == "active"
 
 
 def test_secrets_flow(client: TestClient) -> None:

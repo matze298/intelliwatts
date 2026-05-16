@@ -73,6 +73,7 @@ def test_create_long_term_plan_artifact() -> None:
 
 def test_training_phase_defaults_target_date_to_end_date() -> None:
     """TrainingPhase should mirror end_date when target_date is omitted."""
+    # GIVEN phase data that omits target_date
     phase = TrainingPhase(
         user_id=uuid.uuid4(),
         primary_goal="Build FTP",
@@ -80,4 +81,7 @@ def test_training_phase_defaults_target_date_to_end_date() -> None:
         end_date=date(2026, 5, 17),
     )
 
+    # WHEN the TrainingPhase is initialized
+
+    # THEN target_date should mirror end_date for backward compatibility
     assert phase.target_date == date(2026, 5, 17)
