@@ -15,11 +15,16 @@ from app.intervals.analysis import compute_analysis
 from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
-from app.models.plan import TrainingPhase, TrainingPlan
+from app.models.plan import TrainingPlan
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
 from app.planning.llm import LLMRole, generate_plan
 from app.planning.llm_to_icu import extract_workout_json, llm_json_to_icu_txt
 from app.planning.providers.registry import registry
+from app.services.long_term_planner import (
+    derive_weekly_brief,
+    get_current_long_term_plan_artifact,
+    get_or_create_active_phase,
+)
 from app.utils.datetime import get_monday
 
 if TYPE_CHECKING:
@@ -36,30 +41,6 @@ class PlanData:
     raw_content: str
     workout_data: list[dict[str, Any]]
     prompt_history: list[dict[str, str]]
-
-
-def get_or_create_active_phase(session: Session, user_id: uuid.UUID) -> TrainingPhase:
-    """Gets the active training phase for a user or creates a default one.
-
-    TODO: In the future, we should ask the user for their specific goal and duration
-    when starting a new phase instead of assuming defaults.
-
-    Returns:
-        The active training phase.
-    """
-    statement = select(TrainingPhase).where(TrainingPhase.user_id == user_id, TrainingPhase.status == "active")
-    phase = session.exec(statement).first()
-    if not phase:
-        # Create default 4-week phase
-        start = datetime.now(UTC).date()
-        end = start + timedelta(weeks=4)
-        phase = TrainingPhase(
-            user_id=user_id, primary_goal="Build FTP (Default)", start_date=start, end_date=end, status="active"
-        )
-        session.add(phase)
-        session.commit()
-        session.refresh(phase)
-    return phase
 
 
 def save_training_plan(
@@ -195,13 +176,23 @@ async def generate_weekly_plan(
     # Fetch combined context from all registered providers
     context = await registry.get_combined_context(analysis.provider_results)
 
+    with Session(engine) as db_session:
+        phase = get_or_create_active_phase(db_session, user.id)
+        artifact = get_current_long_term_plan_artifact(db_session, phase_id=phase.id)
+        weekly_brief = derive_weekly_brief(
+            phase=phase,
+            artifact=artifact,
+            analysis_context=context,
+            week_start=get_monday(datetime.now(UTC).date()),
+        )
+
     # Build the full summary string
     full_summary = (
         "Training Constraints:\n"
         f"- Max Hours: {weekly_hours if weekly_hours is not None else user.weekly_hours}\n"
         f"- Max Sessions: {weekly_sessions if weekly_sessions is not None else user.weekly_sessions}\n"
-        f"- Primary Goal: Build FTP (Default)\n\n"
-        f"{context}"
+        f"- Primary Goal: {phase.primary_goal}\n\n"
+        f"{weekly_brief}"
     )
 
     llm_response = generate_plan(
@@ -215,7 +206,6 @@ async def generate_weekly_plan(
 
     # Persist the plan
     with Session(engine) as db_session:
-        phase = get_or_create_active_phase(db_session, user.id)
         try:
             workout_data = extract_workout_json(llm_response.plan)
         except json.JSONDecodeError:

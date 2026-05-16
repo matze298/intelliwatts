@@ -5,7 +5,7 @@ import uuid
 from datetime import date
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -14,6 +14,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, delete, select
 from starlette.requests import Request
 
+from app.config import Settings
 from app.db import engine
 from app.intervals.parser.activity import ParsedActivity
 from app.intervals.parser.power_curve import ParsedPowerCurve, PowerCurvePoint
@@ -24,6 +25,7 @@ from app.models.user import User
 from app.planning.llm import LLMResponse
 from app.routes import api as api_routes
 from app.routes import web as web_routes
+from app.services.long_term_planner import generate_long_term_plan_artifact
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -410,6 +412,83 @@ def test_long_term_goal_flow(client: TestClient, monkeypatch: pytest.MonkeyPatch
     assert phase.primary_goal == "Peak for gravel race"
     assert phase.target_date.isoformat() == "2026-09-20"
     assert phase.status == "active"
+
+
+@pytest.mark.asyncio
+@patch("app.services.planner.user_prompt", side_effect=lambda content: content)
+@patch("app.services.planner.generate_plan")
+@patch("app.services.planner.registry")
+@patch("app.services.planner.IntervalsClient")
+async def test_weekly_generation_uses_saved_long_term_goal(
+    mock_client_class: MagicMock,  # noqa: ARG001
+    mock_registry: MagicMock,
+    mock_generate_plan: MagicMock,
+    mock_user_prompt: MagicMock,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The weekly planner route should inject the saved long-term goal into the LLM prompt."""
+    # GIVEN an authenticated user with a saved long-term goal and isolated planner state
+    test_app = FastAPI()
+    test_app.include_router(web_routes.router)
+    test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
+    test_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(test_engine)
+
+    with Session(test_engine) as session:
+        user = User(email="weekly_long_term@example.com", password_hash="hash")  # noqa: S106
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        user_id = user.id
+        phase = TrainingPhase(
+            user_id=user_id,
+            primary_goal="Peak for gravel race",
+            start_date=date(2026, 5, 16),
+            end_date=date(2026, 9, 20),
+            target_date=date(2026, 9, 20),
+            status="active",
+        )
+        session.add(phase)
+        session.commit()
+        generate_long_term_plan_artifact(session, phase=phase)
+        session.commit()
+
+    monkeypatch.setattr("app.routes.web.engine", test_engine)
+    monkeypatch.setattr("app.services.plan_loader.engine", test_engine)
+    monkeypatch.setattr("app.services.planner.engine", test_engine)
+    mock_registry.get_combined_context = AsyncMock(return_value="Registry context")
+    mock_generate_plan.return_value = LLMResponse(
+        plan="## Weekly Plan\n\n- Monday: Easy Run",
+        prompt=[{"role": "user", "content": "test"}],
+    )
+    mock_analysis = MagicMock()
+    mock_analysis.provider_results = {"activity": {}}
+    monkeypatch.setattr("app.services.planner._get_analysis", lambda *_args, **_kwargs: mock_analysis)
+    route_user = User(id=user_id, email="weekly_long_term@example.com", password_hash="hash")  # noqa: S106
+    settings = MagicMock(spec=Settings)
+    settings.INTERVALS_API_KEY = "test_api_key"
+    settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
+    settings.CACHE_INTERVALS_HOURS = 0
+    settings.ANALYSIS_DAYS = 120
+    settings.LANGUAGE_MODEL = "test-model"
+
+    # WHEN generating the weekly plan through the real web route
+    resp = await web_routes.generate(
+        build_request(test_app, method="POST", path="/generate", body=b"max_hours=10&max_sessions=5"),
+        route_user,
+        settings,
+    )
+
+    # THEN the generated LLM prompt should include the saved long-term goal and weekly brief
+    assert resp.status_code == 200
+    prompt_body = mock_generate_plan.call_args.kwargs["messages"][1]["content"]
+    assert "Weekly Brief:" in prompt_body
+    assert "Goal: Peak for gravel race" in prompt_body
+    assert "Current Block:" in prompt_body
 
 
 @pytest.mark.asyncio
