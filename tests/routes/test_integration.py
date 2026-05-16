@@ -4,7 +4,7 @@ import asyncio
 import uuid
 from datetime import date
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -29,6 +29,18 @@ from app.services.long_term_planner import generate_long_term_plan_artifact
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from sqlalchemy.engine import Engine
+
+
+class WeeklyPlannerRouteContext(NamedTuple):
+    """Container for isolated planner route test state."""
+
+    app: FastAPI
+    engine: Engine
+    route_user: User
+    settings: Settings
+    user_id: uuid.UUID
 
 
 @pytest.fixture(autouse=True)
@@ -78,6 +90,93 @@ def build_request(app_obj: FastAPI, *, method: str, path: str, body: bytes = b""
         "app": app_obj,
     }
     return Request(scope, receive)
+
+
+def _build_weekly_planner_route_context(*, email: str) -> WeeklyPlannerRouteContext:
+    """Build isolated route-test state for the planner workflow.
+
+    Returns:
+        The isolated app, engine, authenticated route user, and settings.
+    """
+    test_app = FastAPI()
+    test_app.include_router(web_routes.router)
+    test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
+    test_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(test_engine)
+
+    with Session(test_engine) as session:
+        user = User(email=email, password_hash="hash")  # noqa: S106
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        user_id = user.id
+
+    settings = MagicMock(spec=Settings)
+    settings.INTERVALS_API_KEY = "test_api_key"
+    settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
+    settings.CACHE_INTERVALS_HOURS = 0
+    settings.ANALYSIS_DAYS = 120
+    settings.LANGUAGE_MODEL = "test-model"
+    route_user = User(id=user_id, email=email, password_hash="hash")  # noqa: S106
+    return WeeklyPlannerRouteContext(
+        app=test_app,
+        engine=test_engine,
+        route_user=route_user,
+        settings=settings,
+        user_id=user_id,
+    )
+
+
+def _configure_isolated_planner_dependencies(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    test_engine: Engine,
+    registry_mock: MagicMock,
+    generate_plan_mock: MagicMock,
+) -> None:
+    """Point planner dependencies at the isolated engine and mocked services."""
+    monkeypatch.setattr("app.routes.web.engine", test_engine)
+    monkeypatch.setattr("app.services.plan_loader.engine", test_engine)
+    monkeypatch.setattr("app.services.planner.engine", test_engine)
+    monkeypatch.setattr("app.services.long_term_planner.engine", test_engine)
+    monkeypatch.setattr("app.services.planner.IntervalsClient", MagicMock())
+    monkeypatch.setattr("app.services.planner.user_prompt", lambda content: content)
+    registry_mock.get_combined_context = AsyncMock(return_value="Registry context")
+    generate_plan_mock.return_value = LLMResponse(
+        plan="## Weekly Plan\n\n- Monday: Easy Run",
+        prompt=[{"role": "user", "content": "test"}],
+    )
+    mock_analysis = MagicMock()
+    mock_analysis.provider_results = {"activity": {}}
+    monkeypatch.setattr("app.services.planner._get_analysis", lambda *_args, **_kwargs: mock_analysis)
+
+
+def _seed_long_term_phase(
+    test_engine: Engine,
+    *,
+    user_id: uuid.UUID,
+    primary_goal: str,
+    start_date: date,
+    target_date: date,
+) -> None:
+    """Persist an active phase and current long-term artifact for a route test."""
+    with Session(test_engine) as session:
+        phase = TrainingPhase(
+            user_id=user_id,
+            primary_goal=primary_goal,
+            start_date=start_date,
+            end_date=target_date,
+            target_date=target_date,
+            status="active",
+        )
+        session.add(phase)
+        session.commit()
+        generate_long_term_plan_artifact(session, phase=phase)
+        session.commit()
 
 
 @pytest.fixture
@@ -415,72 +514,35 @@ def test_long_term_goal_flow(client: TestClient, monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.asyncio
-@patch("app.services.planner.user_prompt", side_effect=lambda content: content)
 @patch("app.services.planner.generate_plan")
 @patch("app.services.planner.registry")
-@patch("app.services.planner.IntervalsClient")
 async def test_weekly_generation_uses_saved_long_term_goal(
-    mock_client_class: MagicMock,  # noqa: ARG001
     mock_registry: MagicMock,
     mock_generate_plan: MagicMock,
-    mock_user_prompt: MagicMock,  # noqa: ARG001
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The weekly planner route should inject the saved long-term goal into the LLM prompt."""
     # GIVEN an authenticated user with a saved long-term goal and isolated planner state
-    test_app = FastAPI()
-    test_app.include_router(web_routes.router)
-    test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
-    test_engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+    context = _build_weekly_planner_route_context(email="weekly_long_term@example.com")
+    _seed_long_term_phase(
+        context.engine,
+        user_id=context.user_id,
+        primary_goal="Peak for gravel race",
+        start_date=date(2026, 5, 16),
+        target_date=date(2026, 9, 20),
     )
-    SQLModel.metadata.create_all(test_engine)
-
-    with Session(test_engine) as session:
-        user = User(email="weekly_long_term@example.com", password_hash="hash")  # noqa: S106
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-        user_id = user.id
-        phase = TrainingPhase(
-            user_id=user_id,
-            primary_goal="Peak for gravel race",
-            start_date=date(2026, 5, 16),
-            end_date=date(2026, 9, 20),
-            target_date=date(2026, 9, 20),
-            status="active",
-        )
-        session.add(phase)
-        session.commit()
-        generate_long_term_plan_artifact(session, phase=phase)
-        session.commit()
-
-    monkeypatch.setattr("app.routes.web.engine", test_engine)
-    monkeypatch.setattr("app.services.plan_loader.engine", test_engine)
-    monkeypatch.setattr("app.services.planner.engine", test_engine)
-    mock_registry.get_combined_context = AsyncMock(return_value="Registry context")
-    mock_generate_plan.return_value = LLMResponse(
-        plan="## Weekly Plan\n\n- Monday: Easy Run",
-        prompt=[{"role": "user", "content": "test"}],
+    _configure_isolated_planner_dependencies(
+        monkeypatch,
+        test_engine=context.engine,
+        registry_mock=mock_registry,
+        generate_plan_mock=mock_generate_plan,
     )
-    mock_analysis = MagicMock()
-    mock_analysis.provider_results = {"activity": {}}
-    monkeypatch.setattr("app.services.planner._get_analysis", lambda *_args, **_kwargs: mock_analysis)
-    route_user = User(id=user_id, email="weekly_long_term@example.com", password_hash="hash")  # noqa: S106
-    settings = MagicMock(spec=Settings)
-    settings.INTERVALS_API_KEY = "test_api_key"
-    settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
-    settings.CACHE_INTERVALS_HOURS = 0
-    settings.ANALYSIS_DAYS = 120
-    settings.LANGUAGE_MODEL = "test-model"
 
     # WHEN generating the weekly plan through the real web route
     resp = await web_routes.generate(
-        build_request(test_app, method="POST", path="/generate", body=b"max_hours=10&max_sessions=5"),
-        route_user,
-        settings,
+        build_request(context.app, method="POST", path="/generate", body=b"max_hours=10&max_sessions=5"),
+        context.route_user,
+        context.settings,
     )
 
     # THEN the generated LLM prompt should include the saved long-term goal and weekly brief
@@ -492,42 +554,24 @@ async def test_weekly_generation_uses_saved_long_term_goal(
 
 
 @pytest.mark.asyncio
-@patch("app.services.planner.user_prompt", side_effect=lambda content: content)
 @patch("app.services.planner.generate_plan")
 @patch("app.services.planner.registry")
-@patch("app.services.planner.IntervalsClient")
 async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
-    mock_client_class: MagicMock,  # noqa: ARG001
     mock_registry: MagicMock,
     mock_generate_plan: MagicMock,
-    mock_user_prompt: MagicMock,  # noqa: ARG001
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Creating a goal, generating a week, and updating it should not mutate macro state."""
     # GIVEN an isolated planner stack and authenticated route user
-    test_app = FastAPI()
-    test_app.include_router(web_routes.router)
-    test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
-    test_engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+    context = _build_weekly_planner_route_context(email="workflow_long_term@example.com")
+    user_id = context.user_id
+    _configure_isolated_planner_dependencies(
+        monkeypatch,
+        test_engine=context.engine,
+        registry_mock=mock_registry,
+        generate_plan_mock=mock_generate_plan,
     )
-    SQLModel.metadata.create_all(test_engine)
-
-    with Session(test_engine) as session:
-        user = User(email="workflow_long_term@example.com", password_hash="hash")  # noqa: S106
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-        user_id = user.id
-
-    monkeypatch.setattr("app.routes.web.engine", test_engine)
-    monkeypatch.setattr("app.services.plan_loader.engine", test_engine)
-    monkeypatch.setattr("app.services.planner.engine", test_engine)
-    monkeypatch.setattr("app.services.long_term_planner.engine", test_engine)
     monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 16))
-    mock_registry.get_combined_context = AsyncMock(return_value="Registry context")
     mock_generate_plan.side_effect = [
         LLMResponse(
             plan="## Weekly Plan\n\n- Tuesday: Threshold work",
@@ -543,31 +587,21 @@ async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
             ],
         ),
     ]
-    mock_analysis = MagicMock()
-    mock_analysis.provider_results = {"activity": {}}
-    monkeypatch.setattr("app.services.planner._get_analysis", lambda *_args, **_kwargs: mock_analysis)
-    route_user = User(id=user_id, email="workflow_long_term@example.com", password_hash="hash")  # noqa: S106
-    settings = MagicMock(spec=Settings)
-    settings.INTERVALS_API_KEY = "test_api_key"
-    settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
-    settings.CACHE_INTERVALS_HOURS = 0
-    settings.ANALYSIS_DAYS = 120
-    settings.LANGUAGE_MODEL = "test-model"
 
     # WHEN creating a long-term goal through the planner route
     goal_response = await web_routes.long_term_plan(
         build_request(
-            test_app,
+            context.app,
             method="POST",
             path="/long-term-plan",
             body=b"primary_goal=Peak+for+gravel+race&target_date=2026-09-20",
         ),
-        route_user,
+        context.route_user,
     )
 
     # THEN the goal save should redirect and create a single current artifact
     assert goal_response.status_code == 303
-    with Session(test_engine) as session:
+    with Session(context.engine) as session:
         phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user_id)).one()
         artifacts = session.exec(select(LongTermPlanArtifact).where(LongTermPlanArtifact.phase_id == phase.id)).all()
     assert len(artifacts) == 1
@@ -575,20 +609,20 @@ async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
 
     # WHEN generating a weekly plan and then updating it tactically
     generate_response = await web_routes.generate(
-        build_request(test_app, method="POST", path="/generate", body=b"max_hours=10&max_sessions=5"),
-        route_user,
-        settings,
+        build_request(context.app, method="POST", path="/generate", body=b"max_hours=10&max_sessions=5"),
+        context.route_user,
+        context.settings,
     )
     update_response = await web_routes.update(
-        build_request(test_app, method="POST", path="/update", body=b"feedback=Make+Tuesday+easier"),
-        route_user,
-        settings,
+        build_request(context.app, method="POST", path="/update", body=b"feedback=Make+Tuesday+easier"),
+        context.route_user,
+        context.settings,
     )
 
     # THEN both weekly routes should succeed and preserve the macro artifact
     assert generate_response.status_code == 200
     assert update_response.status_code == 200
-    with Session(test_engine) as session:
+    with Session(context.engine) as session:
         phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user_id)).one()
         artifacts = session.exec(select(LongTermPlanArtifact).where(LongTermPlanArtifact.phase_id == phase.id)).all()
         plans = session.exec(select(TrainingPlan).where(TrainingPlan.phase_id == phase.id)).all()

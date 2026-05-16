@@ -1,7 +1,7 @@
 """Lifecycle helpers for long-term training phases."""
 
 from datetime import UTC, date, datetime, timedelta
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
 
 from sqlalchemy import desc
 from sqlmodel import Session, select
@@ -17,6 +17,32 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
+class LongTermBlock(TypedDict):
+    """Structured representation of a macro planning block."""
+
+    name: Literal["Base", "Build", "Peak"]
+    focus: str
+    weeks: int
+
+
+def _build_default_training_phase(*, user_id: UUID, start_date: date | None = None) -> TrainingPhase:
+    """Build the default active phase used before a user defines a long-term goal.
+
+    Returns:
+        A default active phase for the user.
+    """
+    phase_start = start_date or datetime.now(UTC).date()
+    phase_end = phase_start + timedelta(weeks=4)
+    return TrainingPhase(
+        user_id=user_id,
+        primary_goal="Build FTP (Default)",
+        start_date=phase_start,
+        end_date=phase_end,
+        target_date=phase_end,
+        status="active",
+    )
+
+
 def get_or_create_active_phase(session: Session, user_id: UUID) -> TrainingPhase:
     """Get the active training phase for a user or create a default one.
 
@@ -26,16 +52,7 @@ def get_or_create_active_phase(session: Session, user_id: UUID) -> TrainingPhase
     statement = select(TrainingPhase).where(TrainingPhase.user_id == user_id, TrainingPhase.status == "active")
     phase = session.exec(statement).first()
     if not phase:
-        start = datetime.now(UTC).date()
-        end = start + timedelta(weeks=4)
-        phase = TrainingPhase(
-            user_id=user_id,
-            primary_goal="Build FTP (Default)",
-            start_date=start,
-            end_date=end,
-            target_date=end,
-            status="active",
-        )
+        phase = _build_default_training_phase(user_id=user_id)
         session.add(phase)
         session.commit()
         session.refresh(phase)
@@ -144,7 +161,7 @@ def get_current_long_term_plan_artifact(session: Session, *, phase_id: UUID) -> 
     return session.exec(statement).first()
 
 
-def _format_macro_blocks(blocks: list[dict[str, object]]) -> str:
+def _format_macro_blocks(blocks: list[LongTermBlock]) -> str:
     """Render macro blocks for the weekly brief.
 
     Returns:
@@ -155,7 +172,7 @@ def _format_macro_blocks(blocks: list[dict[str, object]]) -> str:
     return ", ".join(f"{block['name']} ({block['weeks']}w)" for block in blocks)
 
 
-def _get_current_block(blocks: list[dict[str, object]], week_index: int) -> dict[str, object] | None:
+def _get_current_block(blocks: list[LongTermBlock], week_index: int) -> LongTermBlock | None:
     """Return the active macro block for a 0-based week index.
 
     Returns:
@@ -163,7 +180,7 @@ def _get_current_block(blocks: list[dict[str, object]], week_index: int) -> dict
     """
     cumulative_weeks = 0
     for block in blocks:
-        cumulative_weeks += int(cast("int", block["weeks"]))
+        cumulative_weeks += block["weeks"]
         if week_index < cumulative_weeks:
             return block
     return blocks[-1] if blocks else None
@@ -182,7 +199,7 @@ def derive_weekly_brief(
         A concise weekly brief combining macro and recent-analysis context.
     """
     structured_data: dict[str, Any] = artifact.structured_data if artifact is not None else {}
-    blocks = cast("list[dict[str, object]]", structured_data.get("blocks", []))
+    blocks = cast("list[LongTermBlock]", structured_data.get("blocks", []))
     total_weeks = int(
         structured_data.get("duration_weeks", max(((phase.target_date - phase.start_date).days + 6) // 7, 1))
     )
@@ -221,7 +238,7 @@ def generate_long_term_plan_for_user(user: User) -> dict[str, str]:
     return {"artifact_id": str(artifact.id), "summary": artifact.summary_markdown}
 
 
-def _allocate_long_term_blocks(total_weeks: int) -> list[dict[str, object]]:
+def _allocate_long_term_blocks(total_weeks: int) -> list[LongTermBlock]:
     """Allocate macro blocks without exceeding the phase duration.
 
     Returns:
