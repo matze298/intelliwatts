@@ -416,15 +416,19 @@ def test_long_term_goal_flow(client: TestClient, monkeypatch: pytest.MonkeyPatch
 @patch("app.routes.api.generate_long_term_plan_for_user")
 async def test_long_term_plan_api_flow(mock_generate_long_term: MagicMock) -> None:
     """Tests long-term plan creation and regeneration via API."""
+    # GIVEN a mocked long-term planner service
     mock_generate_long_term.side_effect = [
         {"artifact_id": "artifact-1", "summary": "# Long-term plan\n\nFirst version"},
         {"artifact_id": "artifact-2", "summary": "# Long-term plan\n\nSecond version"},
     ]
 
     user = User(id=uuid.uuid4(), email="longterm_api@example.com", password_hash="hash")  # noqa: S106
+
+    # WHEN creating and then regenerating a long-term plan via the API handlers
     create_resp = await api_routes.create_long_term_plan_api(user)
     regenerate_resp = await api_routes.regenerate_long_term_plan_api(user)
 
+    # THEN each handler should return the corresponding artifact payload
     assert create_resp["artifact_id"] == "artifact-1"
     assert "First version" in create_resp["summary"]
     assert regenerate_resp["artifact_id"] == "artifact-2"
@@ -434,6 +438,7 @@ async def test_long_term_plan_api_flow(mock_generate_long_term: MagicMock) -> No
 @pytest.mark.asyncio
 async def test_long_term_plan_api_creates_default_phase_for_fresh_user(monkeypatch: pytest.MonkeyPatch) -> None:
     """The long-term API should create a default phase instead of failing for a fresh user."""
+    # GIVEN a fresh authenticated user without an active phase
     test_engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -450,8 +455,10 @@ async def test_long_term_plan_api_creates_default_phase_for_fresh_user(monkeypat
     monkeypatch.setattr("app.services.long_term_planner.engine", test_engine)
     monkeypatch.setattr("app.services.planner.engine", test_engine)
 
+    # WHEN the long-term API is called directly
     response = await api_routes.create_long_term_plan_api(user)
 
+    # THEN it should create a default active phase and return an artifact payload
     assert "artifact_id" in response
     with Session(test_engine) as session:
         phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user.id)).one()

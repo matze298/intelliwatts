@@ -8,21 +8,13 @@ import app.db
 from app.db import init_db
 
 
-def test_init_db() -> None:
-    """Tests the init_db function."""
-    # GIVEN a fresh database
-    # WHEN the init_db function is called
-    init_db()
-    # THEN the database tables should be created without errors
+def build_half_migrated_db(db_path) -> str:  # noqa: ANN001
+    """Create a sqlite database in the half-migrated state seen in production.
 
-
-def test_init_db_upgrades_half_migrated_sqlite_schema(tmp_path, monkeypatch) -> None:  # noqa: ANN001
-    """init_db should repair a sqlite database missing trainingphase.target_date."""
-    # GIVEN a sqlite database stuck between revisions
-    db_path = tmp_path / "half_migrated.db"
+    Returns:
+        The SQLAlchemy database URL for the created sqlite file.
+    """
     database_url = f"sqlite:///{db_path}"
-    engine = create_engine(database_url)
-
     with sqlite3.connect(db_path) as connection:
         connection.executescript(
             """
@@ -90,6 +82,23 @@ def test_init_db_upgrades_half_migrated_sqlite_schema(tmp_path, monkeypatch) -> 
             """
         )
         connection.commit()
+    return database_url
+
+
+def test_init_db() -> None:
+    """Tests the init_db function."""
+    # GIVEN a fresh database
+    # WHEN the init_db function is called
+    init_db()
+    # THEN the database tables should be created without errors
+
+
+def test_init_db_upgrades_half_migrated_sqlite_schema(tmp_path, monkeypatch) -> None:  # noqa: ANN001
+    """init_db should repair a sqlite database missing trainingphase.target_date."""
+    # GIVEN a sqlite database stuck between revisions
+    db_path = tmp_path / "half_migrated.db"
+    database_url = build_half_migrated_db(db_path)
+    engine = create_engine(database_url)
 
     monkeypatch.setattr(app.db, "DATABASE_URL", database_url)
     monkeypatch.setattr(app.db, "engine", engine)
