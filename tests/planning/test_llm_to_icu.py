@@ -1,7 +1,7 @@
 """Unit tests for the llm_to_icu module."""
 
 import json
-import logging
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -69,15 +69,16 @@ def test_llm_json_to_icu_txt_no_json_start_tag() -> None:
     assert not llm_json_to_icu_txt(ai_response)
 
 
-def test_llm_json_to_icu_txt_invalid_json(caplog: pytest.LogCaptureFixture) -> None:
+@patch("app.planning.llm_to_icu._LOGGER.warning")
+def test_llm_json_to_icu_txt_invalid_json(mock_warning: MagicMock) -> None:
     """Test with invalid JSON."""
     # GIVEN an invalid JSON response from the AI
     ai_response = "Here is your plan:###JSON_START###this is not json"
     # WHEN converting to intervals.icu txt format
     # THEN a warning is logged and the output indicates failure to parse
-    with caplog.at_level(logging.WARNING, logger="app.planning.llm_to_icu"):
-        result = llm_json_to_icu_txt(ai_response)
-    assert "Failed to parse JSON from AI response." in caplog.text
+    result = llm_json_to_icu_txt(ai_response)
+    mock_warning.assert_called_once()
+    assert mock_warning.call_args.args[0] == "Failed to parse JSON from AI response."
     assert result == "Failed to parse workout JSON."
 
 
