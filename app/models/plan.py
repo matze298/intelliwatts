@@ -50,3 +50,17 @@ class TrainingPlan(SQLModel, table=True):
     prompt_history: list[dict[str, str]] = Field(default_factory=list, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class WorkoutDelivery(SQLModel, table=True):
+    """Tracks a staged or published Intervals.icu workout delivery for a weekly plan."""
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    training_plan_id: uuid.UUID = Field(foreign_key="trainingplan.id", index=True, unique=True)
+    status: str = Field(default="draft")  # draft, publishing, published, failed
+    staged_payload: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
+    published_payload: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
+    last_error: str | None = None
+    published_at: datetime | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -77,6 +77,8 @@ def test_load_user_plan(session: Session) -> None:
     assert loaded.long_term_summary_html is not None
     assert "<h1>Current long-term plan</h1>" in loaded.long_term_summary_html
     assert loaded.prompt == [{"role": "user", "content": "hi"}]
+    assert loaded.delivery_status is None
+    assert loaded.delivery_last_error is None
 
 
 def test_load_user_plan_none(session: Session) -> None:
@@ -94,3 +96,5 @@ def test_load_user_plan_none(session: Session) -> None:
     assert loaded.plan_html is None
     assert loaded.long_term_summary_html is None
     assert loaded.prompt is None
+    assert loaded.delivery_status is None
+    assert loaded.delivery_last_error is None

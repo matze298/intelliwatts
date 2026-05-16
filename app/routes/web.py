@@ -23,7 +23,7 @@ from app.intervals.analysis import compute_analysis
 from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
-from app.models.plan import TrainingPhase
+from app.models.plan import TrainingPhase, TrainingPlan
 from app.models.user import User
 from app.services.long_term_planner import generate_long_term_plan_artifact, replace_active_phase
 from app.services.plan_loader import load_user_plan
@@ -31,6 +31,8 @@ from app.services.planner import (
     generate_weekly_plan,
     update_training_plan,
 )
+from app.services.workout_delivery import publish_workout_delivery
+from app.utils.datetime import get_monday
 
 router = APIRouter(tags=["web"])
 
@@ -74,6 +76,8 @@ def _render_plan_page(  # noqa: PLR0913
     user: User | None,
     plan_html: str | None,
     long_term_summary_html: str | None,
+    delivery_status: str | None,
+    delivery_last_error: str | None,
     summary: str | None,
     prompt: list[dict[str, str]] | None,
     primary_goal: str = "",
@@ -91,6 +95,8 @@ def _render_plan_page(  # noqa: PLR0913
         {
             "plan_html": plan_html,
             "long_term_summary_html": long_term_summary_html,
+            "delivery_status": delivery_status,
+            "delivery_last_error": delivery_last_error,
             "summary": summary,
             "prompt": prompt,
             "primary_goal": primary_goal,
@@ -112,6 +118,8 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
     plan_html = None
     long_term_summary_html = None
     prompt = None
+    delivery_status = None
+    delivery_last_error = None
     primary_goal = ""
     target_date = ""
 
@@ -124,12 +132,16 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
         plan_html = loaded.plan_html
         long_term_summary_html = loaded.long_term_summary_html
         prompt = loaded.prompt
+        delivery_status = loaded.delivery_status
+        delivery_last_error = loaded.delivery_last_error
 
     return _render_plan_page(
         request,
         user=user,
         plan_html=plan_html,
         long_term_summary_html=long_term_summary_html,
+        delivery_status=delivery_status,
+        delivery_last_error=delivery_last_error,
         summary=None,
         prompt=prompt,
         primary_goal=primary_goal,
@@ -157,6 +169,8 @@ async def long_term_plan(
             user=user,
             plan_html=None,
             long_term_summary_html=None,
+            delivery_status=None,
+            delivery_last_error=None,
             summary=None,
             prompt=None,
             primary_goal=primary_goal,
@@ -170,6 +184,8 @@ async def long_term_plan(
             user=user,
             plan_html=None,
             long_term_summary_html=None,
+            delivery_status=None,
+            delivery_last_error=None,
             summary=None,
             prompt=None,
             primary_goal=primary_goal,
@@ -185,6 +201,8 @@ async def long_term_plan(
             user=user,
             plan_html=None,
             long_term_summary_html=None,
+            delivery_status=None,
+            delivery_last_error=None,
             summary=None,
             prompt=None,
             primary_goal=primary_goal,
@@ -199,6 +217,8 @@ async def long_term_plan(
             user=user,
             plan_html=None,
             long_term_summary_html=None,
+            delivery_status=None,
+            delivery_last_error=None,
             summary=None,
             prompt=None,
             primary_goal=primary_goal,
@@ -212,6 +232,8 @@ async def long_term_plan(
             user=user,
             plan_html=None,
             long_term_summary_html=None,
+            delivery_status=None,
+            delivery_last_error=None,
             summary=None,
             prompt=None,
             primary_goal=primary_goal,
@@ -468,6 +490,8 @@ async def generate(
         user=user,
         plan_html=plan_html,
         long_term_summary_html=loaded.long_term_summary_html,
+        delivery_status=loaded.delivery_status,
+        delivery_last_error=loaded.delivery_last_error,
         summary=summary_html,
         prompt=result["prompt"],
         primary_goal=primary_goal,
@@ -506,8 +530,67 @@ async def update(
         user=user,
         plan_html=plan_html,
         long_term_summary_html=loaded.long_term_summary_html,
+        delivery_status=loaded.delivery_status,
+        delivery_last_error=loaded.delivery_last_error,
         summary=None,
         prompt=None,
         primary_goal=primary_goal,
         target_date=target_date,
     )
+
+
+@router.post("/publish-workout", response_class=HTMLResponse)
+async def publish_workout(
+    request: Request,
+    user: Annotated[User, Depends(get_current_user_from_token)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Response:
+    """Publish the current week's staged workouts to Intervals.icu.
+
+    Returns:
+        A redirect back to the planner page or a rendered error page.
+
+    Raises:
+        HTTPException: If the current week has no active phase or no weekly plan.
+    """
+    with Session(engine) as session:
+        phase = _get_active_phase(session, user)
+        if not phase:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active training phase.")
+
+        monday = get_monday(datetime.now(UTC).date())
+        plan = session.exec(
+            select(TrainingPlan).where(TrainingPlan.phase_id == phase.id, TrainingPlan.week_start == monday)
+        ).first()
+        if not plan:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No weekly training plan.")
+
+        session_factory = requests.Session()
+        if settings.CACHE_INTERVALS_HOURS > 0:
+            session_factory = CachedSession(
+                "intervals_cache",
+                backend="sqlite",
+                expire_after=timedelta(hours=settings.CACHE_INTERVALS_HOURS),
+            )
+        client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session_factory)
+
+        try:
+            publish_workout_delivery(session, plan, client)
+        except Exception as exc:  # noqa: BLE001
+            loaded = load_user_plan(user)
+            primary_goal, target_date = _phase_form_values(phase)
+            return _render_plan_page(
+                request,
+                user=user,
+                plan_html=loaded.plan_html,
+                long_term_summary_html=loaded.long_term_summary_html,
+                delivery_status=loaded.delivery_status,
+                delivery_last_error=loaded.delivery_last_error,
+                summary=None,
+                prompt=loaded.prompt,
+                primary_goal=primary_goal,
+                target_date=target_date,
+                error=f"Failed to publish workouts: {exc}",
+            )
+
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)

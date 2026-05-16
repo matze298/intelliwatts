@@ -71,3 +71,19 @@ class IntervalsClient:
         )
         r.raise_for_status()
         return r.json()
+
+    def publish_workout_events(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Create or update planned workouts on the calendar.
+
+        Returns:
+            The API response payload.
+        """
+        r = self.session.post(
+            f"{BASE_URL}/athlete/{self.athlete_id}/events/bulk",
+            auth=("API_KEY", self.api_key),
+            params={"upsert": "true"},
+            json=events,
+            timeout=10,
+        )
+        r.raise_for_status()
+        return r.json()

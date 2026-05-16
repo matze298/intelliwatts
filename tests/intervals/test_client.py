@@ -70,3 +70,31 @@ def test_intervals_client_api_error(requests_mock: Mocker) -> None:
     # THEN the HTTPError is raised
     with pytest.raises(requests.exceptions.HTTPError):
         client.wellness(days=7)
+
+
+def test_intervals_client_publish_workout_events(requests_mock: Mocker) -> None:
+    """Test that planned workouts are upserted through the bulk events endpoint."""
+    # GIVEN a client and one workout event payload
+    client = IntervalsClient(api_key="test_key", athlete_id="test_id", session=requests.Session())
+    payload = [
+        {
+            "category": "WORKOUT",
+            "start_date_local": "2026-05-18T00:00:00",
+            "name": "Tuesday Intervals",
+            "description": "Title: Tuesday Intervals",
+            "external_id": "plan-1-0",
+        }
+    ]
+    matcher = requests_mock.post(
+        f"{BASE_URL}/athlete/test_id/events/bulk",
+        json=[{"id": 123, "external_id": "plan-1-0"}],
+    )
+
+    # WHEN the workouts are published
+    response = client.publish_workout_events(payload)
+
+    # THEN the bulk endpoint is called with upsert enabled
+    assert matcher.call_count == 1
+    request = requests_mock.request_history[0]
+    assert request.qs["upsert"] == ["true"]
+    assert response == [{"id": 123, "external_id": "plan-1-0"}]

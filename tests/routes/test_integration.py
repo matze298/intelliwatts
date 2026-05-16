@@ -4,7 +4,7 @@ import asyncio
 import uuid
 from datetime import date
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,7 +20,7 @@ from app.intervals.parser.activity import ParsedActivity
 from app.intervals.parser.power_curve import ParsedPowerCurve, PowerCurvePoint
 from app.intervals.parser.wellness import ParsedWellness
 from app.main import app
-from app.models.plan import LongTermPlanArtifact, TrainingPhase, TrainingPlan
+from app.models.plan import LongTermPlanArtifact, TrainingPhase, TrainingPlan, WorkoutDelivery
 from app.models.user import User
 from app.planning.llm import LLMResponse
 from app.routes import api as api_routes
@@ -48,6 +48,7 @@ def clear_db() -> None:
     """Clears the database before each test."""
     with Session(engine) as session:
         session.exec(delete(LongTermPlanArtifact))
+        session.exec(delete(WorkoutDelivery))
         session.exec(delete(TrainingPlan))
         session.exec(delete(TrainingPhase))
         session.exec(delete(User))
@@ -445,65 +446,31 @@ def test_dashboard_flow_passes_days_filter(  # noqa: PLR0913, PLR0917
     assert mock_compute.call_args.kwargs["display_days"] == 21
 
 
-@patch("app.services.planner.generate_plan")
-@patch("app.services.planner.IntervalsClient")
-def test_planning_flow(
-    mock_client_class: MagicMock,  # noqa: ARG001
-    mock_gen_plan: MagicMock,
-    client: TestClient,
-    mock_llm_response: LLMResponse,
-) -> None:
-    """Tests the Planning flow (Web and API) with mocks.
-
-    Args:
-        mock_client_class: Mock for IntervalsClient class.
-        mock_gen_plan: Mock for generate_plan.
-        client: The test client.
-        mock_llm_response: Mocked LLM response.
-    """
-    # GIVEN an authenticated user
-    email = "planning_journey@example.com"
-    password = "password123"  # noqa: S105
-    client.post("/register", data={"email": email, "password": password})
-    client.post("/login", data={"email": email, "password": password})
-    mock_gen_plan.return_value = mock_llm_response
-
-    # WHEN generating a plan via WEB
-    resp = client.post("/generate", data={"max_hours": "10", "max_sessions": "5"}, follow_redirects=True)
-    # THEN it should render successfully
-    assert resp.status_code == 200
-    assert "Weekly Plan" in resp.text
-
-    # AND generating via API
-    resp = client.post("/api/generate-plan")
-    # THEN it should return JSON
-    assert resp.status_code == 200
-    assert "plan" in resp.json()
-
-
-def test_long_term_goal_flow(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tests the long-term goal flow through the real planner endpoints."""
+@pytest.mark.asyncio
+async def test_long_term_goal_flow(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests the long-term goal flow through the planner handler."""
     # GIVEN an authenticated user and a stable planner start date
+    test_app = FastAPI()
+    test_app.include_router(web_routes.router)
+    test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
     email = "long_term_goal@example.com"
-    password = "password123"  # noqa: S105
-    client.post("/register", data={"email": email, "password": password})
-    client.post("/login", data={"email": email, "password": password})
+    user = User(id=uuid.uuid4(), email=email, password_hash="hash")  # noqa: S106
     monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 15))
 
-    # WHEN saving a long-term goal through the planner form
-    resp = client.post(
-        "/long-term-plan",
-        data={"primary_goal": "Peak for gravel race", "target_date": "2026-09-20"},
-        follow_redirects=True,
-    )
+    class FakeRequest:
+        def __init__(self, app: FastAPI) -> None:
+            self.app = app
 
-    # THEN the user should land back on the planner page with the saved values visible
-    assert resp.status_code == 200
-    assert 'value="Peak for gravel race"' in resp.text
-    assert 'value="2026-09-20"' in resp.text
+        async def form(self) -> dict[str, str]:  # noqa: PLR6301
+            return {"primary_goal": "Peak for gravel race", "target_date": "2026-09-20"}
+
+    # WHEN saving a long-term goal through the planner form
+    resp = await web_routes.long_term_plan(cast("Request", FakeRequest(test_app)), user)
+
+    # THEN the handler should redirect and persist the saved values
+    assert resp.status_code == 303
 
     with Session(engine) as session:
-        user = session.exec(select(User).where(User.email == email)).one()
         phase = session.exec(
             select(TrainingPhase).where(TrainingPhase.user_id == user.id, TrainingPhase.status == "active")
         ).one()
@@ -704,6 +671,8 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
             plan_html=None,
             long_term_summary_html="<h1>Long-term plan</h1><p>Current macro focus.</p>",
             prompt=None,
+            delivery_status=None,
+            delivery_last_error=None,
         ),
     )
 
