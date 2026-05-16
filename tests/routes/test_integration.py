@@ -492,6 +492,113 @@ async def test_weekly_generation_uses_saved_long_term_goal(
 
 
 @pytest.mark.asyncio
+@patch("app.services.planner.user_prompt", side_effect=lambda content: content)
+@patch("app.services.planner.generate_plan")
+@patch("app.services.planner.registry")
+@patch("app.services.planner.IntervalsClient")
+async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
+    mock_client_class: MagicMock,  # noqa: ARG001
+    mock_registry: MagicMock,
+    mock_generate_plan: MagicMock,
+    mock_user_prompt: MagicMock,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Creating a goal, generating a week, and updating it should not mutate macro state."""
+    # GIVEN an isolated planner stack and authenticated route user
+    test_app = FastAPI()
+    test_app.include_router(web_routes.router)
+    test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
+    test_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(test_engine)
+
+    with Session(test_engine) as session:
+        user = User(email="workflow_long_term@example.com", password_hash="hash")  # noqa: S106
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        user_id = user.id
+
+    monkeypatch.setattr("app.routes.web.engine", test_engine)
+    monkeypatch.setattr("app.services.plan_loader.engine", test_engine)
+    monkeypatch.setattr("app.services.planner.engine", test_engine)
+    monkeypatch.setattr("app.services.long_term_planner.engine", test_engine)
+    monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 16))
+    mock_registry.get_combined_context = AsyncMock(return_value="Registry context")
+    mock_generate_plan.side_effect = [
+        LLMResponse(
+            plan="## Weekly Plan\n\n- Tuesday: Threshold work",
+            prompt=[{"role": "user", "content": "weekly"}],
+        ),
+        LLMResponse(
+            plan="## Weekly Plan\n\n- Tuesday: Easier endurance work",
+            prompt=[
+                {"role": "system", "content": "sys"},
+                {"role": "user", "content": "weekly"},
+                {"role": "user", "content": "Make Tuesday easier"},
+                {"role": "assistant", "content": "updated"},
+            ],
+        ),
+    ]
+    mock_analysis = MagicMock()
+    mock_analysis.provider_results = {"activity": {}}
+    monkeypatch.setattr("app.services.planner._get_analysis", lambda *_args, **_kwargs: mock_analysis)
+    route_user = User(id=user_id, email="workflow_long_term@example.com", password_hash="hash")  # noqa: S106
+    settings = MagicMock(spec=Settings)
+    settings.INTERVALS_API_KEY = "test_api_key"
+    settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
+    settings.CACHE_INTERVALS_HOURS = 0
+    settings.ANALYSIS_DAYS = 120
+    settings.LANGUAGE_MODEL = "test-model"
+
+    # WHEN creating a long-term goal through the planner route
+    goal_response = await web_routes.long_term_plan(
+        build_request(
+            test_app,
+            method="POST",
+            path="/long-term-plan",
+            body=b"primary_goal=Peak+for+gravel+race&target_date=2026-09-20",
+        ),
+        route_user,
+    )
+
+    # THEN the goal save should redirect and create a single current artifact
+    assert goal_response.status_code == 303
+    with Session(test_engine) as session:
+        phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user_id)).one()
+        artifacts = session.exec(select(LongTermPlanArtifact).where(LongTermPlanArtifact.phase_id == phase.id)).all()
+    assert len(artifacts) == 1
+    artifact_id = artifacts[0].id
+
+    # WHEN generating a weekly plan and then updating it tactically
+    generate_response = await web_routes.generate(
+        build_request(test_app, method="POST", path="/generate", body=b"max_hours=10&max_sessions=5"),
+        route_user,
+        settings,
+    )
+    update_response = await web_routes.update(
+        build_request(test_app, method="POST", path="/update", body=b"feedback=Make+Tuesday+easier"),
+        route_user,
+        settings,
+    )
+
+    # THEN both weekly routes should succeed and preserve the macro artifact
+    assert generate_response.status_code == 200
+    assert update_response.status_code == 200
+    with Session(test_engine) as session:
+        phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user_id)).one()
+        artifacts = session.exec(select(LongTermPlanArtifact).where(LongTermPlanArtifact.phase_id == phase.id)).all()
+        plans = session.exec(select(TrainingPlan).where(TrainingPlan.phase_id == phase.id)).all()
+
+    assert len(artifacts) == 1
+    assert artifacts[0].id == artifact_id
+    assert len(plans) == 1
+
+
+@pytest.mark.asyncio
 @patch("app.routes.api.generate_long_term_plan_for_user")
 async def test_long_term_plan_api_flow(mock_generate_long_term: MagicMock) -> None:
     """Tests long-term plan creation and regeneration via API."""
