@@ -42,6 +42,15 @@ Enhance the training plan generation by incorporating advanced physiological met
 ### 2. Long-term Contextual Goal Planning
 - [ ] **Goal-Oriented Hierarchy:** Enable users to define a "Primary Goal" (e.g., A-race in 12 weeks) and store it in the database.
 - [ ] **Macro-to-Micro Flow:** Implement a two-tiered planning approach (12-week progression awareness).
+- [ ] **Planner Page Strategy Surface:** Add a dedicated planner-page section for creating, regenerating, and viewing the current long-term plan artifact.
+- [ ] **Structured Macro Artifact:** Store long-term planning output as minimal structured data plus a rendered summary for human review.
+- [ ] **Weekly Brief Layer:** Derive a fresh weekly brief from the active phase, long-term artifact, and current analysis context on every weekly plan generation.
+- [ ] **Phase Lifecycle History:** Archive prior active phases when a new long-term goal replaces the current one, while retaining artifact history.
+- [ ] **Dashboard Summary View:** Surface long-term plan summaries on the dashboard as a follow-up, not part of the first planner-page release.
+- [ ] **Automatic Macro Refresh Policies:** Explore context-drift or schedule-drift triggers that suggest regenerating the long-term plan automatically.
+- [ ] **Richer Macro Schema:** Consider future structured fields such as milestone checkpoints, per-block objectives, and workout emphasis.
+- [ ] **Weekly Brief Persistence/Inspection:** Add optional storage or debug visibility for derived weekly briefs if prompt tuning or support workflows need it.
+- [ ] **Feedback-As-Strategy Signal:** Consider treating repeated tactical feedback patterns as input to future long-term planning revisions.
 
 ### 3. Direct Workout Creation in Intervals.icu
 - [ ] **API Integration:** Utilize the Intervals.icu Bulk Workouts API to programmatically create planned workouts.
