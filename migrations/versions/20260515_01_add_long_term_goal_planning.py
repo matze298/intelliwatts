@@ -25,22 +25,30 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column("trainingphase", sa.Column("target_date", sa.Date(), nullable=True))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    phase_columns = {column["name"] for column in inspector.get_columns("trainingphase")}
+
+    if "target_date" not in phase_columns:
+        op.add_column("trainingphase", sa.Column("target_date", sa.Date(), nullable=True))
+
     op.execute("UPDATE trainingphase SET target_date = end_date WHERE target_date IS NULL")
     with op.batch_alter_table("trainingphase") as batch_op:
         batch_op.alter_column("target_date", existing_type=sa.Date(), nullable=False)
-    op.create_table(
-        "longtermplanartifact",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("phase_id", sa.Uuid(), nullable=False),
-        sa.Column("structured_data", sqlite.JSON(), nullable=False),
-        sa.Column("summary_markdown", sa.String(), nullable=False),
-        sa.Column("prompt_history", sqlite.JSON(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["phase_id"], ["trainingphase.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
+
+    if "longtermplanartifact" not in inspector.get_table_names():
+        op.create_table(
+            "longtermplanartifact",
+            sa.Column("id", sa.Uuid(), nullable=False),
+            sa.Column("phase_id", sa.Uuid(), nullable=False),
+            sa.Column("structured_data", sqlite.JSON(), nullable=False),
+            sa.Column("summary_markdown", sa.String(), nullable=False),
+            sa.Column("prompt_history", sqlite.JSON(), nullable=False),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.ForeignKeyConstraint(["phase_id"], ["trainingphase.id"]),
+            sa.PrimaryKeyConstraint("id"),
+        )
 
 
 def downgrade() -> None:
