@@ -1,14 +1,13 @@
 """Lifecycle helpers for long-term training phases."""
 
-from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING, cast
+from datetime import UTC, date, datetime, timedelta
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
 
 from sqlalchemy import desc
 from sqlmodel import Session, select
 
 from app.db import engine
 from app.models.plan import LongTermPlanArtifact, TrainingPhase
-from app.services.planner import get_or_create_active_phase
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -16,6 +15,48 @@ if TYPE_CHECKING:
     from sqlalchemy.sql.elements import ColumnElement
 
     from app.models.user import User
+
+
+class LongTermBlock(TypedDict):
+    """Structured representation of a macro planning block."""
+
+    name: Literal["Base", "Build", "Peak"]
+    focus: str
+    weeks: int
+
+
+def _build_default_training_phase(*, user_id: UUID, start_date: date | None = None) -> TrainingPhase:
+    """Build the default active phase used before a user defines a long-term goal.
+
+    Returns:
+        A default active phase for the user.
+    """
+    phase_start = start_date or datetime.now(UTC).date()
+    phase_end = phase_start + timedelta(weeks=4)
+    return TrainingPhase(
+        user_id=user_id,
+        primary_goal="Build FTP (Default)",
+        start_date=phase_start,
+        end_date=phase_end,
+        target_date=phase_end,
+        status="active",
+    )
+
+
+def get_or_create_active_phase(session: Session, user_id: UUID) -> TrainingPhase:
+    """Get the active training phase for a user or create a default one.
+
+    Returns:
+        The active training phase.
+    """
+    statement = select(TrainingPhase).where(TrainingPhase.user_id == user_id, TrainingPhase.status == "active")
+    phase = session.exec(statement).first()
+    if not phase:
+        phase = _build_default_training_phase(user_id=user_id)
+        session.add(phase)
+        session.commit()
+        session.refresh(phase)
+    return phase
 
 
 def replace_active_phase(
@@ -120,6 +161,67 @@ def get_current_long_term_plan_artifact(session: Session, *, phase_id: UUID) -> 
     return session.exec(statement).first()
 
 
+def _format_macro_blocks(blocks: list[LongTermBlock]) -> str:
+    """Render macro blocks for the weekly brief.
+
+    Returns:
+        A concise string describing the configured macro blocks.
+    """
+    if not blocks:
+        return "Not set"
+    return ", ".join(f"{block['name']} ({block['weeks']}w)" for block in blocks)
+
+
+def _get_current_block(blocks: list[LongTermBlock], week_index: int) -> LongTermBlock | None:
+    """Return the active macro block for a 0-based week index.
+
+    Returns:
+        The matching block for the given week index, if one exists.
+    """
+    cumulative_weeks = 0
+    for block in blocks:
+        cumulative_weeks += block["weeks"]
+        if week_index < cumulative_weeks:
+            return block
+    return blocks[-1] if blocks else None
+
+
+def derive_weekly_brief(
+    *,
+    phase: TrainingPhase,
+    artifact: LongTermPlanArtifact | None,
+    analysis_context: str,
+    week_start: date,
+) -> str:
+    """Derive the focused macro context for a weekly planning run.
+
+    Returns:
+        A concise weekly brief combining macro and recent-analysis context.
+    """
+    structured_data: dict[str, Any] = artifact.structured_data if artifact is not None else {}
+    blocks = cast("list[LongTermBlock]", structured_data.get("blocks", []))
+    total_weeks = int(
+        structured_data.get("duration_weeks", max(((phase.target_date - phase.start_date).days + 6) // 7, 1))
+    )
+    week_index = max((week_start - phase.start_date).days // 7, 0)
+    current_block = _get_current_block(blocks, week_index)
+
+    current_block_summary = "Current Block: Not set yet"
+    if current_block is not None:
+        current_block_summary = f"Current Block: {current_block['name']} ({current_block['focus']})"
+
+    return (
+        "Weekly Brief:\n"
+        f"- Goal: {phase.primary_goal}\n"
+        f"- Target Date: {phase.target_date.isoformat()}\n"
+        f"- Week Of: {week_start.isoformat()}\n"
+        f"- Macro Progress: week {min(week_index + 1, total_weeks)} of {total_weeks}\n"
+        f"- {current_block_summary}\n"
+        f"- Macro Blocks: {_format_macro_blocks(blocks)}\n\n"
+        f"{analysis_context}"
+    )
+
+
 def generate_long_term_plan_for_user(user: User) -> dict[str, str]:
     """Generate and persist a long-term artifact for the user's active phase.
 
@@ -136,7 +238,7 @@ def generate_long_term_plan_for_user(user: User) -> dict[str, str]:
     return {"artifact_id": str(artifact.id), "summary": artifact.summary_markdown}
 
 
-def _allocate_long_term_blocks(total_weeks: int) -> list[dict[str, object]]:
+def _allocate_long_term_blocks(total_weeks: int) -> list[LongTermBlock]:
     """Allocate macro blocks without exceeding the phase duration.
 
     Returns:

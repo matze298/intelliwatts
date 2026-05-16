@@ -16,6 +16,7 @@ from app.models.plan import LongTermPlanArtifact, SQLModel, TrainingPhase
 from app.models.user import User
 from app.routes import web
 from app.services.long_term_planner import (
+    derive_weekly_brief,
     generate_long_term_plan_artifact,
     generate_long_term_plan_for_user,
     get_current_long_term_plan_artifact,
@@ -259,6 +260,36 @@ def test_generate_long_term_artifact_for_short_phase_keeps_block_lengths_consist
     blocks = artifact.structured_data["blocks"]
     assert [block["name"] for block in blocks] == ["Build", "Peak"]
     assert sum(block["weeks"] for block in blocks) == 2
+
+
+def test_derive_weekly_brief_uses_current_macro_block(session: Session) -> None:
+    """Weekly brief derivation should surface the current macro block and goal context."""
+    # GIVEN an active phase with a persisted long-term artifact
+    phase = TrainingPhase(
+        user_id=uuid.uuid4(),
+        primary_goal="Peak for alpine gran fondo",
+        start_date=date(2026, 5, 5),
+        end_date=date(2026, 8, 15),
+        target_date=date(2026, 8, 15),
+        status="active",
+    )
+    session.add(phase)
+    session.commit()
+    artifact = generate_long_term_plan_artifact(session, phase=phase)
+
+    # WHEN deriving the weekly brief partway through the phase
+    brief = derive_weekly_brief(
+        phase=phase,
+        artifact=artifact,
+        analysis_context="Registry context",
+        week_start=date(2026, 6, 16),
+    )
+
+    # THEN it should include the goal, current block, and analysis context
+    assert "Goal: Peak for alpine gran fondo" in brief
+    assert "Current Block: Build" in brief
+    assert "Goal-specific workload" in brief
+    assert "Registry context" in brief
 
 
 def test_regeneration_preserves_history_and_surfaces_latest_artifact(session: Session) -> None:
