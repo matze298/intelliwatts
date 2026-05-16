@@ -17,6 +17,7 @@ from app.models.user import User
 from app.routes import web
 from app.services.long_term_planner import (
     generate_long_term_plan_artifact,
+    generate_long_term_plan_for_user,
     get_current_long_term_plan_artifact,
     replace_active_phase,
 )
@@ -236,6 +237,30 @@ def test_generate_long_term_artifact_for_phase(session: Session) -> None:
     assert stored[0].id == artifact.id
 
 
+def test_generate_long_term_artifact_for_short_phase_keeps_block_lengths_consistent(session: Session) -> None:
+    """Short phases should not allocate more block weeks than the phase contains."""
+    # GIVEN a 14-day phase
+    phase = TrainingPhase(
+        user_id=uuid.uuid4(),
+        primary_goal="Peak for weekend race",
+        start_date=date(2026, 5, 15),
+        end_date=date(2026, 5, 29),
+        target_date=date(2026, 5, 29),
+        status="active",
+    )
+    session.add(phase)
+    session.commit()
+
+    # WHEN generating the long-term artifact
+    artifact = generate_long_term_plan_artifact(session, phase=phase)
+
+    # THEN the block weeks should match the phase duration exactly
+    assert artifact.structured_data["duration_weeks"] == 2
+    blocks = artifact.structured_data["blocks"]
+    assert [block["name"] for block in blocks] == ["Build", "Peak"]
+    assert sum(block["weeks"] for block in blocks) == 2
+
+
 def test_regeneration_preserves_history_and_surfaces_latest_artifact(session: Session) -> None:
     """Regeneration should keep prior artifacts and pick the most recent one as current."""
     # GIVEN an active phase with one existing artifact
@@ -269,6 +294,39 @@ def test_regeneration_preserves_history_and_surfaces_latest_artifact(session: Se
     assert current is not None
     assert current.id == second.id
     assert current.created_at > first.created_at
+
+
+def test_generate_long_term_plan_for_user_creates_default_phase(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Generating a long-term plan should create the default phase when none exists."""
+    # GIVEN a persisted user without any active phase
+    test_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(test_engine)
+
+    with Session(test_engine) as session:
+        user = User(email="longterm-default@example.com", password_hash="hash")  # noqa: S106
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+    monkeypatch.setattr("app.services.long_term_planner.engine", test_engine)
+    monkeypatch.setattr("app.services.planner.engine", test_engine)
+
+    # WHEN generating the long-term plan
+    result = generate_long_term_plan_for_user(user)
+
+    # THEN a default active phase and linked artifact should be created
+    assert "artifact_id" in result
+    with Session(test_engine) as session:
+        phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user.id)).one()
+        artifact = session.exec(select(LongTermPlanArtifact).where(LongTermPlanArtifact.phase_id == phase.id)).one()
+
+    assert phase.status == "active"
+    assert phase.primary_goal == "Build FTP (Default)"
+    assert artifact.summary_markdown == result["summary"]
 
 
 def test_home_page_renders_long_term_goal_inputs_and_current_summary(

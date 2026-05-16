@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 
 from app.db import engine
 from app.models.plan import LongTermPlanArtifact, TrainingPhase
+from app.services.planner import get_or_create_active_phase
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -59,30 +60,25 @@ def _build_long_term_artifact_content(phase: TrainingPhase) -> tuple[dict[str, o
         A structured summary payload, rendered markdown, and prompt history.
     """
     total_days = max((phase.target_date - phase.start_date).days, 1)
-    total_weeks = max(total_days // 7, 1)
-    first_block_weeks = max(total_weeks // 3, 1)
-    second_block_weeks = max(total_weeks // 3, 1)
-    third_block_weeks = max(total_weeks - first_block_weeks - second_block_weeks, 1)
+    total_weeks = max((total_days + 6) // 7, 1)
+    blocks = _allocate_long_term_blocks(total_weeks)
 
     structured_data: dict[str, object] = {
         "goal": phase.primary_goal,
         "start_date": phase.start_date.isoformat(),
         "target_date": phase.target_date.isoformat(),
         "duration_weeks": total_weeks,
-        "blocks": [
-            {"name": "Base", "focus": "Aerobic durability", "weeks": first_block_weeks},
-            {"name": "Build", "focus": "Goal-specific workload", "weeks": second_block_weeks},
-            {"name": "Peak", "focus": "Freshness and specificity", "weeks": third_block_weeks},
-        ],
+        "blocks": blocks,
     }
+    block_lines = "\n".join(
+        f"- {block['name']}: {block['weeks']} week(s) focused on {block['focus']}" for block in blocks
+    )
     summary_markdown = (
         "# Long-term plan\n\n"
         f"Goal: {phase.primary_goal}\n\n"
         f"Target date: {phase.target_date.isoformat()}\n\n"
         "## Blocks\n\n"
-        f"- Base: {first_block_weeks} week(s) focused on aerobic durability\n"
-        f"- Build: {second_block_weeks} week(s) focused on goal-specific workload\n"
-        f"- Peak: {third_block_weeks} week(s) focused on freshness and specificity\n"
+        f"{block_lines}\n"
     )
     prompt_history = [
         {"role": "system", "content": "Generate a deterministic long-term training summary."},
@@ -130,19 +126,36 @@ def generate_long_term_plan_for_user(user: User) -> dict[str, str]:
     Returns:
         A compact response describing the generated artifact.
 
-    Raises:
-        ValueError: If the user has no active training phase.
     """
     with Session(engine) as session:
-        phase = session.exec(
-            select(TrainingPhase).where(TrainingPhase.user_id == user.id, TrainingPhase.status == "active")
-        ).first()
-        if phase is None:
-            msg = "Active training phase is required to generate a long-term plan."
-            raise ValueError(msg)
-
+        phase = get_or_create_active_phase(session, user.id)
         artifact = generate_long_term_plan_artifact(session, phase=phase)
         session.commit()
         session.refresh(artifact)
 
     return {"artifact_id": str(artifact.id), "summary": artifact.summary_markdown}
+
+
+def _allocate_long_term_blocks(total_weeks: int) -> list[dict[str, object]]:
+    """Allocate macro blocks without exceeding the phase duration.
+
+    Returns:
+        A list of block dictionaries whose week totals match ``total_weeks``.
+    """
+    two_week_phase = 2
+    if total_weeks <= 1:
+        return [{"name": "Peak", "focus": "Freshness and specificity", "weeks": 1}]
+    if total_weeks == two_week_phase:
+        return [
+            {"name": "Build", "focus": "Goal-specific workload", "weeks": 1},
+            {"name": "Peak", "focus": "Freshness and specificity", "weeks": 1},
+        ]
+
+    base_weeks = max(total_weeks // 3, 1)
+    build_weeks = max(total_weeks // 3, 1)
+    peak_weeks = total_weeks - base_weeks - build_weeks
+    return [
+        {"name": "Base", "focus": "Aerobic durability", "weeks": base_weeks},
+        {"name": "Build", "focus": "Goal-specific workload", "weeks": build_weeks},
+        {"name": "Peak", "focus": "Freshness and specificity", "weeks": peak_weeks},
+    ]

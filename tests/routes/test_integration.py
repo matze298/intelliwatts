@@ -10,7 +10,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlmodel import Session, delete, select
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine, delete, select
 from starlette.requests import Request
 
 from app.db import engine
@@ -428,6 +429,35 @@ async def test_long_term_plan_api_flow(mock_generate_long_term: MagicMock) -> No
     assert "First version" in create_resp["summary"]
     assert regenerate_resp["artifact_id"] == "artifact-2"
     assert "Second version" in regenerate_resp["summary"]
+
+
+@pytest.mark.asyncio
+async def test_long_term_plan_api_creates_default_phase_for_fresh_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The long-term API should create a default phase instead of failing for a fresh user."""
+    test_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(test_engine)
+
+    with Session(test_engine) as session:
+        user = User(email="longterm-fresh@example.com", password_hash="hash")  # noqa: S106
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+    monkeypatch.setattr("app.services.long_term_planner.engine", test_engine)
+    monkeypatch.setattr("app.services.planner.engine", test_engine)
+
+    response = await api_routes.create_long_term_plan_api(user)
+
+    assert "artifact_id" in response
+    with Session(test_engine) as session:
+        phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user.id)).one()
+
+    assert phase.status == "active"
+    assert phase.primary_goal == "Build FTP (Default)"
 
 
 def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyPatch) -> None:
