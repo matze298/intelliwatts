@@ -1,7 +1,7 @@
 # Planning Improvement Plan
 
 ## Overview
-Enhance the training plan generation by incorporating advanced physiological metrics and historical context from Intervals.icu, moving beyond basic load/TSB-based planning.
+Enhance the training plan generation by incorporating advanced physiological metrics, historical context from Intervals.icu, and a long-term planning layer that drives weekly planning from a macro goal.
 
 ## 🏗️ Architectural Foundation [DONE]
 - [x] **Metric Provider Framework:** Moved from monolithic summary logic to a pluggable "Metric Kernel" architecture.
@@ -39,13 +39,13 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] **Persistent Preferences:** User training volume (hours/sessions) now persists in the database.
 - [ ] **Adaptive Re-planning:** Compare planned vs. actual training data daily/weekly; trigger automated LLM re-plan on deviations.
 
-### 2. Long-term Contextual Goal Planning
-- [ ] **Goal-Oriented Hierarchy:** Enable users to define a "Primary Goal" (e.g., A-race in 12 weeks) and store it in the database.
-- [ ] **Macro-to-Micro Flow:** Implement a two-tiered planning approach (12-week progression awareness).
-- [ ] **Planner Page Strategy Surface:** Add a dedicated planner-page section for creating, regenerating, and viewing the current long-term plan artifact.
-- [ ] **Structured Macro Artifact:** Store long-term planning output as minimal structured data plus a rendered summary for human review.
-- [ ] **Weekly Brief Layer:** Derive a fresh weekly brief from the active phase, long-term artifact, and current analysis context on every weekly plan generation.
-- [ ] **Phase Lifecycle History:** Archive prior active phases when a new long-term goal replaces the current one, while retaining artifact history.
+### 2. Long-term Contextual Goal Planning [DONE]
+- [x] **Goal-Oriented Hierarchy:** Users can define a `Primary Goal` and `target_date`, and the app stores them on the active phase.
+- [x] **Macro-to-Micro Flow:** Weekly planning now derives from a long-term macro artifact instead of hardcoded defaults.
+- [x] **Planner Page Strategy Surface:** The planner page has a dedicated long-term goal section for creating and regenerating the current macro plan.
+- [x] **Structured Macro Artifact:** Long-term planning output is stored as minimal structured data plus a rendered summary for human review.
+- [x] **Weekly Brief Layer:** Every weekly plan generation derives a fresh weekly brief from the active phase, current long-term artifact, and analysis context.
+- [x] **Phase Lifecycle History:** Replacing the active goal archives prior active phases while preserving artifact history.
 - [ ] **Dashboard Summary View:** Surface long-term plan summaries on the dashboard as a follow-up, not part of the first planner-page release.
 - [ ] **Automatic Macro Refresh Policies:** Explore context-drift or schedule-drift triggers that suggest regenerating the long-term plan automatically.
 - [ ] **Richer Macro Schema:** Consider future structured fields such as milestone checkpoints, per-block objectives, and workout emphasis.
@@ -53,11 +53,17 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [ ] **Feedback-As-Strategy Signal:** Consider treating repeated tactical feedback patterns as input to future long-term planning revisions.
 
 ### 3. Direct Workout Creation in Intervals.icu
+- [ ] **Staged Publish Flow:** Generate workout payloads as a draft/staging step before publishing them.
+- [ ] **One-way Delivery:** Push workouts to Intervals.icu without treating the remote calendar as a sync source.
+- [ ] **Retry State:** Keep enough local state to retry publish failures safely.
 - [ ] **API Integration:** Utilize the Intervals.icu Bulk Workouts API to programmatically create planned workouts.
+- [ ] **Publish Confirmation:** Surface clear user feedback when a staged workout has been published successfully.
 
 ---
 
 ## 🛠️ Follow-up Architecture Tasks (Next Steps)
-1.  **[Refactor] Logic De-duplication:** Move shared calculation logic (HRV averages, FTP trends) from `analysis.py` into a shared utility or allow Providers to contribute data back to the `AnalysisResult` used by the dashboard.
-3.  **[UI] Theme Consistency:** Ensure the dashboard uses the same request-scoped settings and database preferences as the planner.
-4.  **[API] Intervals.icu Workout Push:** Extend `IntervalsClient` to allow uploading the generated plan back to the athlete's calendar.
+1. **[API] Intervals.icu Workout Push:** Extend `IntervalsClient` to stage and publish generated workouts to the athlete's calendar.
+2. **[Planner] Adaptive Re-planning:** Compare planned vs. actual training data and trigger automatic replanning when drift is large enough.
+3. **[Refactor] Logic De-duplication:** Move shared calculation logic (HRV averages, FTP trends) from `analysis.py` into a shared utility or allow providers to contribute data back to `AnalysisResult`.
+4. **[Context] Activity Notes:** Add qualitative text analysis of athlete-entered comments for richer planning context.
+5. **[UI] Theme Consistency:** Ensure the dashboard uses the same request-scoped settings and database preferences as the planner.
