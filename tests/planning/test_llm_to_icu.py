@@ -75,9 +75,9 @@ def test_llm_json_to_icu_txt_invalid_json(caplog: pytest.LogCaptureFixture) -> N
     ai_response = "Here is your plan:###JSON_START###this is not json"
     # WHEN converting to intervals.icu txt format
     # THEN a warning is logged and the output indicates failure to parse
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.WARNING, logger="app.planning.llm_to_icu"):
         result = llm_json_to_icu_txt(ai_response)
-        assert "Failed to parse JSON from AI response." in caplog.text
+    assert "Failed to parse JSON from AI response." in caplog.text
     assert result == "Failed to parse workout JSON."
 
 
