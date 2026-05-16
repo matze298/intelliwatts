@@ -25,7 +25,7 @@ from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPhase
 from app.models.user import User
-from app.services.long_term_planner import replace_active_phase
+from app.services.long_term_planner import generate_long_term_plan_artifact, replace_active_phase
 from app.services.plan_loader import load_user_plan
 from app.services.planner import (
     generate_weekly_plan,
@@ -73,6 +73,7 @@ def _render_plan_page(  # noqa: PLR0913
     *,
     user: User | None,
     plan_html: str | None,
+    long_term_summary_html: str | None,
     summary: str | None,
     prompt: list[dict[str, str]] | None,
     primary_goal: str = "",
@@ -89,6 +90,7 @@ def _render_plan_page(  # noqa: PLR0913
         "plan.html",
         {
             "plan_html": plan_html,
+            "long_term_summary_html": long_term_summary_html,
             "summary": summary,
             "prompt": prompt,
             "primary_goal": primary_goal,
@@ -108,7 +110,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
         The home page as HTML.
     """
     plan_html = None
-    summary_html = None
+    long_term_summary_html = None
     prompt = None
     primary_goal = ""
     target_date = ""
@@ -120,13 +122,15 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
     if user:
         loaded = load_user_plan(user)
         plan_html = loaded.plan_html
+        long_term_summary_html = loaded.long_term_summary_html
         prompt = loaded.prompt
 
     return _render_plan_page(
         request,
         user=user,
         plan_html=plan_html,
-        summary=summary_html,
+        long_term_summary_html=long_term_summary_html,
+        summary=None,
         prompt=prompt,
         primary_goal=primary_goal,
         target_date=target_date,
@@ -152,6 +156,7 @@ async def long_term_plan(
             request,
             user=user,
             plan_html=None,
+            long_term_summary_html=None,
             summary=None,
             prompt=None,
             primary_goal=primary_goal,
@@ -164,6 +169,7 @@ async def long_term_plan(
             request,
             user=user,
             plan_html=None,
+            long_term_summary_html=None,
             summary=None,
             prompt=None,
             primary_goal=primary_goal,
@@ -178,6 +184,7 @@ async def long_term_plan(
             request,
             user=user,
             plan_html=None,
+            long_term_summary_html=None,
             summary=None,
             prompt=None,
             primary_goal=primary_goal,
@@ -191,6 +198,7 @@ async def long_term_plan(
             request,
             user=user,
             plan_html=None,
+            long_term_summary_html=None,
             summary=None,
             prompt=None,
             primary_goal=primary_goal,
@@ -203,6 +211,7 @@ async def long_term_plan(
             request,
             user=user,
             plan_html=None,
+            long_term_summary_html=None,
             summary=None,
             prompt=None,
             primary_goal=primary_goal,
@@ -211,13 +220,14 @@ async def long_term_plan(
         )
 
     with Session(engine) as session:
-        replace_active_phase(
+        phase = replace_active_phase(
             session,
             user_id=user.id,
             primary_goal=primary_goal,
             target_date=target_date,
             start_date=start_date,
         )
+        generate_long_term_plan_artifact(session, phase=phase)
         session.commit()
 
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
@@ -441,6 +451,7 @@ async def generate(
         result["plan"],
         extensions=["tables", "fenced_code"],
     )
+    loaded = load_user_plan(user)
 
     summary_html = markdown.markdown(
         # Pretty print the dict
@@ -456,6 +467,7 @@ async def generate(
         request,
         user=user,
         plan_html=plan_html,
+        long_term_summary_html=loaded.long_term_summary_html,
         summary=summary_html,
         prompt=result["prompt"],
         primary_goal=primary_goal,
@@ -483,6 +495,7 @@ async def update(
         result["plan"],
         extensions=["tables", "fenced_code"],
     )
+    loaded = load_user_plan(user)
     primary_goal, target_date = ("", "")
     with Session(engine) as session:
         phase = _get_active_phase(session, user)
@@ -492,6 +505,7 @@ async def update(
         request,
         user=user,
         plan_html=plan_html,
+        long_term_summary_html=loaded.long_term_summary_html,
         summary=None,
         prompt=None,
         primary_goal=primary_goal,

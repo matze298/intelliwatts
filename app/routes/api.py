@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.auth.auth import get_current_user_from_token
+from app.services.long_term_planner import generate_long_term_plan_for_user
 from app.services.planner import generate_weekly_plan, update_training_plan
 
 if TYPE_CHECKING:
@@ -40,3 +41,23 @@ async def update_plan_api(
         The updated weekly plan and summary.
     """
     return await update_training_plan(user=user, feedback=request.feedback)
+
+
+@router.post("/long-term-plan")
+async def create_long_term_plan_api(user: Annotated[User, Depends(get_current_user_from_token)]) -> dict[str, Any]:
+    """Creates a long-term artifact for the user's active phase.
+
+    Returns:
+        The created long-term artifact payload.
+    """
+    return generate_long_term_plan_for_user(user)
+
+
+@router.post("/long-term-plan/regenerate")
+async def regenerate_long_term_plan_api(user: Annotated[User, Depends(get_current_user_from_token)]) -> dict[str, Any]:
+    """Regenerates the long-term artifact for the user's active phase.
+
+    Returns:
+        The regenerated long-term artifact payload.
+    """
+    return generate_long_term_plan_for_user(user)
