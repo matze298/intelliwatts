@@ -35,8 +35,8 @@ def llm_json_to_icu_txt(ai_response: str) -> str:
     # 1. Extract JSON
     try:
         workouts = extract_workout_json(ai_response)
-    except json.JSONDecodeError as e:
-        _LOGGER.exception("Failed to parse JSON from AI response.", exc_info=e)
+    except json.JSONDecodeError:
+        _LOGGER.warning("Failed to parse JSON from AI response.", exc_info=True)
         return "Failed to parse workout JSON."
 
     # 2. Generate .txt files from JSON

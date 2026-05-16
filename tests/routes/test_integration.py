@@ -469,6 +469,7 @@ async def test_long_term_plan_api_creates_default_phase_for_fresh_user(monkeypat
 
 def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyPatch) -> None:
     """The home page should show the current long-term summary for the authenticated user."""
+    # GIVEN an authenticated user with a current long-term summary to render
     test_app = FastAPI()
     test_app.include_router(web_routes.router)
     test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
@@ -486,8 +487,10 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
         ),
     )
 
+    # WHEN the home page is rendered
     resp = web_routes.home(build_request(test_app, method="GET", path="/"), user)
 
+    # THEN the current long-term summary should be present in the response body
     assert resp.status_code == 200
     body = bytes(resp.body).decode()
     assert "Long-term plan" in body
