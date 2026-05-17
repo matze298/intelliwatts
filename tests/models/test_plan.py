@@ -97,6 +97,7 @@ def test_create_workout_delivery() -> None:
     payload: WorkoutDeliveryPayload = {
         "category": "WORKOUT",
         "start_date_local": "2026-05-19T00:00:00",
+        "type": "Ride",
         "name": "Tuesday Intervals",
         "description": "Quality work",
         "external_id": "plan-1-0",

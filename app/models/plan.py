@@ -40,6 +40,7 @@ class WorkoutDeliveryPayload(TypedDict):
 
     category: str
     start_date_local: str
+    type: str
     name: str
     description: str
     external_id: str

@@ -82,6 +82,7 @@ def test_intervals_client_publish_workout_events(requests_mock: Mocker) -> None:
         {
             "category": "WORKOUT",
             "start_date_local": "2026-05-18T00:00:00",
+            "type": "Ride",
             "name": "Tuesday Intervals",
             "description": "Title: Tuesday Intervals",
             "external_id": "plan-1-0",

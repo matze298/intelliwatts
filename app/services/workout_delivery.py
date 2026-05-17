@@ -12,6 +12,7 @@ from app.planning.llm_to_icu import workout_json_to_icu_txt
 if TYPE_CHECKING:
     from app.intervals.client import IntervalsClient
 
+DEFAULT_WORKOUT_TYPE = "Ride"
 _DAY_OFFSETS = {day.lower(): index for index, day in enumerate(calendar.day_name)}
 
 
@@ -29,6 +30,7 @@ def build_workout_delivery_payloads(plan: TrainingPlan) -> list[WorkoutDeliveryP
         payloads.append({
             "category": "WORKOUT",
             "start_date_local": start_date_local.replace(tzinfo=None).isoformat(timespec="seconds"),
+            "type": DEFAULT_WORKOUT_TYPE,
             "name": workout.get("workout_name", f"Workout {index + 1}"),
             "description": workout_json_to_icu_txt(workout),
             "external_id": f"{plan.id}-{index}",

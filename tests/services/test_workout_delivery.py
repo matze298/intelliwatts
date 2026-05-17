@@ -93,6 +93,7 @@ def test_stage_workout_delivery_creates_payloads(workout_session: Session, train
     assert len(delivery.staged_payload) == 1
     payload = delivery.staged_payload[0]
     assert payload["category"] == "WORKOUT"
+    assert payload["type"] == "Ride"
     assert payload["external_id"] == f"{training_plan.id}-0"
     assert payload["start_date_local"] == "2026-05-19T00:00:00"
     assert "Tuesday Intervals" in payload["description"]
