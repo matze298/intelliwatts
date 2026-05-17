@@ -53,7 +53,7 @@ def workout_json_to_icu_txt(workout: dict) -> str:
             file_content += f"{line}\n"
         file_content += "\n"
 
-    file_content += "\n"
+    file_content += "\n\n"
     return file_content
 
 

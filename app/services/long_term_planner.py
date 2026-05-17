@@ -6,10 +6,11 @@ from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
 from sqlalchemy import desc
 from sqlmodel import Session, select
 
-from app.models.plan import LongTermPlanArtifact, LongTermPlanBlock, LongTermPlanStructuredData, TrainingPhase
 from app.db import engine
+from app.models.plan import LongTermPlanArtifact, LongTermPlanBlock, LongTermPlanStructuredData, TrainingPhase
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from uuid import UUID
 
     from sqlalchemy.sql.elements import ColumnElement
@@ -200,7 +201,7 @@ def derive_weekly_brief(
     Returns:
         A concise weekly brief combining macro and recent-analysis context.
     """
-    structured_data: dict[str, Any] = artifact.structured_data if artifact is not None else {}
+    structured_data: Mapping[str, Any] = artifact.structured_data if artifact is not None else {}
     blocks = cast("list[LongTermBlock]", structured_data.get("blocks", []))
     total_weeks = int(
         structured_data.get("duration_weeks", max(((phase.target_date - phase.start_date).days + 6) // 7, 1))

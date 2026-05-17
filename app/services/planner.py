@@ -117,6 +117,7 @@ async def update_training_plan(user: User, feedback: str, settings: Settings | N
                 prompt_history=llm_response.prompt,
             ),
         )
+        saved_plan_id = saved_plan.id
         stage_workout_delivery(session, saved_plan)
 
     full_plan_text = (
@@ -126,7 +127,7 @@ async def update_training_plan(user: User, feedback: str, settings: Settings | N
         + llm_json_to_icu_txt(llm_response.plan)
         + "\n```"
     )
-    return {"plan": full_plan_text, "plan_id": saved_plan.id}
+    return {"plan": full_plan_text, "plan_id": saved_plan_id}
 
 
 def _get_analysis(client: IntervalsClient, analysis_days: int) -> AnalysisResult:
@@ -222,6 +223,7 @@ async def generate_weekly_plan(
                 prompt_history=llm_response.prompt,
             ),
         )
+        saved_plan_id = saved_plan.id
         stage_workout_delivery(db_session, saved_plan)
 
     full_plan_text = (
@@ -231,4 +233,4 @@ async def generate_weekly_plan(
         + llm_json_to_icu_txt(llm_response.plan)
         + "\n```"
     )
-    return {"plan": full_plan_text, "summary": full_summary, "prompt": llm_response.prompt, "plan_id": saved_plan.id}
+    return {"plan": full_plan_text, "summary": full_summary, "prompt": llm_response.prompt, "plan_id": saved_plan_id}

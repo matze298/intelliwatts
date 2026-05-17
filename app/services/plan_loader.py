@@ -7,9 +7,8 @@ from sqlalchemy import desc
 from sqlmodel import Session, select
 
 from app.db import engine
-from app.models.plan import LongTermPlanArtifact, TrainingPlan
+from app.models.plan import LongTermPlanArtifact, TrainingPlan, WorkoutDelivery
 from app.services.long_term_planner import get_or_create_active_phase
-from app.models.plan import WorkoutDelivery
 from app.utils.datetime import get_monday, get_utc_now
 
 if TYPE_CHECKING:

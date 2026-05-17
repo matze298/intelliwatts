@@ -8,7 +8,14 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 import pytest
 from sqlmodel import Session, create_engine, select
 
-from app.models.plan import LongTermPlanArtifact, SQLModel, TrainingPhase, TrainingPlan
+from app.models.plan import (
+    LongTermPlanArtifact,
+    LongTermPlanBlock,
+    LongTermPlanStructuredData,
+    SQLModel,
+    TrainingPhase,
+    TrainingPlan,
+)
 from app.models.user import User
 from app.planning.llm import LLMResponse
 from app.services.planner import (
@@ -137,9 +144,17 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
         status="active",
     )
     mock_get_active_phase.return_value = mock_phase
+    blocks: list[LongTermPlanBlock] = [{"name": "Build", "focus": "Goal-specific workload", "weeks": 4}]
+    structured_data: LongTermPlanStructuredData = {
+        "goal": "Peak for hill climb",
+        "start_date": "2026-05-05",
+        "target_date": "2026-08-01",
+        "duration_weeks": 4,
+        "blocks": blocks,
+    }
     mock_get_current_artifact.return_value = LongTermPlanArtifact(
         phase_id=mock_phase.id,
-        structured_data={"blocks": [{"name": "Build", "focus": "Goal-specific workload", "weeks": 4}]},
+        structured_data=structured_data,
         summary_markdown="# Long-term plan",
         prompt_history=[],
     )
@@ -192,9 +207,17 @@ async def test_update_training_plan_uses_history(
     initial_history = [{"role": "system", "content": "sys"}, {"role": "user", "content": "hi"}]
     data = PlanData(raw_content="Initial Plan", workout_data=[], prompt_history=initial_history)
     save_training_plan(session, phase_id, monday, data)
+    blocks: list[LongTermPlanBlock] = [{"name": "Build", "focus": "Goal-specific workload", "weeks": 4}]
+    structured_data: LongTermPlanStructuredData = {
+        "goal": "Test",
+        "start_date": "2026-04-20",
+        "target_date": "2026-05-17",
+        "duration_weeks": 4,
+        "blocks": blocks,
+    }
     artifact = LongTermPlanArtifact(
         phase_id=phase_id,
-        structured_data={"blocks": [{"name": "Build", "focus": "Goal-specific workload", "weeks": 4}]},
+        structured_data=structured_data,
         summary_markdown="# Long-term plan",
         prompt_history=[],
     )
