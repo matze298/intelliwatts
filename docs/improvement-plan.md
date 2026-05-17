@@ -52,18 +52,18 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [ ] **Weekly Brief Persistence/Inspection:** Add optional storage or debug visibility for derived weekly briefs if prompt tuning or support workflows need it.
 - [ ] **Feedback-As-Strategy Signal:** Consider treating repeated tactical feedback patterns as input to future long-term planning revisions.
 
-### 3. Direct Workout Creation in Intervals.icu
-- [ ] **Staged Publish Flow:** Generate workout payloads as a draft/staging step before publishing them.
-- [ ] **One-way Delivery:** Push workouts to Intervals.icu without treating the remote calendar as a sync source.
-- [ ] **Retry State:** Keep enough local state to retry publish failures safely.
-- [ ] **API Integration:** Utilize the Intervals.icu Bulk Workouts API to programmatically create planned workouts.
-- [ ] **Publish Confirmation:** Surface clear user feedback when a staged workout has been published successfully.
+### 3. Direct Workout Creation in Intervals.icu [IN PROGRESS]
+- [x] **Staged Publish Flow:** Generate workout payloads as a draft/staging step before publishing them.
+- [x] **One-way Delivery:** Push workouts to Intervals.icu without treating the remote calendar as a sync source.
+- [x] **Retry State:** Keep enough local state to retry publish failures safely.
+- [x] **API Integration:** Utilize the Intervals.icu Bulk Workouts API to programmatically create planned workouts.
+- [x] **Publish Confirmation:** Surface clear user feedback when a staged workout has been published successfully.
+- [ ] **Merge & Harden:** Finish PR review, merge the branch, and keep an eye on any follow-up regressions in production.
 
 ---
 
 ## 🛠️ Follow-up Architecture Tasks (Next Steps)
-1. **[API] Intervals.icu Workout Push:** Extend `IntervalsClient` to stage and publish generated workouts to the athlete's calendar.
-2. **[Planner] Adaptive Re-planning:** Compare planned vs. actual training data and trigger automatic replanning when drift is large enough.
-3. **[Refactor] Logic De-duplication:** Move shared calculation logic (HRV averages, FTP trends) from `analysis.py` into a shared utility or allow providers to contribute data back to `AnalysisResult`.
-4. **[Context] Activity Notes:** Add qualitative text analysis of athlete-entered comments for richer planning context.
-5. **[UI] Theme Consistency:** Ensure the dashboard uses the same request-scoped settings and database preferences as the planner.
+1. **[Planner] Adaptive Re-planning:** Compare planned vs. actual training data and trigger automatic replanning when drift is large enough.
+2. **[Refactor] Logic De-duplication:** Move shared calculation logic (HRV averages, FTP trends) from `analysis.py` into a shared utility or allow providers to contribute data back to `AnalysisResult`.
+3. **[Context] Activity Notes:** Add qualitative text analysis of athlete-entered comments for richer planning context.
+4. **[UI] Theme Consistency:** Ensure the dashboard uses the same request-scoped settings and database preferences as the planner.

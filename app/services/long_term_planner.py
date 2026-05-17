@@ -7,9 +7,10 @@ from sqlalchemy import desc
 from sqlmodel import Session, select
 
 from app.db import engine
-from app.models.plan import LongTermPlanArtifact, TrainingPhase
+from app.models.plan import LongTermPlanArtifact, LongTermPlanBlock, LongTermPlanStructuredData, TrainingPhase
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from uuid import UUID
 
     from sqlalchemy.sql.elements import ColumnElement
@@ -94,7 +95,9 @@ def replace_active_phase(
     return phase
 
 
-def _build_long_term_artifact_content(phase: TrainingPhase) -> tuple[dict[str, object], str, list[dict[str, str]]]:
+def _build_long_term_artifact_content(
+    phase: TrainingPhase,
+) -> tuple[LongTermPlanStructuredData, str, list[dict[str, str]]]:
     """Create deterministic long-term planning content for a phase.
 
     Returns:
@@ -104,7 +107,7 @@ def _build_long_term_artifact_content(phase: TrainingPhase) -> tuple[dict[str, o
     total_weeks = max((total_days + 6) // 7, 1)
     blocks = _allocate_long_term_blocks(total_weeks)
 
-    structured_data: dict[str, object] = {
+    structured_data: LongTermPlanStructuredData = {
         "goal": phase.primary_goal,
         "start_date": phase.start_date.isoformat(),
         "target_date": phase.target_date.isoformat(),
@@ -198,7 +201,7 @@ def derive_weekly_brief(
     Returns:
         A concise weekly brief combining macro and recent-analysis context.
     """
-    structured_data: dict[str, Any] = artifact.structured_data if artifact is not None else {}
+    structured_data: Mapping[str, Any] = artifact.structured_data if artifact is not None else {}
     blocks = cast("list[LongTermBlock]", structured_data.get("blocks", []))
     total_weeks = int(
         structured_data.get("duration_weeks", max(((phase.target_date - phase.start_date).days + 6) // 7, 1))
@@ -238,7 +241,7 @@ def generate_long_term_plan_for_user(user: User) -> dict[str, str]:
     return {"artifact_id": str(artifact.id), "summary": artifact.summary_markdown}
 
 
-def _allocate_long_term_blocks(total_weeks: int) -> list[LongTermBlock]:
+def _allocate_long_term_blocks(total_weeks: int) -> list[LongTermPlanBlock]:
     """Allocate macro blocks without exceeding the phase duration.
 
     Returns:

@@ -25,6 +25,7 @@ from app.services.long_term_planner import (
     get_current_long_term_plan_artifact,
     get_or_create_active_phase,
 )
+from app.services.workout_delivery import stage_workout_delivery
 from app.utils.datetime import get_monday
 
 if TYPE_CHECKING:
@@ -116,6 +117,8 @@ async def update_training_plan(user: User, feedback: str, settings: Settings | N
                 prompt_history=llm_response.prompt,
             ),
         )
+        saved_plan_id = saved_plan.id
+        stage_workout_delivery(session, saved_plan)
 
     full_plan_text = (
         llm_response.plan
@@ -124,7 +127,7 @@ async def update_training_plan(user: User, feedback: str, settings: Settings | N
         + llm_json_to_icu_txt(llm_response.plan)
         + "\n```"
     )
-    return {"plan": full_plan_text, "plan_id": saved_plan.id}
+    return {"plan": full_plan_text, "plan_id": saved_plan_id}
 
 
 def _get_analysis(client: IntervalsClient, analysis_days: int) -> AnalysisResult:
@@ -220,6 +223,8 @@ async def generate_weekly_plan(
                 prompt_history=llm_response.prompt,
             ),
         )
+        saved_plan_id = saved_plan.id
+        stage_workout_delivery(db_session, saved_plan)
 
     full_plan_text = (
         llm_response.plan
@@ -228,4 +233,4 @@ async def generate_weekly_plan(
         + llm_json_to_icu_txt(llm_response.plan)
         + "\n```"
     )
-    return {"plan": full_plan_text, "summary": full_summary, "prompt": llm_response.prompt, "plan_id": saved_plan.id}
+    return {"plan": full_plan_text, "summary": full_summary, "prompt": llm_response.prompt, "plan_id": saved_plan_id}

@@ -7,7 +7,7 @@ from sqlalchemy import desc
 from sqlmodel import Session, select
 
 from app.db import engine
-from app.models.plan import LongTermPlanArtifact, TrainingPlan
+from app.models.plan import LongTermPlanArtifact, TrainingPlan, WorkoutDelivery
 from app.services.long_term_planner import get_or_create_active_phase
 from app.utils.datetime import get_monday, get_utc_now
 
@@ -25,6 +25,8 @@ class LoadedPlan(NamedTuple):
     plan_html: str | None
     long_term_summary_html: str | None
     prompt: list[dict[str, str]] | None
+    delivery_status: str | None
+    delivery_last_error: str | None
 
 
 def load_user_plan(user: User) -> LoadedPlan:
@@ -39,6 +41,8 @@ def load_user_plan(user: User) -> LoadedPlan:
     plan_html = None
     long_term_summary_html = None
     prompt = None
+    delivery_status = None
+    delivery_last_error = None
 
     with Session(engine) as session:
         phase = get_or_create_active_phase(session, user.id)
@@ -64,5 +68,16 @@ def load_user_plan(user: User) -> LoadedPlan:
                 extensions=["tables", "fenced_code"],
             )
             prompt = plan.prompt_history
+            delivery_statement = select(WorkoutDelivery).where(WorkoutDelivery.training_plan_id == plan.id)
+            delivery = session.exec(delivery_statement).first()
+            if delivery:
+                delivery_status = delivery.status
+                delivery_last_error = delivery.last_error
 
-    return LoadedPlan(plan_html=plan_html, long_term_summary_html=long_term_summary_html, prompt=prompt)
+    return LoadedPlan(
+        plan_html=plan_html,
+        long_term_summary_html=long_term_summary_html,
+        prompt=prompt,
+        delivery_status=delivery_status,
+        delivery_last_error=delivery_last_error,
+    )

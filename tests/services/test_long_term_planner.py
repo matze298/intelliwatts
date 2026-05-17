@@ -374,6 +374,8 @@ def test_home_page_renders_long_term_goal_inputs_and_current_summary(
             plan_html=None,
             long_term_summary_html="<h1>Long-term plan</h1><p>Current macro focus.</p>",
             prompt=None,
+            delivery_status=None,
+            delivery_last_error=None,
         ),
     )
 

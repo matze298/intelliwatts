@@ -107,6 +107,35 @@
             {{ plan_html | safe }}
         </div>
 
+        <div class="mt-6 rounded-md border border-slate-200 bg-slate-50 p-4">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Intervals.icu delivery</h3>
+                    <p class="text-sm text-gray-600">
+                        {% if delivery_status %}
+                        Current status: <span class="font-medium">{{ delivery_status }}</span>
+                        {% else %}
+                        No delivery staged yet.
+                        {% endif %}
+                    </p>
+                </div>
+                <form method="post" action="/publish-workout">
+                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
+                        {% if delivery_status == "published" %}
+                        Republish Workout
+                        {% elif delivery_status == "publishing" %}
+                        Publishing...
+                        {% else %}
+                        Publish Workout
+                        {% endif %}
+                    </button>
+                </form>
+            </div>
+            {% if delivery_last_error %}
+            <p class="mt-3 text-sm text-red-700">Last error: {{ delivery_last_error }}</p>
+            {% endif %}
+        </div>
+
         <h3 class="text-xl font-semibold text-gray-700 mb-2 mt-6">Adjust Plan</h3>
         <form method="post" action="/update" class="space-y-4">
             <div>

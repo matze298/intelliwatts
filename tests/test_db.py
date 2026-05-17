@@ -116,4 +116,4 @@ def test_init_db_upgrades_half_migrated_sqlite_schema(tmp_path, monkeypatch) -> 
 
     assert any(column[1] == "target_date" for column in columns)
     assert target_date == ("2026-09-20",)
-    assert version == ("20260515_01",)
+    assert version == ("20260517_01",)

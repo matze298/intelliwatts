@@ -8,7 +8,14 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 import pytest
 from sqlmodel import Session, create_engine, select
 
-from app.models.plan import LongTermPlanArtifact, SQLModel, TrainingPhase, TrainingPlan
+from app.models.plan import (
+    LongTermPlanArtifact,
+    LongTermPlanBlock,
+    LongTermPlanStructuredData,
+    SQLModel,
+    TrainingPhase,
+    TrainingPlan,
+)
 from app.models.user import User
 from app.planning.llm import LLMResponse
 from app.services.planner import (
@@ -84,6 +91,7 @@ def test_save_training_plan_overwrite(session: Session) -> None:
 
 
 @patch("app.services.planner.IntervalsClient")
+@patch("app.services.planner.stage_workout_delivery")
 @patch("app.services.planner.registry")
 @patch("app.services.planner.generate_plan")
 @patch("app.services.planner.derive_weekly_brief")
@@ -100,6 +108,7 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_derive_weekly_brief: MagicMock,
     mock_generate_plan: MagicMock,
     mock_registry: MagicMock,
+    mock_stage_workout_delivery: MagicMock,
     mock_intervals_client: MagicMock,
 ) -> None:
     """Test the generate_weekly_plan function."""
@@ -135,9 +144,17 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
         status="active",
     )
     mock_get_active_phase.return_value = mock_phase
+    blocks: list[LongTermPlanBlock] = [{"name": "Build", "focus": "Goal-specific workload", "weeks": 4}]
+    structured_data: LongTermPlanStructuredData = {
+        "goal": "Peak for hill climb",
+        "start_date": "2026-05-05",
+        "target_date": "2026-08-01",
+        "duration_weeks": 4,
+        "blocks": blocks,
+    }
     mock_get_current_artifact.return_value = LongTermPlanArtifact(
         phase_id=mock_phase.id,
-        structured_data={"blocks": [{"name": "Build", "focus": "Goal-specific workload", "weeks": 4}]},
+        structured_data=structured_data,
         summary_markdown="# Long-term plan",
         prompt_history=[],
     )
@@ -162,11 +179,17 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     assert "Max Hours: 10.0" in mock_user_prompt.call_args[0][0]
     assert result["plan"] == "test plan\n\n## intervals.icu workout file (txt)\n\n```text\n\nicu workout\n```"
     assert result["summary"] == mock_user_prompt.call_args[0][0]
+    mock_stage_workout_delivery.assert_called_once()
 
 
 @patch("app.services.planner.generate_plan")
+@patch("app.services.planner.stage_workout_delivery")
 @pytest.mark.asyncio
-async def test_update_training_plan_uses_history(mock_generate_plan: MagicMock, session: Session) -> None:
+async def test_update_training_plan_uses_history(
+    mock_stage_workout_delivery: MagicMock,
+    mock_generate_plan: MagicMock,
+    session: Session,
+) -> None:
     """Test update_training_plan retrieves history and calls LLM with it."""
     # GIVEN: A user and an existing training plan with prompt history.
     user = User(id=uuid.uuid4(), email="test@example.com", password_hash="hash")  # noqa: S106
@@ -184,9 +207,17 @@ async def test_update_training_plan_uses_history(mock_generate_plan: MagicMock, 
     initial_history = [{"role": "system", "content": "sys"}, {"role": "user", "content": "hi"}]
     data = PlanData(raw_content="Initial Plan", workout_data=[], prompt_history=initial_history)
     save_training_plan(session, phase_id, monday, data)
+    blocks: list[LongTermPlanBlock] = [{"name": "Build", "focus": "Goal-specific workload", "weeks": 4}]
+    structured_data: LongTermPlanStructuredData = {
+        "goal": "Test",
+        "start_date": "2026-04-20",
+        "target_date": "2026-05-17",
+        "duration_weeks": 4,
+        "blocks": blocks,
+    }
     artifact = LongTermPlanArtifact(
         phase_id=phase_id,
-        structured_data={"blocks": [{"name": "Build", "focus": "Goal-specific workload", "weeks": 4}]},
+        structured_data=structured_data,
         summary_markdown="# Long-term plan",
         prompt_history=[],
     )
@@ -223,8 +254,8 @@ async def test_update_training_plan_uses_history(mock_generate_plan: MagicMock, 
     plan = session.exec(select(TrainingPlan)).one()
     assert "Updated Plan" in plan.raw_content
     assert len(plan.prompt_history) == 4
-
     # AND the current long-term artifact should remain unchanged
     artifacts = session.exec(select(LongTermPlanArtifact).where(LongTermPlanArtifact.phase_id == phase_id)).all()
     assert len(artifacts) == 1
     assert artifacts[0].id == artifact_id
+    mock_stage_workout_delivery.assert_called_once()
