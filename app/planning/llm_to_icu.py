@@ -31,6 +31,10 @@ def workout_json_to_icu_txt(workout: dict) -> str:
 
         Description: Quality work
 
+        Main Set
+        - 10m 85-95%
+        - 5m 65-75%
+
     Returns:
         The workout in intervals.icu text format.
     """
