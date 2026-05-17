@@ -1,40 +1,27 @@
 """Helpers for staging and publishing weekly workouts to Intervals.icu."""
 
-from __future__ import annotations
-
+import calendar
 from datetime import UTC, datetime, timedelta
-from typing import Any, Protocol
+from typing import TYPE_CHECKING
 
 from sqlmodel import Session, select
 
-from app.models.plan import TrainingPlan, WorkoutDelivery
+from app.models.plan import TrainingPlan, WorkoutDelivery, WorkoutDeliveryPayload, WorkoutDeliveryStatus
 from app.planning.llm_to_icu import workout_json_to_icu_txt
 
-_DAY_OFFSETS = {
-    "monday": 0,
-    "tuesday": 1,
-    "wednesday": 2,
-    "thursday": 3,
-    "friday": 4,
-    "saturday": 5,
-    "sunday": 6,
-}
+if TYPE_CHECKING:
+    from app.intervals.client import IntervalsClient
+
+_DAY_OFFSETS = {day.lower(): index for index, day in enumerate(calendar.day_name)}
 
 
-class IntervalsWorkoutClient(Protocol):
-    """Protocol for the Intervals client methods used by workout delivery."""
-
-    def publish_workout_events(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Publish calendar events to Intervals.icu."""
-
-
-def build_workout_delivery_payloads(plan: TrainingPlan) -> list[dict[str, Any]]:
+def build_workout_delivery_payloads(plan: TrainingPlan) -> list[WorkoutDeliveryPayload]:
     """Build Intervals.icu calendar payloads from a saved weekly training plan.
 
     Returns:
         A list of Intervals.icu calendar event payloads.
     """
-    payloads: list[dict[str, Any]] = []
+    payloads: list[WorkoutDeliveryPayload] = []
     for index, workout in enumerate(plan.workout_data):
         day_name = str(workout.get("day", "")).strip().lower()
         day_offset = _DAY_OFFSETS.get(day_name, index)
@@ -52,6 +39,8 @@ def build_workout_delivery_payloads(plan: TrainingPlan) -> list[dict[str, Any]]:
 def stage_workout_delivery(session: Session, plan: TrainingPlan) -> WorkoutDelivery:
     """Persist a draft Intervals.icu delivery for a saved weekly plan.
 
+    This stores the staged payload in the SQL database.
+
     Returns:
         The persisted workout delivery row.
     """
@@ -60,7 +49,7 @@ def stage_workout_delivery(session: Session, plan: TrainingPlan) -> WorkoutDeliv
     delivery = session.exec(statement).first()
     now = datetime.now(UTC)
     if delivery:
-        delivery.status = "draft"
+        delivery.status = WorkoutDeliveryStatus.DRAFT
         delivery.staged_payload = payloads
         delivery.published_payload = []
         delivery.published_at = None
@@ -69,7 +58,7 @@ def stage_workout_delivery(session: Session, plan: TrainingPlan) -> WorkoutDeliv
     else:
         delivery = WorkoutDelivery(
             training_plan_id=plan.id,
-            status="draft",
+            status=WorkoutDeliveryStatus.DRAFT,
             staged_payload=payloads,
             published_payload=[],
             last_error=None,
@@ -83,7 +72,7 @@ def stage_workout_delivery(session: Session, plan: TrainingPlan) -> WorkoutDeliv
 def publish_workout_delivery(
     session: Session,
     plan: TrainingPlan,
-    client: IntervalsWorkoutClient,
+    client: IntervalsClient,
 ) -> WorkoutDelivery:
     """Publish a staged weekly workout delivery through the Intervals client.
 
@@ -96,7 +85,7 @@ def publish_workout_delivery(
         delivery = stage_workout_delivery(session, plan)
 
     now = datetime.now(UTC)
-    delivery.status = "publishing"
+    delivery.status = WorkoutDeliveryStatus.PUBLISHING
     delivery.last_error = None
     delivery.updated_at = now
     session.add(delivery)
@@ -106,7 +95,7 @@ def publish_workout_delivery(
     try:
         published_payload = client.publish_workout_events(delivery.staged_payload)
     except Exception as exc:  # pragma: no cover - exercised in integration/unit tests
-        delivery.status = "failed"
+        delivery.status = WorkoutDeliveryStatus.FAILED
         delivery.last_error = str(exc)
         delivery.updated_at = datetime.now(UTC)
         session.add(delivery)
@@ -114,7 +103,7 @@ def publish_workout_delivery(
         session.refresh(delivery)
         raise
 
-    delivery.status = "published"
+    delivery.status = WorkoutDeliveryStatus.PUBLISHED
     delivery.published_payload = published_payload
     delivery.published_at = datetime.now(UTC)
     delivery.last_error = None

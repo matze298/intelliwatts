@@ -10,6 +10,8 @@ from requests_cache import CachedSession
 if TYPE_CHECKING:
     from requests_mock import Mocker
 
+    from app.models.plan import WorkoutDeliveryPayload
+
 from app.intervals.client import BASE_URL, IntervalsClient
 
 
@@ -76,7 +78,7 @@ def test_intervals_client_publish_workout_events(requests_mock: Mocker) -> None:
     """Test that planned workouts are upserted through the bulk events endpoint."""
     # GIVEN a client and one workout event payload
     client = IntervalsClient(api_key="test_key", athlete_id="test_id", session=requests.Session())
-    payload = [
+    payload: list[WorkoutDeliveryPayload] = [
         {
             "category": "WORKOUT",
             "start_date_local": "2026-05-18T00:00:00",

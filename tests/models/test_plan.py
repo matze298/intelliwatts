@@ -3,7 +3,16 @@
 import uuid
 from datetime import UTC, date, datetime
 
-from app.models.plan import LongTermPlanArtifact, TrainingPhase, TrainingPlan, WorkoutDelivery
+from app.models.plan import (
+    LongTermPlanArtifact,
+    LongTermPlanBlock,
+    LongTermPlanStructuredData,
+    TrainingPhase,
+    TrainingPlan,
+    WorkoutDelivery,
+    WorkoutDeliveryPayload,
+    WorkoutDeliveryStatus,
+)
 
 
 def test_create_phase_and_plan() -> None:
@@ -53,9 +62,17 @@ def test_create_long_term_plan_artifact() -> None:
     )
 
     # WHEN creating a long-term artifact for it
+    blocks: list[LongTermPlanBlock] = [{"name": "Base", "focus": "Aerobic durability", "weeks": 1}]
+    structured_data: LongTermPlanStructuredData = {
+        "goal": "Peak for gran fondo",
+        "start_date": "2026-05-01",
+        "target_date": "2026-08-01",
+        "duration_weeks": 1,
+        "blocks": blocks,
+    }
     artifact = LongTermPlanArtifact(
         phase_id=phase.id,
-        structured_data={"blocks": [{"name": "Base"}]},
+        structured_data=structured_data,
         summary_markdown="## Long-term plan",
         prompt_history=[{"role": "user", "content": "Build me to August"}],
     )
@@ -77,15 +94,22 @@ def test_create_workout_delivery() -> None:
     training_plan_id = uuid.uuid4()
 
     # WHEN creating a workout delivery
+    payload: WorkoutDeliveryPayload = {
+        "category": "WORKOUT",
+        "start_date_local": "2026-05-19T00:00:00",
+        "name": "Tuesday Intervals",
+        "description": "Quality work",
+        "external_id": "plan-1-0",
+    }
     delivery = WorkoutDelivery(
         training_plan_id=training_plan_id,
-        status="draft",
-        staged_payload=[{"external_id": "plan-1-0"}],
+        status=WorkoutDeliveryStatus.DRAFT,
+        staged_payload=[payload],
     )
 
     # THEN it should preserve the staged payload and default timestamps
     assert delivery.training_plan_id == training_plan_id
-    assert delivery.status == "draft"
+    assert delivery.status == WorkoutDeliveryStatus.DRAFT
     assert delivery.staged_payload[0]["external_id"] == "plan-1-0"
     assert isinstance(delivery.created_at, datetime)
     assert delivery.created_at.tzinfo == UTC

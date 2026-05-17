@@ -1,7 +1,7 @@
 """API routes for the app."""
 
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, TypedDict
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,6 +29,14 @@ class UpdatePlanRequest(BaseModel):
     """Request model for updating a training plan."""
 
     feedback: str
+
+
+class WorkoutPublishResponse(TypedDict):
+    """Response payload for publishing a workout delivery."""
+
+    delivery_id: str
+    status: str
+    published_at: datetime | None
 
 
 @router.post("/generate-plan")
@@ -77,7 +85,7 @@ async def regenerate_long_term_plan_api(user: Annotated[User, Depends(get_curren
 async def publish_workout_api(
     user: Annotated[User, Depends(get_current_user_from_token)],
     settings: Annotated[Settings, Depends(get_settings)],
-) -> dict[str, Any]:
+) -> WorkoutPublishResponse:
     """Publish the current weekly workout draft to Intervals.icu.
 
     Returns:

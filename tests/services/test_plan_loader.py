@@ -8,7 +8,14 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session, create_engine
 
-from app.models.plan import LongTermPlanArtifact, SQLModel, TrainingPhase, TrainingPlan
+from app.models.plan import (
+    LongTermPlanArtifact,
+    LongTermPlanBlock,
+    LongTermPlanStructuredData,
+    SQLModel,
+    TrainingPhase,
+    TrainingPlan,
+)
 from app.models.user import User
 from app.services.plan_loader import load_user_plan
 
@@ -51,10 +58,18 @@ def test_load_user_plan(session: Session) -> None:
         prompt_history=[{"role": "user", "content": "hi"}],
     )
     session.add(plan)
+    long_term_blocks: list[LongTermPlanBlock] = [{"name": "Base", "focus": "Aerobic durability", "weeks": 2}]
+    long_term_data: LongTermPlanStructuredData = {
+        "goal": "Test",
+        "start_date": "2026-04-20",
+        "target_date": "2026-05-17",
+        "duration_weeks": 2,
+        "blocks": long_term_blocks,
+    }
     session.add(
         LongTermPlanArtifact(
             phase_id=phase.id,
-            structured_data={"version": 1},
+            structured_data=long_term_data,
             summary_markdown="# Current long-term plan",
             prompt_history=[],
             created_at=datetime(2026, 4, 22, tzinfo=UTC),

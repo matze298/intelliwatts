@@ -26,6 +26,11 @@ def extract_workout_json(ai_response: str) -> list[dict]:
 def workout_json_to_icu_txt(workout: dict) -> str:
     """Render a single workout object as Intervals.icu workout text.
 
+    Example:
+        Title: Tuesday Intervals
+
+        Description: Quality work
+
     Returns:
         The workout in intervals.icu text format.
     """

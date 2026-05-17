@@ -2,10 +2,13 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import requests
 from requests import Session
+
+if TYPE_CHECKING:
+    from app.models.plan import WorkoutDeliveryPayload, WorkoutDeliveryResult
 
 _LOGGER = logging.getLogger(__name__)
 BASE_URL = "https://intervals.icu/api/v1"
@@ -72,7 +75,7 @@ class IntervalsClient:
         r.raise_for_status()
         return r.json()
 
-    def publish_workout_events(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def publish_workout_events(self, events: list[WorkoutDeliveryPayload]) -> list[WorkoutDeliveryResult]:
         """Create or update planned workouts on the calendar.
 
         Returns:

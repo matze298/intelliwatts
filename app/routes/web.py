@@ -70,6 +70,35 @@ def _phase_form_values(phase: TrainingPhase | None) -> tuple[str, str]:
     return phase.primary_goal, phase.target_date.isoformat()
 
 
+def _render_publish_workout_error_page(
+    request: Request,
+    *,
+    user: User,
+    phase: TrainingPhase,
+    error: str,
+) -> HTMLResponse:
+    """Render the planner page after a workout publish failure.
+
+    Returns:
+        The rendered planner page with the publish error.
+    """
+    loaded = load_user_plan(user)
+    primary_goal, target_date = _phase_form_values(phase)
+    return _render_plan_page(
+        request,
+        user=user,
+        plan_html=loaded.plan_html,
+        long_term_summary_html=loaded.long_term_summary_html,
+        delivery_status=loaded.delivery_status,
+        delivery_last_error=loaded.delivery_last_error,
+        summary=None,
+        prompt=loaded.prompt,
+        primary_goal=primary_goal,
+        target_date=target_date,
+        error=error,
+    )
+
+
 def _render_plan_page(  # noqa: PLR0913
     request: Request,
     *,
@@ -577,19 +606,10 @@ async def publish_workout(
         try:
             publish_workout_delivery(session, plan, client)
         except Exception as exc:  # noqa: BLE001
-            loaded = load_user_plan(user)
-            primary_goal, target_date = _phase_form_values(phase)
-            return _render_plan_page(
+            return _render_publish_workout_error_page(
                 request,
                 user=user,
-                plan_html=loaded.plan_html,
-                long_term_summary_html=loaded.long_term_summary_html,
-                delivery_status=loaded.delivery_status,
-                delivery_last_error=loaded.delivery_last_error,
-                summary=None,
-                prompt=loaded.prompt,
-                primary_goal=primary_goal,
-                target_date=target_date,
+                phase=phase,
                 error=f"Failed to publish workouts: {exc}",
             )
 
