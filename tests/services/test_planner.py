@@ -159,19 +159,21 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
         prompt_history=[],
     )
 
-    # WHEN: Generating the weekly plan.
+    # WHEN: Generating the weekly plan for a selected future week.
+    target_week_start = date(2026, 6, 1)
     mock_analysis = MagicMock()
     mock_analysis.provider_results = {"activity": {}}
     with (
         patch("app.services.planner.Session"),
         patch("app.services.planner._get_analysis", return_value=mock_analysis),
     ):
-        result = await generate_weekly_plan(mock_user, mock_settings)
+        result = await generate_weekly_plan(mock_user, mock_settings, week_start=target_week_start)
 
     # THEN: The registry and LLM should be called with correct data.
     mock_intervals_client.assert_called_once_with("test_api_key", "test_athlete_id", session=ANY)
     mock_registry.get_combined_context.assert_called_once_with(mock_analysis.provider_results)
     mock_derive_weekly_brief.assert_called_once()
+    assert mock_derive_weekly_brief.call_args.kwargs["week_start"] == target_week_start
     mock_user_prompt.assert_called_once()
     assert "Weekly Brief:" in mock_user_prompt.call_args[0][0]
     assert "Goal: Peak for hill climb" in mock_user_prompt.call_args[0][0]

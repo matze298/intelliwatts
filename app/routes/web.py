@@ -1,7 +1,7 @@
 """Web routes for the app."""
 
 from datetime import UTC, date, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, NamedTuple
 
 import markdown
 import requests
@@ -25,7 +25,14 @@ from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPhase, TrainingPlan
 from app.models.user import User
-from app.services.long_term_planner import generate_long_term_plan_artifact, replace_active_phase
+from app.services.long_term_planner import (
+    LongTermWeekOption,
+    generate_long_term_plan_artifact,
+    get_current_long_term_plan_artifact,
+    get_long_term_week_options,
+    is_week_in_long_term_plan,
+    replace_active_phase,
+)
 from app.services.plan_loader import load_user_plan
 from app.services.planner import (
     generate_weekly_plan,
@@ -37,6 +44,18 @@ from app.utils.datetime import get_monday
 router = APIRouter(tags=["web"])
 
 templates = Jinja2Templates(directory="app/templates")
+
+_WEEK_SELECTION_ERROR = "Selected planning week must be part of the active long-term plan."
+
+
+class WeekSelection(NamedTuple):
+    """Validated selected week context for planner rendering."""
+
+    primary_goal: str
+    target_date: str
+    week_options: list[LongTermWeekOption]
+    selected_week_start: date | None
+    error: str | None
 
 
 def _today() -> date:
@@ -68,6 +87,46 @@ def _phase_form_values(phase: TrainingPhase | None) -> tuple[str, str]:
     if not phase:
         return "", ""
     return phase.primary_goal, phase.target_date.isoformat()
+
+
+def _week_options_for_phase(session: Session, phase: TrainingPhase | None) -> list[LongTermWeekOption]:
+    """Return selectable upcoming weeks for a phase."""
+    if phase is None:
+        return []
+    artifact = get_current_long_term_plan_artifact(session, phase_id=phase.id)
+    return get_long_term_week_options(phase=phase, artifact=artifact, today=_today())
+
+
+def _resolve_week_selection(session: Session, user: User, raw_week_start: str) -> WeekSelection:
+    """Validate a submitted planning week and return render context.
+
+    Returns:
+        The resolved long-term week selection and any validation error.
+    """
+    phase = _get_active_phase(session, user)
+    primary_goal, target_date = _phase_form_values(phase)
+    week_options = _week_options_for_phase(session, phase)
+    selected_week_start = None
+    if raw_week_start:
+        try:
+            selected_week_start = date.fromisoformat(raw_week_start)
+        except ValueError:
+            return WeekSelection(primary_goal, target_date, week_options, None, _WEEK_SELECTION_ERROR)
+    elif week_options:
+        selected_week_start = week_options[0].week_start
+
+    artifact = get_current_long_term_plan_artifact(session, phase_id=phase.id) if phase is not None else None
+    if (
+        selected_week_start is None
+        or phase is None
+        or not is_week_in_long_term_plan(
+            phase=phase,
+            artifact=artifact,
+            week_start=selected_week_start,
+        )
+    ):
+        return WeekSelection(primary_goal, target_date, week_options, selected_week_start, _WEEK_SELECTION_ERROR)
+    return WeekSelection(primary_goal, target_date, week_options, selected_week_start, None)
 
 
 def _render_publish_workout_error_page(
@@ -111,6 +170,8 @@ def _render_plan_page(  # noqa: PLR0913
     prompt: list[dict[str, str]] | None,
     primary_goal: str = "",
     target_date: str = "",
+    week_options: list[LongTermWeekOption] | None = None,
+    selected_week_start: str = "",
     error: str | None = None,
 ) -> HTMLResponse:
     """Render the planner page with shared context.
@@ -130,6 +191,8 @@ def _render_plan_page(  # noqa: PLR0913
             "prompt": prompt,
             "primary_goal": primary_goal,
             "target_date": target_date,
+            "week_options": week_options or [],
+            "selected_week_start": selected_week_start,
             "error": error,
             "settings": request.app.state.settings,
             "user": user,
@@ -155,6 +218,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
     with Session(engine) as session:
         phase = _get_active_phase(session, user)
         primary_goal, target_date = _phase_form_values(phase)
+        week_options = _week_options_for_phase(session, phase)
 
     if user:
         loaded = load_user_plan(user)
@@ -175,6 +239,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
         prompt=prompt,
         primary_goal=primary_goal,
         target_date=target_date,
+        week_options=week_options,
     )
 
 
@@ -204,6 +269,7 @@ async def long_term_plan(
             prompt=None,
             primary_goal=primary_goal,
             target_date=raw_target_date,
+            week_options=[],
             error="Primary goal is required.",
         )
 
@@ -219,6 +285,7 @@ async def long_term_plan(
             prompt=None,
             primary_goal=primary_goal,
             target_date=raw_target_date,
+            week_options=[],
             error="Target date is required.",
         )
 
@@ -236,6 +303,7 @@ async def long_term_plan(
             prompt=None,
             primary_goal=primary_goal,
             target_date=raw_target_date,
+            week_options=[],
             error="Target date must be a valid date.",
         )
 
@@ -252,6 +320,7 @@ async def long_term_plan(
             prompt=None,
             primary_goal=primary_goal,
             target_date=raw_target_date,
+            week_options=[],
             error="Target date cannot be in the past.",
         )
 
@@ -267,6 +336,7 @@ async def long_term_plan(
             prompt=None,
             primary_goal=primary_goal,
             target_date=raw_target_date,
+            week_options=[],
             error="Target date must be after the start date.",
         )
 
@@ -468,6 +538,7 @@ async def generate(
     # Training constraints from form
     raw_hours = input_data.get("max_hours")
     raw_sessions = input_data.get("max_sessions")
+    raw_week_start = str(input_data.get("week_start", "")).strip()
 
     weekly_hours: float | None = None
     if isinstance(raw_hours, str) and raw_hours:
@@ -491,11 +562,32 @@ async def generate(
                 session.refresh(db_user)
                 user = db_user
 
+    with Session(engine) as session:
+        week_selection = _resolve_week_selection(session, user, raw_week_start)
+        if week_selection.error:
+            loaded = load_user_plan(user)
+            return _render_plan_page(
+                request,
+                user=user,
+                plan_html=loaded.plan_html,
+                long_term_summary_html=loaded.long_term_summary_html,
+                delivery_status=loaded.delivery_status,
+                delivery_last_error=loaded.delivery_last_error,
+                summary=None,
+                prompt=loaded.prompt,
+                primary_goal=week_selection.primary_goal,
+                target_date=week_selection.target_date,
+                week_options=week_selection.week_options,
+                selected_week_start=raw_week_start,
+                error=week_selection.error,
+            )
+
     result = await generate_weekly_plan(
         user=user,
         settings=settings,
         weekly_hours=weekly_hours,
         weekly_sessions=weekly_sessions,
+        week_start=week_selection.selected_week_start,
     )
 
     plan_html = markdown.markdown(
@@ -509,10 +601,8 @@ async def generate(
         f"""{result["summary"]}""",
         extensions=["tables", "fenced_code"],
     )
-    primary_goal, target_date = ("", "")
     with Session(engine) as session:
-        phase = _get_active_phase(session, user)
-        primary_goal, target_date = _phase_form_values(phase)
+        week_selection = _resolve_week_selection(session, user, result["week_start"].isoformat())
 
     return _render_plan_page(
         request,
@@ -523,8 +613,10 @@ async def generate(
         delivery_last_error=loaded.delivery_last_error,
         summary=summary_html,
         prompt=result["prompt"],
-        primary_goal=primary_goal,
-        target_date=target_date,
+        primary_goal=week_selection.primary_goal,
+        target_date=week_selection.target_date,
+        week_options=week_selection.week_options,
+        selected_week_start=result["week_start"].isoformat(),
     )
 
 
@@ -541,8 +633,10 @@ async def update(
     """
     input_data = await request.form()
     feedback = str(input_data.get("feedback", ""))
+    raw_week_start = str(input_data.get("week_start", "")).strip()
+    week_start = date.fromisoformat(raw_week_start) if raw_week_start else None
 
-    result = await update_training_plan(user=user, feedback=feedback, settings=settings)
+    result = await update_training_plan(user=user, feedback=feedback, settings=settings, week_start=week_start)
 
     plan_html = markdown.markdown(
         result["plan"],
@@ -553,6 +647,7 @@ async def update(
     with Session(engine) as session:
         phase = _get_active_phase(session, user)
         primary_goal, target_date = _phase_form_values(phase)
+        week_options = _week_options_for_phase(session, phase)
 
     return _render_plan_page(
         request,
@@ -565,6 +660,8 @@ async def update(
         prompt=None,
         primary_goal=primary_goal,
         target_date=target_date,
+        week_options=week_options,
+        selected_week_start=result["week_start"].isoformat(),
     )
 
 

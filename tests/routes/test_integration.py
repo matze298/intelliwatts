@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, delete, select
 from starlette.requests import Request
@@ -24,12 +23,11 @@ from app.models.plan import LongTermPlanArtifact, TrainingPhase, TrainingPlan, W
 from app.models.user import User
 from app.planning.llm import LLMResponse
 from app.routes import api as api_routes
+from app.routes import secrets as secrets_routes
 from app.routes import web as web_routes
 from app.services.long_term_planner import generate_long_term_plan_artifact
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-
     from sqlalchemy.engine import Engine
 
 
@@ -53,17 +51,6 @@ def clear_db() -> None:
         session.exec(delete(TrainingPhase))
         session.exec(delete(User))
         session.commit()
-
-
-@pytest.fixture
-def client() -> Generator[TestClient]:
-    """Provides a TestClient for the app.
-
-    Yields:
-        A TestClient instance.
-    """
-    with TestClient(app) as c:
-        yield c
 
 
 def build_request(app_obj: FastAPI, *, method: str, path: str, body: bytes = b"") -> Request:
@@ -244,28 +231,31 @@ def mock_llm_response() -> LLMResponse:
     )
 
 
-def test_authentication_flow(client: TestClient) -> None:
-    """Tests the Register -> Login flow.
-
-    Args:
-        client: The test client.
-    """
+@pytest.mark.asyncio
+async def test_authentication_flow() -> None:
+    """Tests the Register -> Login flow."""
     # GIVEN a fresh app
     email = "auth_journey@example.com"
     password = "password123"  # noqa: S105
 
     # WHEN registering
-    resp = client.post("/register", data={"email": email, "password": password}, follow_redirects=True)
+    resp = await web_routes.register_post(
+        build_request(app, method="POST", path="/register", body=f"email={email}&password={password}".encode())
+    )
+
     # THEN it should redirect to login
-    assert resp.status_code == 200
-    assert "login" in str(resp.url).lower()
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/login"
 
     # AND logging in
-    resp = client.post("/login", data={"email": email, "password": password}, follow_redirects=True)
+    resp = await web_routes.login_post(
+        build_request(app, method="POST", path="/login", body=f"email={email}&password={password}".encode())
+    )
+
     # THEN it should redirect to home and set cookie
-    assert resp.status_code == 200
-    assert resp.url.path == "/"
-    assert "access_token" in client.cookies
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/"
+    assert "access_token" in resp.headers["set-cookie"]
 
 
 @patch("app.routes.web.IntervalsClient")
@@ -277,7 +267,6 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     mock_parse_w: MagicMock,
     mock_parse_a: MagicMock,
     mock_client_class: MagicMock,  # noqa: ARG001
-    client: TestClient,
     mock_activities: list[ParsedActivity],
     mock_wellness: list[ParsedWellness],
 ) -> None:
@@ -288,15 +277,11 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
         mock_parse_w: Mock for parse_wellness_list.
         mock_parse_a: Mock for parse_activities.
         mock_client_class: Mock for IntervalsClient class.
-        client: The test client.
         mock_activities: Mocked activities.
         mock_wellness: Mocked wellness data.
     """
     # GIVEN an authenticated user
-    email = "dashboard_journey@example.com"
-    password = "password123"  # noqa: S105
-    client.post("/register", data={"email": email, "password": password})
-    client.post("/login", data={"email": email, "password": password})
+    user = User(id=uuid.uuid4(), email="dashboard_journey@example.com", password_hash="hash")  # noqa: S106
 
     mock_parse_a.return_value = mock_activities
     mock_parse_w.return_value = mock_wellness
@@ -392,19 +377,26 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     mock_compute.return_value = mock_analysis
 
     # WHEN visiting the dashboard
-    resp = client.get("/dashboard")
+    settings = MagicMock(spec=Settings)
+    settings.INTERVALS_API_KEY = "test_api_key"
+    settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
+    settings.CACHE_INTERVALS_HOURS = 0
+    settings.ANALYSIS_DAYS = 120
+    settings.DASHBOARD_DAYS = 42
+    resp = web_routes.dashboard(build_request(app, method="GET", path="/dashboard"), user, settings)
 
     # THEN it should render successfully and contain widget info
     assert resp.status_code == 200
-    assert "Performance Center" in resp.text
-    assert "Recent Training" in resp.text
-    assert "Wellness Trends" in resp.text
-    assert "100 TSS" in resp.text
-    assert "Training Intensity" in resp.text
-    assert "Highly Polarized" in resp.text
-    assert "Critical Power Heatmap" in resp.text
-    assert "Weekly Volume" in resp.text
-    assert "Recent Activity History" in resp.text
+    body_text = bytes(resp.body).decode()
+    assert "Performance Center" in body_text
+    assert "Recent Training" in body_text
+    assert "Wellness Trends" in body_text
+    assert "100 TSS" in body_text
+    assert "Training Intensity" in body_text
+    assert "Highly Polarized" in body_text
+    assert "Critical Power Heatmap" in body_text
+    assert "Weekly Volume" in body_text
+    assert "Recent Activity History" in body_text
 
 
 @patch("app.routes.web.IntervalsClient")
@@ -416,16 +408,12 @@ def test_dashboard_flow_passes_days_filter(  # noqa: PLR0913, PLR0917
     mock_parse_w: MagicMock,
     mock_parse_a: MagicMock,
     mock_client_class: MagicMock,  # noqa: ARG001
-    client: TestClient,
     mock_activities: list[ParsedActivity],
     mock_wellness: list[ParsedWellness],
 ) -> None:
     """Tests that the dashboard forwards the slider days window to analysis."""
     # GIVEN an authenticated user and mocked analysis inputs
-    email = "dashboard_days@example.com"
-    password = "password123"  # noqa: S105
-    client.post("/register", data={"email": email, "password": password})
-    client.post("/login", data={"email": email, "password": password})
+    user = User(id=uuid.uuid4(), email="dashboard_days@example.com", password_hash="hash")  # noqa: S106
 
     mock_parse_a.return_value = mock_activities
     mock_parse_w.return_value = mock_wellness
@@ -438,7 +426,13 @@ def test_dashboard_flow_passes_days_filter(  # noqa: PLR0913, PLR0917
     mock_compute.return_value = mock_analysis
 
     # WHEN requesting the dashboard with a specific days value
-    resp = client.get("/dashboard?days=21")
+    settings = MagicMock(spec=Settings)
+    settings.INTERVALS_API_KEY = "test_api_key"
+    settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
+    settings.CACHE_INTERVALS_HOURS = 0
+    settings.ANALYSIS_DAYS = 120
+    settings.DASHBOARD_DAYS = 42
+    resp = web_routes.dashboard(build_request(app, method="GET", path="/dashboard"), user, settings, days=21)
 
     # THEN the selected days window is forwarded to compute_analysis
     assert resp.status_code == 200
@@ -507,7 +501,12 @@ async def test_weekly_generation_uses_saved_long_term_goal(
 
     # WHEN generating the weekly plan through the real web route
     resp = await web_routes.generate(
-        build_request(context.app, method="POST", path="/generate", body=b"max_hours=10&max_sessions=5"),
+        build_request(
+            context.app,
+            method="POST",
+            path="/generate",
+            body=b"max_hours=10&max_sessions=5&week_start=2026-06-01",
+        ),
         context.route_user,
         context.settings,
     )
@@ -518,6 +517,51 @@ async def test_weekly_generation_uses_saved_long_term_goal(
     assert "Weekly Brief:" in prompt_body
     assert "Goal: Peak for gravel race" in prompt_body
     assert "Current Block:" in prompt_body
+    assert "Week Of: 2026-06-01" in prompt_body
+
+
+@pytest.mark.asyncio
+@patch("app.services.planner.generate_plan")
+@patch("app.services.planner.registry")
+async def test_weekly_generation_rejects_invalid_selected_week(
+    mock_registry: MagicMock,
+    mock_generate_plan: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The weekly planner route should reject a malformed selected planning week."""
+    # GIVEN an authenticated user with a saved long-term goal and isolated planner state
+    context = _build_weekly_planner_route_context(email="weekly_invalid_week@example.com")
+    _seed_long_term_phase(
+        context.engine,
+        user_id=context.user_id,
+        primary_goal="Peak for gravel race",
+        start_date=date(2026, 5, 16),
+        target_date=date(2026, 9, 20),
+    )
+    _configure_isolated_planner_dependencies(
+        monkeypatch,
+        test_engine=context.engine,
+        registry_mock=mock_registry,
+        generate_plan_mock=mock_generate_plan,
+    )
+
+    # WHEN generating the weekly plan with an invalid week value
+    resp = await web_routes.generate(
+        build_request(
+            context.app,
+            method="POST",
+            path="/generate",
+            body=b"max_hours=10&max_sessions=5&week_start=bad-date",
+        ),
+        context.route_user,
+        context.settings,
+    )
+
+    # THEN the page should render a validation error without calling the LLM
+    body_text = bytes(resp.body).decode()
+    assert resp.status_code == 200
+    assert "Selected planning week must be part of the active long-term plan." in body_text
+    mock_generate_plan.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -581,7 +625,12 @@ async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
         context.settings,
     )
     update_response = await web_routes.update(
-        build_request(context.app, method="POST", path="/update", body=b"feedback=Make+Tuesday+easier"),
+        build_request(
+            context.app,
+            method="POST",
+            path="/update",
+            body=b"feedback=Make+Tuesday+easier&week_start=2026-05-18",
+        ),
         context.route_user,
         context.settings,
     )
@@ -686,28 +735,20 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
     assert "Current macro focus." in body
 
 
-def test_secrets_flow(client: TestClient) -> None:
-    """Tests the Secrets storage flow.
-
-    Args:
-        client: The test client.
-    """
+def test_secrets_flow() -> None:
+    """Tests the Secrets storage flow."""
     # GIVEN an authenticated user
-    email = "secrets_journey@example.com"
-    password = "password123"  # noqa: S105
-    client.post("/register", data={"email": email, "password": password})
-    client.post("/login", data={"email": email, "password": password})
+    user = User(id=uuid.uuid4(), email="secrets_journey@example.com", password_hash="hash")  # noqa: S106
 
     # WHEN storing secrets
-    resp = client.post(
-        "/api/secrets",
-        json={
-            "athlete_id": "123",
-            "intervals_api_key": "abc",
-            "openai_api_key": "sk-123",
-        },
+    resp = secrets_routes.store(
+        secrets_routes.StoreSecretsRequest(
+            athlete_id="123",
+            intervals_api_key="abc",
+            openai_api_key="sk-123",
+        ),
+        user,
     )
 
     # THEN it should be successful
-    assert resp.status_code == 200
-    assert resp.json() == {"stored": True}
+    assert resp == {"stored": True}

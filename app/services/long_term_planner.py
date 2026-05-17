@@ -1,5 +1,6 @@
 """Lifecycle helpers for long-term training phases."""
 
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
 
@@ -24,6 +25,14 @@ class LongTermBlock(TypedDict):
     name: Literal["Base", "Build", "Peak"]
     focus: str
     weeks: int
+
+
+@dataclass(frozen=True)
+class LongTermWeekOption:
+    """Selectable week within an active long-term plan."""
+
+    week_start: date
+    label: str
 
 
 def _build_default_training_phase(*, user_id: UUID, start_date: date | None = None) -> TrainingPhase:
@@ -189,6 +198,54 @@ def _get_current_block(blocks: list[LongTermBlock], week_index: int) -> LongTerm
     return blocks[-1] if blocks else None
 
 
+def _get_total_weeks(phase: TrainingPhase, artifact: LongTermPlanArtifact | None) -> int:
+    """Return the long-term plan duration in weeks."""
+    structured_data: Mapping[str, Any] = artifact.structured_data if artifact is not None else {}
+    return int(structured_data.get("duration_weeks", max(((phase.target_date - phase.start_date).days + 6) // 7, 1)))
+
+
+def _get_long_term_week_start(phase: TrainingPhase, week_index: int) -> date:
+    """Return the Monday start date for a 0-based long-term plan week."""
+    days_until_monday = (7 - phase.start_date.weekday()) % 7
+    return phase.start_date + timedelta(days=days_until_monday + week_index * 7)
+
+
+def get_long_term_week_options(
+    *,
+    phase: TrainingPhase,
+    artifact: LongTermPlanArtifact | None,
+    today: date,
+) -> list[LongTermWeekOption]:
+    """Return upcoming selectable weeks inside the active long-term plan."""
+    total_weeks = _get_total_weeks(phase, artifact)
+    upcoming_monday = today + timedelta(days=(7 - today.weekday()) % 7)
+    options: list[LongTermWeekOption] = []
+    for week_index in range(total_weeks):
+        week_start = _get_long_term_week_start(phase, week_index)
+        if week_start < upcoming_monday:
+            continue
+        options.append(
+            LongTermWeekOption(
+                week_start=week_start,
+                label=f"Week {week_index + 1} of {total_weeks} - {week_start.isoformat()}",
+            )
+        )
+    return options
+
+
+def is_week_in_long_term_plan(
+    *,
+    phase: TrainingPhase,
+    artifact: LongTermPlanArtifact | None,
+    week_start: date,
+) -> bool:
+    """Return whether a Monday belongs to the active long-term plan."""
+    total_weeks = _get_total_weeks(phase, artifact)
+    return week_start.weekday() == 0 and any(
+        _get_long_term_week_start(phase, week_index) == week_start for week_index in range(total_weeks)
+    )
+
+
 def derive_weekly_brief(
     *,
     phase: TrainingPhase,
@@ -203,9 +260,7 @@ def derive_weekly_brief(
     """
     structured_data: Mapping[str, Any] = artifact.structured_data if artifact is not None else {}
     blocks = cast("list[LongTermBlock]", structured_data.get("blocks", []))
-    total_weeks = int(
-        structured_data.get("duration_weeks", max(((phase.target_date - phase.start_date).days + 6) // 7, 1))
-    )
+    total_weeks = _get_total_weeks(phase, artifact)
     week_index = max((week_start - phase.start_date).days // 7, 0)
     current_block = _get_current_block(blocks, week_index)
 

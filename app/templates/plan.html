@@ -87,6 +87,14 @@
                     Include Readiness & Recovery (Wellness) Data
                 </label>
             </div>
+            <div>
+                <label for="week_start" class="block text-sm font-medium text-gray-700">Planning week:</label>
+                <select id="week_start" name="week_start" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                    {% for option in week_options %}
+                    <option value="{{ option.week_start.isoformat() }}" {% if option.week_start.isoformat() == selected_week_start %}selected{% endif %}>{{ option.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Generate Plan</button>
         </form>
 
@@ -138,6 +146,7 @@
 
         <h3 class="text-xl font-semibold text-gray-700 mb-2 mt-6">Adjust Plan</h3>
         <form method="post" action="/update" class="space-y-4">
+            <input type="hidden" name="week_start" value="{{ selected_week_start }}">
             <div>
                 <label for="feedback" class="block text-sm font-medium text-gray-700">What would you like to change?</label>
                 <textarea id="feedback" name="feedback" rows="2" placeholder="e.g. Make Tuesday harder, or I have more time on Sunday"

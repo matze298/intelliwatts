@@ -20,6 +20,7 @@ from app.services.long_term_planner import (
     generate_long_term_plan_artifact,
     generate_long_term_plan_for_user,
     get_current_long_term_plan_artifact,
+    get_long_term_week_options,
     replace_active_phase,
 )
 
@@ -292,6 +293,34 @@ def test_derive_weekly_brief_uses_current_macro_block(session: Session) -> None:
     assert "Registry context" in brief
 
 
+def test_get_long_term_week_options_starts_with_upcoming_week_and_excludes_past_weeks(session: Session) -> None:
+    """Week options should expose upcoming long-term weeks only."""
+    # GIVEN a four-week phase that started before today
+    phase = TrainingPhase(
+        user_id=uuid.uuid4(),
+        primary_goal="Peak for alpine gran fondo",
+        start_date=date(2026, 5, 4),
+        end_date=date(2026, 6, 1),
+        target_date=date(2026, 6, 1),
+        status="active",
+    )
+    session.add(phase)
+    session.commit()
+    artifact = generate_long_term_plan_artifact(session, phase=phase)
+
+    # WHEN building selectable weeks for the planner
+    options = get_long_term_week_options(
+        phase=phase,
+        artifact=artifact,
+        today=date(2026, 5, 17),
+    )
+
+    # THEN only upcoming Mondays inside the long-term plan are offered
+    assert [option.week_start for option in options] == [date(2026, 5, 18), date(2026, 5, 25)]
+    assert options[0].label == "Week 3 of 4 - 2026-05-18"
+    assert options[1].label == "Week 4 of 4 - 2026-05-25"
+
+
 def test_regeneration_preserves_history_and_surfaces_latest_artifact(session: Session) -> None:
     """Regeneration should keep prior artifacts and pick the most recent one as current."""
     # GIVEN an active phase with one existing artifact
@@ -391,6 +420,7 @@ def test_home_page_renders_long_term_goal_inputs_and_current_summary(
     assert "required" in body
     assert "Long-term plan" in body
     assert "Current macro focus." in body
+    assert 'name="week_start"' in body
     assert body.index('name="primary_goal"') < body.index('name="max_hours"')
 
 
