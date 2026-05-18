@@ -76,7 +76,13 @@ def save_training_plan(
     return plan
 
 
-async def update_training_plan(user: User, feedback: str, settings: Settings | None = None) -> dict[str, Any]:
+async def update_training_plan(
+    user: User,
+    feedback: str,
+    settings: Settings | None = None,
+    *,
+    week_start: date | None = None,
+) -> dict[str, Any]:
     """Updates the training plan based on user feedback.
 
     Returns:
@@ -87,14 +93,14 @@ async def update_training_plan(user: User, feedback: str, settings: Settings | N
 
     with Session(engine) as session:
         phase = get_or_create_active_phase(session, user.id)
-        monday = get_monday(datetime.now(UTC).date())
+        monday = week_start or get_monday(datetime.now(UTC).date())
 
         statement = select(TrainingPlan).where(TrainingPlan.phase_id == phase.id, TrainingPlan.week_start == monday)
         plan = session.exec(statement).first()
 
         if not plan:
             # Fallback to generating a new plan if none exists
-            return await generate_weekly_plan(user, settings)
+            return await generate_weekly_plan(user, settings, week_start=monday)
 
         # Append feedback to history
         history = plan.prompt_history
@@ -127,7 +133,7 @@ async def update_training_plan(user: User, feedback: str, settings: Settings | N
         + llm_json_to_icu_txt(llm_response.plan)
         + "\n```"
     )
-    return {"plan": full_plan_text, "plan_id": saved_plan_id}
+    return {"plan": full_plan_text, "plan_id": saved_plan_id, "week_start": monday}
 
 
 def _get_analysis(client: IntervalsClient, analysis_days: int) -> AnalysisResult:
@@ -154,6 +160,7 @@ async def generate_weekly_plan(
     *,
     weekly_hours: float | None = None,
     weekly_sessions: int | None = None,
+    week_start: date | None = None,
 ) -> dict[str, Any]:
     """Generates the weekly plan.
 
@@ -178,6 +185,7 @@ async def generate_weekly_plan(
 
     # Fetch combined context from all registered providers
     context = await registry.get_combined_context(analysis.provider_results)
+    target_week_start = week_start or get_monday(datetime.now(UTC).date())
 
     with Session(engine) as db_session:
         phase = get_or_create_active_phase(db_session, user.id)
@@ -186,7 +194,7 @@ async def generate_weekly_plan(
             phase=phase,
             artifact=artifact,
             analysis_context=context,
-            week_start=get_monday(datetime.now(UTC).date()),
+            week_start=target_week_start,
         )
 
     # Build the full summary string
@@ -216,7 +224,7 @@ async def generate_weekly_plan(
         saved_plan = save_training_plan(
             db_session,
             phase.id,
-            get_monday(datetime.now(UTC).date()),
+            target_week_start,
             PlanData(
                 raw_content=llm_response.plan,
                 workout_data=workout_data,
@@ -233,4 +241,10 @@ async def generate_weekly_plan(
         + llm_json_to_icu_txt(llm_response.plan)
         + "\n```"
     )
-    return {"plan": full_plan_text, "summary": full_summary, "prompt": llm_response.prompt, "plan_id": saved_plan_id}
+    return {
+        "plan": full_plan_text,
+        "summary": full_summary,
+        "prompt": llm_response.prompt,
+        "plan_id": saved_plan_id,
+        "week_start": target_week_start,
+    }

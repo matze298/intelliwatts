@@ -159,19 +159,21 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
         prompt_history=[],
     )
 
-    # WHEN: Generating the weekly plan.
+    # WHEN: Generating the weekly plan for a selected future week.
+    target_week_start = date(2026, 6, 1)
     mock_analysis = MagicMock()
     mock_analysis.provider_results = {"activity": {}}
     with (
         patch("app.services.planner.Session"),
         patch("app.services.planner._get_analysis", return_value=mock_analysis),
     ):
-        result = await generate_weekly_plan(mock_user, mock_settings)
+        result = await generate_weekly_plan(mock_user, mock_settings, week_start=target_week_start)
 
     # THEN: The registry and LLM should be called with correct data.
     mock_intervals_client.assert_called_once_with("test_api_key", "test_athlete_id", session=ANY)
     mock_registry.get_combined_context.assert_called_once_with(mock_analysis.provider_results)
     mock_derive_weekly_brief.assert_called_once()
+    assert mock_derive_weekly_brief.call_args.kwargs["week_start"] == target_week_start
     mock_user_prompt.assert_called_once()
     assert "Weekly Brief:" in mock_user_prompt.call_args[0][0]
     assert "Goal: Peak for hill climb" in mock_user_prompt.call_args[0][0]
@@ -259,3 +261,26 @@ async def test_update_training_plan_uses_history(
     assert len(artifacts) == 1
     assert artifacts[0].id == artifact_id
     mock_stage_workout_delivery.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_update_training_plan_fallback_uses_selected_week(session: Session) -> None:
+    """Updating a missing selected week should generate that same week."""
+    # GIVEN a user, active phase, and selected week without a saved plan
+    user = User(id=uuid.uuid4(), email="fallback@example.com", password_hash="hash")  # noqa: S106
+    session.add(user)
+    phase = get_or_create_active_phase(session, user.id)
+    selected_week = date(2026, 6, 1)
+
+    # WHEN updating the selected week without an existing plan
+    with (
+        patch("app.services.planner.Session", return_value=session),
+        patch("app.services.planner.generate_weekly_plan", new_callable=AsyncMock) as mock_generate_weekly_plan,
+    ):
+        mock_generate_weekly_plan.return_value = {"plan": "generated", "week_start": selected_week}
+        result = await update_training_plan(user, "make it easier", week_start=selected_week)
+
+    # THEN the fallback generation preserves the selected week
+    mock_generate_weekly_plan.assert_awaited_once_with(user, ANY, week_start=selected_week)
+    assert result["week_start"] == selected_week
+    assert phase.user_id == user.id
