@@ -455,6 +455,7 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     assert "Critical Power Heatmap" in body_text
     assert "Weekly Volume" in body_text
     assert "Recent Activity History" in body_text
+    assert "Weekly Plan" not in body_text
 
 
 @patch("app.routes.web.IntervalsClient")

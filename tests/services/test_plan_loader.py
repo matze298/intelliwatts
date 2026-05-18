@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, NamedTuple
 from unittest.mock import patch
 
 import pytest
-from sqlmodel import Session, create_engine
+from sqlmodel import Session, create_engine, select
 
 from app.models.plan import (
     LongTermPlanArtifact,
@@ -182,9 +182,10 @@ def test_load_user_plan_none(session: Session) -> None:
     with patch("app.services.plan_loader.Session", return_value=session):
         loaded = load_user_plan(user)
 
-    # THEN it should return None values
+    # THEN it should return None values without creating a default phase
     assert loaded.plan_html is None
     assert loaded.long_term_summary_html is None
     assert loaded.prompt is None
     assert loaded.delivery_status is None
     assert loaded.delivery_last_error is None
+    assert session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user.id)).all() == []

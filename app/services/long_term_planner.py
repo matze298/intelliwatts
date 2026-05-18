@@ -50,14 +50,23 @@ def get_or_create_active_phase(session: Session, user_id: UUID) -> TrainingPhase
     Returns:
         The active training phase.
     """
-    statement = select(TrainingPhase).where(TrainingPhase.user_id == user_id, TrainingPhase.status == "active")
-    phase = session.exec(statement).first()
+    phase = get_active_phase(session, user_id)
     if not phase:
         phase = _build_default_training_phase(user_id=user_id)
         session.add(phase)
         session.commit()
         session.refresh(phase)
     return phase
+
+
+def get_active_phase(session: Session, user_id: UUID) -> TrainingPhase | None:
+    """Get the active training phase for a user without creating a default one.
+
+    Returns:
+        The active training phase, or ``None`` if the user has no active phase.
+    """
+    statement = select(TrainingPhase).where(TrainingPhase.user_id == user_id, TrainingPhase.status == "active")
+    return session.exec(statement).first()
 
 
 def replace_active_phase(

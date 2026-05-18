@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from app.db import engine
 from app.models.plan import LongTermPlanArtifact, TrainingPlan, WorkoutDelivery
-from app.services.long_term_planner import get_or_create_active_phase
+from app.services.long_term_planner import get_active_phase
 from app.utils.datetime import get_monday, get_utc_now
 
 if TYPE_CHECKING:
@@ -48,7 +48,9 @@ def load_user_plan(user: User, *, week_start: date | None = None, include_weekly
     delivery_last_error = None
 
     with Session(engine) as session:
-        phase = get_or_create_active_phase(session, user.id)
+        phase = get_active_phase(session, user.id)
+        if phase is None:
+            return LoadedPlan(None, None, None, None, None, week_start)
         artifact_statement = (
             select(LongTermPlanArtifact)
             .where(LongTermPlanArtifact.phase_id == phase.id)
