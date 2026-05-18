@@ -31,6 +31,34 @@ Enhance the training plan generation by incorporating advanced physiological met
 ### 3. Environmental Context
 - [ ] **Equipment/Training Mode:** Explicitly distinguish between indoor (smart trainer) and outdoor (power meter) sessions.
 
+### 4. LLM Prompt Optimization After Coach Context Merge
+- [ ] **Planned vs. completed training:** Provide a compact comparison of intended workouts versus what was actually completed, so the coach can react to missed intensity, shortened sessions, or accidental overload.
+- [ ] **Subjective recovery detail:** Add explicit day-level labels for fatigue, soreness, stress, motivation, and illness instead of only raw scores where available.
+- [ ] **Recovery deltas, not just absolutes:** Surface changes versus athlete baseline and versus recent moving averages for sleep, HRV, and resting HR so the coach can see trend direction quickly.
+- [ ] **Workout role labels:** Classify sessions as key workout, support workout, recovery ride, long ride, taper ride, rest day, or unplanned stressor before prompt assembly.
+- [ ] **Confidence / missing-data flags:** Mark days or weeks where the data is sparse, late, or inconsistent so the coach can down-weight uncertain signals rather than overfit to gaps.
+
+### 5. UX / Product Experience
+- [ ] **Planner-first cockpit:** Make the planner the primary surface for the app. It should surface the current week, long-term goal, readiness, load intent, and day-by-day workout plan in one place with clear hierarchy and minimal friction.
+- [ ] **Supportive dashboard, not competing dashboard:** Keep the dashboard summary-led and trend-focused, with clear links back into the planner for action. It should explain progress, not try to replace the planning surface.
+- [ ] **Cleaner visual hierarchy:** Reduce card-on-card nesting, use full-width bands and restrained spacing, and reserve strong color for state changes, warnings, and key decisions.
+- [ ] **More scan-friendly controls:** Use compact controls, segmented toggles, and consistent iconography for planner actions, filters, and view switches so the interface feels faster to operate.
+- [ ] **Progressive disclosure:** Show the essentials first, then reveal deeper metrics and comparison details on demand. Avoid overwhelming the user with every metric at once.
+- [ ] **More trustworthy comparisons:** Present planned vs. completed, recovery vs. baseline, and week-over-week trend deltas in a format that is easy to scan and hard to misread.
+- [ ] **Developer's view:** Add a settings-gated developer mode that is hidden by default and only enabled locally or by explicit opt-in. It should expose debugging details such as the exact LLM prompt, prompt sections, derived context packet, and analysis payloads.
+- [ ] **Debug view safety:** Keep developer-only information out of the normal user flow, and make sure the toggle does not affect the normal planner or dashboard experience when disabled.
+
+The following items are already covered by the merged coach-context PR and should stay out of the remaining work list:
+
+- Structured coach packet with explicit sections for weekly trend, daily ledger, constraints, and specialist signals.
+- `YYYY-MM-DD` plus weekday labels for the recent days and the target week.
+- Separate raw facts, derived signals, and specialist-only context.
+- A weekly brief that feeds the planning decision rather than duplicating the dashboard narrative.
+- Sparse, additive specialist context instead of repeated metric-provider prose.
+- Instruction language kept in the system prompt, with the data prompt reserved for facts and labels.
+- An explicit conflict policy between recovery, load, and long-term goal.
+- A tight output contract for rationale plus workout JSON only.
+
 ## Workflow & Feature Enhancements
 
 ### 1. Plan Persistence & Dynamic Updating
