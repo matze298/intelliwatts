@@ -47,6 +47,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [ ] **More trustworthy comparisons:** Present planned vs. completed, recovery vs. baseline, and week-over-week trend deltas in a format that is easy to scan and hard to misread.
 - [ ] **Developer's view:** Add a settings-gated developer mode that is hidden by default and only enabled locally or by explicit opt-in. It should expose debugging details such as the exact LLM prompt, prompt sections, derived context packet, and analysis payloads.
 - [ ] **Debug view safety:** Keep developer-only information out of the normal user flow, and make sure the toggle does not affect the normal planner or dashboard experience when disabled.
+- [ ] **User prompt customization:** Move the user-prompt and LLM prompt templates behind a settings gate, hide them from the normal settings surface, and persist per-user overrides when someone intentionally changes them. The default experience should use shared app-level prompts unless a user has opted into custom prompt behavior.
 
 The following items are already covered by the merged coach-context PR and should stay out of the remaining work list:
 
