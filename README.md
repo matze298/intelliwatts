@@ -81,6 +81,17 @@ This script will:
 - Install Python dependencies using `uv`.
 - Install pre-commit hooks.
 
+## Updating npm Packages Manually
+To refresh the npm dependencies and `package-lock.json` to the latest versions allowed by `package.json`, run this from the project root:
+
+```bash
+npm update
+```
+
+This is the manual equivalent of a lockfile upgrade pass and is the command used when you want to update all npm packages in one go.
+
+Before merging an npm upgrade, the StepSecurity `NPM Package Cooldown` check should be configured to a 7-day window in the StepSecurity dashboard. That keeps newly published package versions in a cooldown period long enough to reduce supply-chain risk before the updated lockfile is accepted.
+
 # Settings
 The settings for the app are defined in `app/config.py`. There are three types of settings:
 
@@ -123,6 +134,4 @@ Currently available themes are:
 
 The themes are defined in `app/static/style-<theme>.css`.
 Switching themes is managed entirely on the client-side via a dropdown menu.
-
-
 
