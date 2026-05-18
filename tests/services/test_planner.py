@@ -98,12 +98,10 @@ def test_save_training_plan_overwrite(session: Session) -> None:
 @patch("app.services.planner.derive_weekly_brief")
 @patch("app.services.planner.get_current_long_term_plan_artifact")
 @patch("app.services.planner.get_or_create_active_phase")
-@patch("app.services.planner.llm_json_to_icu_txt")
 @patch("app.services.planner.user_prompt")
 @pytest.mark.asyncio
 async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_user_prompt: MagicMock,
-    mock_llm_json_to_icu_txt: MagicMock,
     mock_get_active_phase: MagicMock,
     mock_get_current_artifact: MagicMock,
     mock_derive_weekly_brief: MagicMock,
@@ -139,7 +137,6 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_registry.get_specialist_context = AsyncMock(return_value="FTP Trajectory:\n- Starting FTP: 250.0W")
     mock_user_prompt.return_value = "Formatted prompt"
     mock_generate_plan.return_value = LLMResponse(plan="test plan", prompt=[{"role": "user", "content": "test prompt"}])
-    mock_llm_json_to_icu_txt.return_value = "icu workout"
     mock_derive_weekly_brief.return_value = "Weekly Brief:\n- Goal: Peak for hill climb\n- Current Block: Build"
     mock_phase = TrainingPhase(
         user_id=mock_user.id,
@@ -193,7 +190,7 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
         coach_context="Coach Context:\n- 42-day weekly summaries",
         specialist_context="FTP Trajectory:\n- Starting FTP: 250.0W",
     )
-    assert result["plan"] == "test plan\n\n## intervals.icu workout file (txt)\n\n```text\n\nicu workout\n```"
+    assert result["plan"] == "test plan"
     assert result["summary"] == "Formatted prompt"
     mock_stage_workout_delivery.assert_called_once()
 

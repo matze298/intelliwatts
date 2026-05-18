@@ -20,7 +20,7 @@ from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPlan
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
 from app.planning.llm import LLMResponse, LLMRole, generate_plan
-from app.planning.llm_to_icu import extract_workout_json, llm_json_to_icu_txt
+from app.planning.llm_to_icu import extract_workout_json
 from app.planning.providers.registry import registry
 from app.services.coach_context import build_coach_context
 from app.services.long_term_planner import (
@@ -193,14 +193,7 @@ async def update_training_plan(
         saved_plan_id = saved_plan.id
         stage_workout_delivery(session, saved_plan)
 
-    full_plan_text = (
-        llm_response.plan
-        + "\n\n"
-        + "## intervals.icu workout file (txt)\n\n```text\n\n"
-        + llm_json_to_icu_txt(llm_response.plan)
-        + "\n```"
-    )
-    return {"plan": full_plan_text, "plan_id": saved_plan_id, "week_start": monday}
+    return {"plan": llm_response.plan, "plan_id": saved_plan_id, "week_start": monday}
 
 
 def _get_analysis(client: IntervalsClient, analysis_days: int) -> AnalysisResult:
@@ -297,15 +290,8 @@ async def generate_weekly_plan(
             llm_response=llm_response,
         )
 
-    full_plan_text = (
-        llm_response.plan
-        + "\n\n"
-        + "## intervals.icu workout file (txt)\n\n```text\n\n"
-        + llm_json_to_icu_txt(llm_response.plan)
-        + "\n```"
-    )
     return {
-        "plan": full_plan_text,
+        "plan": llm_response.plan,
         "summary": full_summary,
         "prompt": llm_response.prompt,
         "plan_id": saved_plan_id,
