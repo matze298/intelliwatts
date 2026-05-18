@@ -7,6 +7,7 @@ from app.planning.providers.activity_history import ActivityHistoryProvider
 from app.planning.providers.activity_type import ActivityTypeProvider
 from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider
 from app.planning.providers.intensity import IntensityProvider
+from app.planning.providers.interfaces import CoachContextProvider
 from app.planning.providers.pmc import PMCProvider
 from app.planning.providers.power_curve import PowerCurveProvider
 from app.planning.providers.weekly_volume import WeeklyVolumeProvider
@@ -83,6 +84,24 @@ class MetricRegistry:
                 context = await provider.provide_context(res)
                 if context:
                     contexts.append(context)
+        return "\n\n".join(contexts)
+
+    async def get_specialist_context(self, results: dict[str, Any]) -> str:
+        """Collect specialist-only coaching context from flagged providers.
+
+        Returns:
+            Combined context from the specialist providers.
+        """
+        contexts: list[str] = []
+        for provider in self.providers:
+            if not isinstance(provider, CoachContextProvider):
+                continue
+            res = results.get(provider.get_name())
+            if res is None:
+                continue
+            context = await provider.provide_coach_context(res)
+            if context:
+                contexts.append(context)
         return "\n\n".join(contexts)
 
 

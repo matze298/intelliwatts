@@ -115,6 +115,14 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
             f"- 60m: {result.peak_60m or '-'}W"
         )
 
+    async def provide_coach_context(self, result: PowerCurveResult | None) -> str:
+        """Provides power curve context for the coach prompt.
+
+        Returns:
+            The power curve prompt context.
+        """
+        return await self.provide_context(result)
+
     @override
     def get_dashboard_widget(
         self, result: PowerCurveResult | None, display_days: int | None = None

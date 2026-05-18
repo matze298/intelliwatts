@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
-from app.intervals.models import AnalysisResult, PMCResult, TrainingLoad
+from app.intervals.models import AnalysisResult, DailyRecordField, PMCResult, TrainingLoad
 from app.planning.providers.registry import registry
 
 if TYPE_CHECKING:
@@ -56,6 +56,16 @@ def compute_analysis(
         )
         daily = daily.join(df_wellness, on="date", how="left")
 
+    record_columns = [field.value for field in DailyRecordField]
+    record_exprs: list[pl.Expr] = [pl.col("date").dt.to_string("%Y-%m-%d").alias("date")]
+    for column in record_columns:
+        if column in daily.columns:
+            record_exprs.append(pl.col(column))
+        else:
+            record_exprs.append(pl.lit(None).alias(column))
+
+    daily_records = daily.select(record_exprs).to_dicts()
+
     # 4. Trigger Provider Analysis (New Dynamic Architecture)
     provider_results, provider_widgets = registry.process_analysis(
         daily,
@@ -66,6 +76,7 @@ def compute_analysis(
     return AnalysisResult(
         provider_results=provider_results,
         widgets=provider_widgets,
+        daily_records=daily_records,
     )
 
 

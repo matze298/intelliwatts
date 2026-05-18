@@ -89,6 +89,14 @@ class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
             f"- Total Change: {change:+.1f}W ({change_pct:+.1f}%)"
         )
 
+    async def provide_coach_context(self, result: FTPTrajectoryResult | None) -> str:
+        """Provides FTP trajectory context for the coach prompt.
+
+        Returns:
+            The FTP trajectory prompt context.
+        """
+        return await self.provide_context(result)
+
     @override
     def get_dashboard_widget(
         self, result: FTPTrajectoryResult | None, display_days: int | None = None

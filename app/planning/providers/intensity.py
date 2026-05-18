@@ -209,6 +209,14 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         context += f"Overall Style (Power-based): {result.style}"
         return context
 
+    async def provide_coach_context(self, result: IntensityResult) -> str:
+        """Provides intensity context for the coach prompt.
+
+        Returns:
+            The intensity prompt context.
+        """
+        return await self.provide_context(result)
+
     @override
     def get_dashboard_widget(self, result: IntensityResult, display_days: int | None = None) -> DashboardWidget | None:
         """Format the calculation result for the dashboard.

@@ -1,5 +1,7 @@
 """Service for generating the weekly plan."""
 
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -17,9 +19,10 @@ from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPlan
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
-from app.planning.llm import LLMRole, generate_plan
+from app.planning.llm import LLMResponse, LLMRole, generate_plan
 from app.planning.llm_to_icu import extract_workout_json, llm_json_to_icu_txt
 from app.planning.providers.registry import registry
+from app.services.coach_context import build_coach_context
 from app.services.long_term_planner import (
     derive_weekly_brief,
     get_current_long_term_plan_artifact,
@@ -32,6 +35,7 @@ if TYPE_CHECKING:
     import uuid
 
     from app.intervals.models import AnalysisResult
+    from app.models.plan import TrainingPhase
     from app.models.user import User
 
 
@@ -42,6 +46,69 @@ class PlanData:
     raw_content: str
     workout_data: list[dict[str, Any]]
     prompt_history: list[dict[str, str]]
+
+
+@dataclass(frozen=True)
+class PromptSummaryContext:
+    """Container for the prompt assembly inputs."""
+
+    user: User
+    phase: TrainingPhase
+    weekly_hours: float | None
+    weekly_sessions: int | None
+    weekly_brief: str
+    coach_text: str
+    specialist_text: str
+
+
+def _build_prompt_summary(context: PromptSummaryContext) -> str:
+    """Build the coach prompt payload from the collected planning context.
+
+    Returns:
+        The final prompt string.
+    """
+    constraints_text = (
+        f"- Max Hours: {context.weekly_hours if context.weekly_hours is not None else context.user.weekly_hours}\n"
+        f"- Max Sessions: {context.weekly_sessions if context.weekly_sessions is not None else context.user.weekly_sessions}\n"
+        f"- Primary Goal: {context.phase.primary_goal}"
+    )
+    return user_prompt(
+        constraints=constraints_text,
+        weekly_brief=context.weekly_brief,
+        coach_context=context.coach_text,
+        specialist_context=context.specialist_text,
+    )
+
+
+def _save_and_stage_weekly_plan(
+    *,
+    session: Session,
+    phase_id: uuid.UUID,
+    week_start: date,
+    llm_response: LLMResponse,
+) -> uuid.UUID:
+    """Persist a generated weekly plan and stage its workout delivery.
+
+    Returns:
+        The saved training plan id.
+    """
+    try:
+        workout_data = extract_workout_json(llm_response.plan)
+    except json.JSONDecodeError:
+        workout_data = []
+    saved_plan = save_training_plan(
+        session,
+        phase_id,
+        week_start,
+        PlanData(
+            raw_content=llm_response.plan,
+            workout_data=workout_data,
+            prompt_history=llm_response.prompt,
+        ),
+    )
+    saved_plan_id = saved_plan.id
+    stage_workout_delivery(session, saved_plan)
+    return saved_plan_id
 
 
 def save_training_plan(
@@ -182,34 +249,40 @@ async def generate_weekly_plan(
 
     # Pre-fetch and compute analysis once to be shared among providers
     analysis = _get_analysis(client, settings.ANALYSIS_DAYS)
-
-    # Fetch combined context from all registered providers
-    context = await registry.get_combined_context(analysis.provider_results)
     target_week_start = week_start or get_monday(datetime.now(UTC).date())
 
     with Session(engine) as db_session:
         phase = get_or_create_active_phase(db_session, user.id)
         artifact = get_current_long_term_plan_artifact(db_session, phase_id=phase.id)
+        coach_context = build_coach_context(
+            daily_records=analysis.daily_records,
+            phase=phase,
+            artifact=artifact,
+            week_start=target_week_start,
+        )
         weekly_brief = derive_weekly_brief(
             phase=phase,
             artifact=artifact,
-            analysis_context=context,
+            analysis_context=coach_context.brief_context,
             week_start=target_week_start,
         )
-
-    # Build the full summary string
-    full_summary = (
-        "Training Constraints:\n"
-        f"- Max Hours: {weekly_hours if weekly_hours is not None else user.weekly_hours}\n"
-        f"- Max Sessions: {weekly_sessions if weekly_sessions is not None else user.weekly_sessions}\n"
-        f"- Primary Goal: {phase.primary_goal}\n\n"
-        f"{weekly_brief}"
-    )
+        specialist_text = await registry.get_specialist_context(analysis.provider_results)
+        full_summary = _build_prompt_summary(
+            PromptSummaryContext(
+                user=user,
+                phase=phase,
+                weekly_hours=weekly_hours,
+                weekly_sessions=weekly_sessions,
+                weekly_brief=weekly_brief,
+                coach_text=coach_context.render(),
+                specialist_text=specialist_text,
+            )
+        )
 
     llm_response = generate_plan(
         messages=[
             {"role": LLMRole.SYSTEM, "content": SYSTEM_PROMPT},
-            {"role": LLMRole.USER, "content": user_prompt(full_summary)},
+            {"role": LLMRole.USER, "content": full_summary},
         ],
         language_model=settings.LANGUAGE_MODEL,
         user=user,
@@ -217,22 +290,12 @@ async def generate_weekly_plan(
 
     # Persist the plan
     with Session(engine) as db_session:
-        try:
-            workout_data = extract_workout_json(llm_response.plan)
-        except json.JSONDecodeError:
-            workout_data = []
-        saved_plan = save_training_plan(
-            db_session,
-            phase.id,
-            target_week_start,
-            PlanData(
-                raw_content=llm_response.plan,
-                workout_data=workout_data,
-                prompt_history=llm_response.prompt,
-            ),
+        saved_plan_id = _save_and_stage_weekly_plan(
+            session=db_session,
+            phase_id=phase.id,
+            week_start=target_week_start,
+            llm_response=llm_response,
         )
-        saved_plan_id = saved_plan.id
-        stage_workout_delivery(db_session, saved_plan)
 
     full_plan_text = (
         llm_response.plan
