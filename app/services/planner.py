@@ -19,8 +19,8 @@ from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPlan
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
+from app.planning.intervals_payload import extract_workout_json
 from app.planning.llm import LLMResponse, LLMRole, generate_plan
-from app.planning.llm_to_icu import extract_workout_json
 from app.planning.providers.registry import registry
 from app.services.coach_context import build_coach_context
 from app.services.long_term_planner import (

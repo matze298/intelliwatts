@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from sqlmodel import Session, select
 
 from app.models.plan import TrainingPlan, WorkoutDelivery, WorkoutDeliveryPayload, WorkoutDeliveryStatus
-from app.planning.llm_to_icu import workout_json_to_icu_txt
+from app.planning.intervals_payload import workout_json_to_icu_txt
 
 if TYPE_CHECKING:
     from app.intervals.client import IntervalsClient
