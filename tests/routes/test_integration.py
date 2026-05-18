@@ -41,6 +41,14 @@ class WeeklyPlannerRouteContext(NamedTuple):
     user_id: uuid.UUID
 
 
+class SelectedWeekRouteContext(NamedTuple):
+    """Container for a planner route context seeded with two weekly plans."""
+
+    planner: WeeklyPlannerRouteContext
+    current_week_start: date
+    selected_week_start: date
+
+
 @pytest.fixture(autouse=True)
 def clear_db() -> None:
     """Clears the database before each test."""
@@ -53,7 +61,7 @@ def clear_db() -> None:
         session.commit()
 
 
-def build_request(app_obj: FastAPI, *, method: str, path: str, body: bytes = b"") -> Request:
+def build_request(app_obj: FastAPI, *, method: str, path: str, body: bytes = b"", query_string: bytes = b"") -> Request:
     """Build a Starlette request for direct handler tests.
 
     Returns:
@@ -74,6 +82,7 @@ def build_request(app_obj: FastAPI, *, method: str, path: str, body: bytes = b""
         "type": "http",
         "method": method,
         "path": path,
+        "query_string": query_string,
         "headers": headers,
         "app": app_obj,
     }
@@ -165,6 +174,57 @@ def _seed_long_term_phase(
         session.commit()
         generate_long_term_plan_artifact(session, phase=phase)
         session.commit()
+
+
+@pytest.fixture
+def selected_week_route_context(monkeypatch: pytest.MonkeyPatch) -> SelectedWeekRouteContext:
+    """Provide an isolated route context with current and future weekly plans.
+
+    Returns:
+        The seeded planner route context and relevant week dates.
+    """
+    context = _build_weekly_planner_route_context(email="selected_week_home@example.com")
+    current_week_start = date(2026, 5, 11)
+    selected_week_start = date(2026, 5, 18)
+    monkeypatch.setattr("app.routes.web.engine", context.engine)
+    monkeypatch.setattr("app.services.plan_loader.engine", context.engine)
+    monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 12))
+
+    with Session(context.engine) as session:
+        phase = TrainingPhase(
+            user_id=context.user_id,
+            primary_goal="Peak for alpine gran fondo",
+            start_date=date(2026, 5, 4),
+            end_date=date(2026, 6, 1),
+            target_date=date(2026, 6, 1),
+            status="active",
+        )
+        session.add(phase)
+        session.commit()
+        generate_long_term_plan_artifact(session, phase=phase)
+        session.add(
+            TrainingPlan(
+                phase_id=phase.id,
+                week_start=current_week_start,
+                raw_content="# Current Week Plan",
+                prompt_history=[],
+            )
+        )
+        session.add(
+            TrainingPlan(
+                phase_id=phase.id,
+                week_start=selected_week_start,
+                raw_content="# Selected Week Plan",
+                prompt_history=[{"role": "user", "content": "selected"}],
+            )
+        )
+        session.commit()
+
+    return SelectedWeekRouteContext(
+        planner=context,
+        current_week_start=current_week_start,
+        selected_week_start=selected_week_start,
+    )
 
 
 @pytest.fixture
@@ -716,12 +776,13 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr("app.routes.web._get_active_phase", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         "app.routes.web.load_user_plan",
-        lambda _user: SimpleNamespace(
+        lambda _user, **_kwargs: SimpleNamespace(
             plan_html=None,
             long_term_summary_html="<h1>Long-term plan</h1><p>Current macro focus.</p>",
             prompt=None,
             delivery_status=None,
             delivery_last_error=None,
+            week_start=None,
         ),
     )
 
@@ -733,6 +794,56 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
     body = bytes(resp.body).decode()
     assert "Long-term plan" in body
     assert "Current macro focus." in body
+
+
+def test_home_page_renders_selected_week_plan(selected_week_route_context: SelectedWeekRouteContext) -> None:
+    """The home page should show an existing plan for the selected planning week."""
+    # GIVEN an authenticated user with two persisted weekly plans
+    context = selected_week_route_context.planner
+
+    # WHEN loading the home page with a selected planning week
+    resp = web_routes.home(
+        build_request(
+            context.app,
+            method="GET",
+            path="/",
+            query_string=f"week_start={selected_week_route_context.selected_week_start.isoformat()}".encode(),
+        ),
+        context.route_user,
+    )
+
+    # THEN the selected week's plan should be rendered and selected
+    assert resp.status_code == 200
+    body = bytes(resp.body).decode()
+    assert "Selected Week Plan" in body
+    assert "Current Week Plan" not in body
+    assert '<option value="2026-05-18" selected>Week 3 of 4 - 2026-05-18</option>' in body
+
+
+def test_home_page_rejects_out_of_plan_selected_week(
+    selected_week_route_context: SelectedWeekRouteContext,
+) -> None:
+    """The home page should not render a plan for a week outside the long-term plan."""
+    # GIVEN an authenticated user with a selected week outside the active long-term plan
+    context = selected_week_route_context.planner
+
+    # WHEN loading the home page with an invalid selected planning week
+    resp = web_routes.home(
+        build_request(
+            context.app,
+            method="GET",
+            path="/",
+            query_string=b"week_start=2026-06-08",
+        ),
+        context.route_user,
+    )
+
+    # THEN it should show the validation error instead of a saved weekly plan
+    assert resp.status_code == 200
+    body = bytes(resp.body).decode()
+    assert "Selected planning week must be part of the active long-term plan." in body
+    assert "Selected Week Plan" not in body
+    assert "Current Week Plan" not in body
 
 
 def test_secrets_flow() -> None:

@@ -36,6 +36,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 ### 1. Plan Persistence & Dynamic Updating
 - [x] **Store Plans:** Store generated plans in the database.
 - [x] **Dynamic Plans:** Allow for mid-week updates of the plan based on requests.
+- [x] **Week-specific Restore:** The planner page can select a planning week and restores the saved workout plan for that exact week.
 - [x] **Persistent Preferences:** User training volume (hours/sessions) now persists in the database.
 - [ ] **Adaptive Re-planning:** Compare planned vs. actual training data daily/weekly; trigger automated LLM re-plan on deviations.
 
