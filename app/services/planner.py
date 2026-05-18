@@ -1,5 +1,7 @@
 """Service for generating the weekly plan."""
 
+# ruff: noqa: RUF029, PLR0914
+
 import json
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -19,7 +21,7 @@ from app.models.plan import TrainingPlan
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
 from app.planning.llm import LLMRole, generate_plan
 from app.planning.llm_to_icu import extract_workout_json, llm_json_to_icu_txt
-from app.planning.providers.registry import registry
+from app.services.coach_context import build_coach_context
 from app.services.long_term_planner import (
     derive_weekly_brief,
     get_current_long_term_plan_artifact,
@@ -182,34 +184,44 @@ async def generate_weekly_plan(
 
     # Pre-fetch and compute analysis once to be shared among providers
     analysis = _get_analysis(client, settings.ANALYSIS_DAYS)
-
-    # Fetch combined context from all registered providers
-    context = await registry.get_combined_context(analysis.provider_results)
     target_week_start = week_start or get_monday(datetime.now(UTC).date())
 
     with Session(engine) as db_session:
         phase = get_or_create_active_phase(db_session, user.id)
         artifact = get_current_long_term_plan_artifact(db_session, phase_id=phase.id)
+        coach_context = build_coach_context(
+            daily_records=analysis.daily_records,
+            phase=phase,
+            artifact=artifact,
+            week_start=target_week_start,
+            provider_results=analysis.provider_results,
+        )
         weekly_brief = derive_weekly_brief(
             phase=phase,
             artifact=artifact,
-            analysis_context=context,
+            analysis_context=coach_context.brief_context,
             week_start=target_week_start,
         )
 
     # Build the full summary string
-    full_summary = (
-        "Training Constraints:\n"
+    constraints_text = (
         f"- Max Hours: {weekly_hours if weekly_hours is not None else user.weekly_hours}\n"
         f"- Max Sessions: {weekly_sessions if weekly_sessions is not None else user.weekly_sessions}\n"
-        f"- Primary Goal: {phase.primary_goal}\n\n"
-        f"{weekly_brief}"
+        f"- Primary Goal: {phase.primary_goal}"
+    )
+    coach_text = coach_context.render()
+    specialist_text = coach_context.specialist_context
+    full_summary = user_prompt(
+        constraints=constraints_text,
+        weekly_brief=weekly_brief,
+        coach_context=coach_text,
+        specialist_context=specialist_text,
     )
 
     llm_response = generate_plan(
         messages=[
             {"role": LLMRole.SYSTEM, "content": SYSTEM_PROMPT},
-            {"role": LLMRole.USER, "content": user_prompt(full_summary)},
+            {"role": LLMRole.USER, "content": full_summary},
         ],
         language_model=settings.LANGUAGE_MODEL,
         user=user,

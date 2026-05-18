@@ -40,6 +40,7 @@ class AnalysisResult:
 
     provider_results: dict[str, Any] = field(default_factory=dict)
     widgets: list[DashboardWidget] = field(default_factory=list)
+    daily_records: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the analysis result to a dictionary.

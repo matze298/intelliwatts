@@ -80,6 +80,35 @@ def test_compute_analysis(activities: list[ParsedActivity]) -> None:
     assert len(analysis.widgets) > 0
 
 
+def test_compute_analysis_exposes_daily_records(activities: list[ParsedActivity]) -> None:
+    """Test that the joined daily analysis data is preserved for prompt building."""
+    # GIVEN a wellness record for the same day as the activity
+    wellness_data = [
+        ParsedWellness(
+            date="2026-04-01",
+            hrv=60.0,
+            resting_hr=50,
+            sleep_score=60,
+            sleep_quality=4,
+            fatigue=2,
+            soreness=2,
+            stress=2,
+            readiness=4,
+            comments=None,
+        )
+    ]
+
+    # WHEN computing the analysis
+    analysis = compute_analysis(activities, wellness_data=wellness_data)
+
+    # THEN the daily records are available and serializable
+    assert isinstance(analysis, AnalysisResult)
+    assert analysis.daily_records
+    assert analysis.daily_records[0]["date"] == "2026-04-01"
+    assert analysis.daily_records[0]["sleep_score"] == 60
+    assert analysis.to_dict()["daily_records"][0]["date"] == "2026-04-01"
+
+
 def test_compute_analysis_missing_days(activities: list[ParsedActivity]) -> None:
     """Test compute analysis handles days without activities."""
     # GIVEN two activities with a gap

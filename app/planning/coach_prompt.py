@@ -75,19 +75,18 @@ TASK:
 """
 
 
-def user_prompt(summary: str) -> str:
-    """Generates the prompt for the LLM.
-
-    Args:
-        summary: The formatted summary string of athlete status and constraints.
+def user_prompt(*, constraints: str, weekly_brief: str, coach_context: str, specialist_context: str) -> str:
+    """Generate the structured prompt for the LLM.
 
     Returns:
-        The prompt string.
+        A single formatted prompt string with explicit sections.
     """
-    return f"""
-Athlete Status & Constraints:
-
-{summary}
-
-{USER_PROMPT}
-"""
+    sections = [
+        "Training Constraints:\n" + constraints.strip(),
+        "Weekly Brief:\n" + weekly_brief.strip(),
+        "Coach Context:\n" + coach_context.strip(),
+    ]
+    if specialist_context.strip():
+        sections.append("Specialist Context:\n" + specialist_context.strip())
+    sections.append(USER_PROMPT.strip())
+    return "\n\n".join(sections)

@@ -5,7 +5,7 @@ import uuid
 from datetime import date
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, NamedTuple, cast
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -132,7 +132,6 @@ def _configure_isolated_planner_dependencies(
     monkeypatch: pytest.MonkeyPatch,
     *,
     test_engine: Engine,
-    registry_mock: MagicMock,
     generate_plan_mock: MagicMock,
 ) -> None:
     """Point planner dependencies at the isolated engine and mocked services."""
@@ -141,14 +140,13 @@ def _configure_isolated_planner_dependencies(
     monkeypatch.setattr("app.services.planner.engine", test_engine)
     monkeypatch.setattr("app.services.long_term_planner.engine", test_engine)
     monkeypatch.setattr("app.services.planner.IntervalsClient", MagicMock())
-    monkeypatch.setattr("app.services.planner.user_prompt", lambda content: content)
-    registry_mock.get_combined_context = AsyncMock(return_value="Registry context")
     generate_plan_mock.return_value = LLMResponse(
         plan="## Weekly Plan\n\n- Monday: Easy Run",
         prompt=[{"role": "user", "content": "test"}],
     )
     mock_analysis = MagicMock()
-    mock_analysis.provider_results = {"activity": {}}
+    mock_analysis.provider_results = {}
+    mock_analysis.daily_records = []
     monkeypatch.setattr("app.services.planner._get_analysis", lambda *_args, **_kwargs: mock_analysis)
 
 
@@ -536,9 +534,7 @@ async def test_long_term_goal_flow(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.asyncio
 @patch("app.services.planner.generate_plan")
-@patch("app.services.planner.registry")
 async def test_weekly_generation_uses_saved_long_term_goal(
-    mock_registry: MagicMock,
     mock_generate_plan: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -555,7 +551,6 @@ async def test_weekly_generation_uses_saved_long_term_goal(
     _configure_isolated_planner_dependencies(
         monkeypatch,
         test_engine=context.engine,
-        registry_mock=mock_registry,
         generate_plan_mock=mock_generate_plan,
     )
 
@@ -582,9 +577,7 @@ async def test_weekly_generation_uses_saved_long_term_goal(
 
 @pytest.mark.asyncio
 @patch("app.services.planner.generate_plan")
-@patch("app.services.planner.registry")
 async def test_weekly_generation_rejects_invalid_selected_week(
-    mock_registry: MagicMock,
     mock_generate_plan: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -601,7 +594,6 @@ async def test_weekly_generation_rejects_invalid_selected_week(
     _configure_isolated_planner_dependencies(
         monkeypatch,
         test_engine=context.engine,
-        registry_mock=mock_registry,
         generate_plan_mock=mock_generate_plan,
     )
 
@@ -626,9 +618,7 @@ async def test_weekly_generation_rejects_invalid_selected_week(
 
 @pytest.mark.asyncio
 @patch("app.services.planner.generate_plan")
-@patch("app.services.planner.registry")
 async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
-    mock_registry: MagicMock,
     mock_generate_plan: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -639,7 +629,6 @@ async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
     _configure_isolated_planner_dependencies(
         monkeypatch,
         test_engine=context.engine,
-        registry_mock=mock_registry,
         generate_plan_mock=mock_generate_plan,
     )
     monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 16))

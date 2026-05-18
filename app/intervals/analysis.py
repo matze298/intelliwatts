@@ -56,6 +56,38 @@ def compute_analysis(
         )
         daily = daily.join(df_wellness, on="date", how="left")
 
+    record_columns = [
+        "training_stress",
+        "duration_h",
+        "distance_km",
+        "types",
+        "activity_durations",
+        "activity_tss",
+        "activity_distances",
+        "activity_avg_power",
+        "activity_avg_hr",
+        "activity_max_hr",
+        "activity_elevation_gain",
+        "activity_ftp",
+        "hrv",
+        "resting_hr",
+        "sleep_score",
+        "sleep_quality",
+        "fatigue",
+        "soreness",
+        "stress",
+        "readiness",
+        "comments",
+    ]
+    record_exprs: list[pl.Expr] = [pl.col("date").dt.to_string("%Y-%m-%d").alias("date")]
+    for column in record_columns:
+        if column in daily.columns:
+            record_exprs.append(pl.col(column))
+        else:
+            record_exprs.append(pl.lit(None).alias(column))
+
+    daily_records = daily.select(record_exprs).to_dicts()
+
     # 4. Trigger Provider Analysis (New Dynamic Architecture)
     provider_results, provider_widgets = registry.process_analysis(
         daily,
@@ -66,6 +98,7 @@ def compute_analysis(
     return AnalysisResult(
         provider_results=provider_results,
         widgets=provider_widgets,
+        daily_records=daily_records,
     )
 
 
