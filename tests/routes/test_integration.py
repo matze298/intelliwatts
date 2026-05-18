@@ -783,6 +783,7 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
     body = bytes(resp.body).decode()
     assert "Long-term plan" in body
     assert "Current macro focus." in body
+    assert "Advanced settings" in body
 
 
 def test_home_page_renders_selected_week_plan(selected_week_route_context: SelectedWeekRouteContext) -> None:
@@ -806,6 +807,9 @@ def test_home_page_renders_selected_week_plan(selected_week_route_context: Selec
     body = bytes(resp.body).decode()
     assert "Selected Week Plan" in body
     assert "Current Week Plan" not in body
+    assert body.index("Current plan status") < body.index("Planning week") < body.index("Generate Plan")
+    assert body.index("Generate Plan") < body.index("Publish Workout") < body.index("Update Plan")
+    assert "Advanced settings" in body
     assert '<option value="2026-05-18" selected>Week 3 of 4 - 2026-05-18</option>' in body
 
 
