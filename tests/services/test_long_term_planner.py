@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
 
-def build_request(app: FastAPI, *, method: str, path: str, body: bytes = b"") -> Request:
+def build_request(app: FastAPI, *, method: str, path: str, body: bytes = b"", query_string: bytes = b"") -> Request:
     """Build a Starlette request for direct route testing.
 
     Returns:
@@ -51,6 +51,7 @@ def build_request(app: FastAPI, *, method: str, path: str, body: bytes = b"") ->
         "type": "http",
         "method": method,
         "path": path,
+        "query_string": query_string,
         "headers": headers,
         "app": app,
     }
@@ -293,8 +294,8 @@ def test_derive_weekly_brief_uses_current_macro_block(session: Session) -> None:
     assert "Registry context" in brief
 
 
-def test_get_long_term_week_options_starts_with_upcoming_week_and_excludes_past_weeks(session: Session) -> None:
-    """Week options should expose upcoming long-term weeks only."""
+def test_get_long_term_week_options_includes_current_week_and_excludes_past_weeks(session: Session) -> None:
+    """Week options should expose current and future long-term weeks only."""
     # GIVEN a four-week phase that started before today
     phase = TrainingPhase(
         user_id=uuid.uuid4(),
@@ -315,10 +316,11 @@ def test_get_long_term_week_options_starts_with_upcoming_week_and_excludes_past_
         today=date(2026, 5, 17),
     )
 
-    # THEN only upcoming Mondays inside the long-term plan are offered
-    assert [option.week_start for option in options] == [date(2026, 5, 18), date(2026, 5, 25)]
-    assert options[0].label == "Week 3 of 4 - 2026-05-18"
-    assert options[1].label == "Week 4 of 4 - 2026-05-25"
+    # THEN the active week and future Mondays inside the long-term plan are offered
+    assert [option.week_start for option in options] == [date(2026, 5, 11), date(2026, 5, 18), date(2026, 5, 25)]
+    assert options[0].label == "Week 2 of 4 - 2026-05-11"
+    assert options[1].label == "Week 3 of 4 - 2026-05-18"
+    assert options[2].label == "Week 4 of 4 - 2026-05-25"
 
 
 def test_regeneration_preserves_history_and_surfaces_latest_artifact(session: Session) -> None:
@@ -399,12 +401,13 @@ def test_home_page_renders_long_term_goal_inputs_and_current_summary(
     # GIVEN an authenticated user and isolated planner dependencies
     monkeypatch.setattr(
         "app.routes.web.load_user_plan",
-        lambda _user: SimpleNamespace(
+        lambda _user, **_kwargs: SimpleNamespace(
             plan_html=None,
             long_term_summary_html="<h1>Long-term plan</h1><p>Current macro focus.</p>",
             prompt=None,
             delivery_status=None,
             delivery_last_error=None,
+            week_start=None,
         ),
     )
 

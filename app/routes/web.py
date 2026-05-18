@@ -135,11 +135,38 @@ def _resolve_week_selection(session: Session, user: User, raw_week_start: str) -
     return WeekSelection(primary_goal, target_date, week_options, selected_week_start, None)
 
 
+def _resolve_home_week_selection(session: Session, user: User | None, raw_week_start: str) -> WeekSelection:
+    """Resolve the week context used when rendering the planner home page.
+
+    Returns:
+        The selected week, form values, week options, and any validation error.
+    """
+    phase = _get_active_phase(session, user)
+    primary_goal, target_date = _phase_form_values(phase)
+    week_options = _week_options_for_phase(session, phase)
+    selected_week_start = None
+    if user and raw_week_start:
+        week_selection = _resolve_week_selection(session, user, raw_week_start)
+        if week_selection.error:
+            return WeekSelection(
+                week_selection.primary_goal,
+                week_selection.target_date,
+                week_selection.week_options,
+                None,
+                week_selection.error,
+            )
+        return week_selection
+    if user and week_options:
+        selected_week_start = week_options[0].week_start
+    return WeekSelection(primary_goal, target_date, week_options, selected_week_start, None)
+
+
 def _render_publish_workout_error_page(
     request: Request,
     *,
     user: User,
     phase: TrainingPhase,
+    week_start: date,
     error: str,
 ) -> HTMLResponse:
     """Render the planner page after a workout publish failure.
@@ -147,8 +174,10 @@ def _render_publish_workout_error_page(
     Returns:
         The rendered planner page with the publish error.
     """
-    loaded = load_user_plan(user)
+    loaded = load_user_plan(user, week_start=week_start)
     primary_goal, target_date = _phase_form_values(phase)
+    with Session(engine) as session:
+        week_options = _week_options_for_phase(session, phase)
     return _render_plan_page(
         request,
         user=user,
@@ -160,6 +189,8 @@ def _render_publish_workout_error_page(
         prompt=loaded.prompt,
         primary_goal=primary_goal,
         target_date=target_date,
+        week_options=week_options,
+        selected_week_start=week_start.isoformat(),
         error=error,
     )
 
@@ -218,21 +249,25 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
     prompt = None
     delivery_status = None
     delivery_last_error = None
-    primary_goal = ""
-    target_date = ""
 
     with Session(engine) as session:
-        phase = _get_active_phase(session, user)
-        primary_goal, target_date = _phase_form_values(phase)
-        week_options = _week_options_for_phase(session, phase)
+        raw_week_start = str(request.query_params.get("week_start", "")).strip()
+        week_selection = _resolve_home_week_selection(session, user, raw_week_start)
 
     if user:
-        loaded = load_user_plan(user)
+        loaded = load_user_plan(
+            user,
+            week_start=week_selection.selected_week_start,
+            include_weekly_plan=week_selection.error is None,
+        )
         plan_html = loaded.plan_html
         long_term_summary_html = loaded.long_term_summary_html
         prompt = loaded.prompt
         delivery_status = loaded.delivery_status
         delivery_last_error = loaded.delivery_last_error
+        selected_week_start = week_selection.selected_week_start or loaded.week_start
+    else:
+        selected_week_start = week_selection.selected_week_start
 
     return _render_plan_page(
         request,
@@ -243,9 +278,11 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
         delivery_last_error=delivery_last_error,
         summary=None,
         prompt=prompt,
-        primary_goal=primary_goal,
-        target_date=target_date,
-        week_options=week_options,
+        primary_goal=week_selection.primary_goal,
+        target_date=week_selection.target_date,
+        week_options=week_selection.week_options,
+        selected_week_start=selected_week_start.isoformat() if selected_week_start else "",
+        error=str(week_selection.error) if week_selection.error else None,
     )
 
 
@@ -600,7 +637,7 @@ async def generate(
         result["plan"],
         extensions=["tables", "fenced_code"],
     )
-    loaded = load_user_plan(user)
+    loaded = load_user_plan(user, week_start=result["week_start"])
 
     summary_html = markdown.markdown(
         # Pretty print the dict
@@ -648,7 +685,7 @@ async def update(
         result["plan"],
         extensions=["tables", "fenced_code"],
     )
-    loaded = load_user_plan(user)
+    loaded = load_user_plan(user, week_start=result["week_start"])
     primary_goal, target_date = ("", "")
     with Session(engine) as session:
         phase = _get_active_phase(session, user)
@@ -685,14 +722,24 @@ async def publish_workout(
     Raises:
         HTTPException: If the current week has no active phase or no weekly plan.
     """
+    input_data = await request.form()
+    raw_week_start = str(input_data.get("week_start", "")).strip()
+    try:
+        week_start = date.fromisoformat(raw_week_start) if raw_week_start else get_monday(datetime.now(UTC).date())
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(WeekSelectionError())) from exc
+
     with Session(engine) as session:
         phase = _get_active_phase(session, user)
         if not phase:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active training phase.")
+        if raw_week_start:
+            week_selection = _resolve_week_selection(session, user, raw_week_start)
+            if week_selection.error:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(week_selection.error))
 
-        monday = get_monday(datetime.now(UTC).date())
         plan = session.exec(
-            select(TrainingPlan).where(TrainingPlan.phase_id == phase.id, TrainingPlan.week_start == monday)
+            select(TrainingPlan).where(TrainingPlan.phase_id == phase.id, TrainingPlan.week_start == week_start)
         ).first()
         if not plan:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No weekly training plan.")
@@ -713,6 +760,7 @@ async def publish_workout(
                 request,
                 user=user,
                 phase=phase,
+                week_start=week_start,
                 error=f"Failed to publish workouts: {exc}",
             )
 

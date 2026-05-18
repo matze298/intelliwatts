@@ -235,11 +235,11 @@ def get_long_term_week_options(
 ) -> list[LongTermWeekOption]:
     """Return upcoming selectable weeks inside the active long-term plan."""
     total_weeks = _get_total_weeks(phase, artifact)
-    upcoming_monday = today + timedelta(days=(7 - today.weekday()) % 7)
+    current_monday = today - timedelta(days=today.weekday())
     options: list[LongTermWeekOption] = []
     for week_index in range(total_weeks):
         week_start = _get_long_term_week_start(phase, week_index)
-        if week_start < upcoming_monday:
+        if week_start < current_monday:
             continue
         options.append(
             LongTermWeekOption(

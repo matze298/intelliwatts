@@ -49,7 +49,22 @@
             <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-slate-700 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500">Save Long-term Goal</button>
         </form>
         {% endif %}
+        {% if week_options %}
+        <form method="get" action="/" class="mb-6 rounded-md border border-blue-200 bg-blue-50 p-4">
+            <label for="week_start_view" class="block text-lg font-semibold text-gray-800">Planning week</label>
+            <div class="mt-2 flex flex-col gap-3 sm:flex-row">
+                <select id="week_start_view" name="week_start" onchange="this.form.submit()" class="block w-full pl-3 pr-10 py-3 text-base border-blue-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                    {% for option in week_options %}
+                    <option value="{{ option.week_start.isoformat() }}" {% if option.week_start.isoformat() == selected_week_start %}selected{% endif %}>{{ option.label }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="inline-flex justify-center py-3 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Show Week</button>
+            </div>
+        </form>
+        {% endif %}
+
         <form method="post" action="/generate" class="space-y-4">
+            <input type="hidden" name="week_start" value="{{ selected_week_start }}">
             <div>
             <label for="language_model" class="block text-sm font-medium text-gray-700">Large Language model:</label>
             <select id="language_model" name="language_model" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
@@ -87,14 +102,6 @@
                     Include Readiness & Recovery (Wellness) Data
                 </label>
             </div>
-            <div>
-                <label for="week_start" class="block text-sm font-medium text-gray-700">Planning week:</label>
-                <select id="week_start" name="week_start" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
-                    {% for option in week_options %}
-                    <option value="{{ option.week_start.isoformat() }}" {% if option.week_start.isoformat() == selected_week_start %}selected{% endif %}>{{ option.label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
             <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Generate Plan</button>
         </form>
 
@@ -128,6 +135,7 @@
                     </p>
                 </div>
                 <form method="post" action="/publish-workout">
+                    <input type="hidden" name="week_start" value="{{ selected_week_start }}">
                     <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
                         {% if delivery_status == "published" %}
                         Republish Workout

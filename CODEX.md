@@ -45,6 +45,7 @@ These instructions apply to Codex work in this repository.
 - Pre-commit hooks via `prek` may be run outside the sandbox if needed.
 - Run `docker compose -f sandbox/docker-compose.yml run sandbox uv sync --extra dev --extra test` when tooling needs to be installed.
 - Respect pre-commit hooks.
+- Use branch names prefixed with `feature/` for feature work and `bugfix/` for fixes. Do not create branches prefixed with `codex/`.
 - Use freeform, descriptive commit messages that explain why the change exists.
 - Keep `README.md` updated when setup, usage, or features change.
 - Keep `docs/improvement-plan.md` updated with the latest changes.
