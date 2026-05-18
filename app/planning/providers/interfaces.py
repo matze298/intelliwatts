@@ -1,7 +1,7 @@
 """Base classes for metric providers."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
 
 if TYPE_CHECKING:
     import polars as pl
@@ -75,5 +75,18 @@ class MetricProvider(Protocol[T_co]):
 
         Returns:
             The widget data or None if not applicable.
+        """
+        ...
+
+
+@runtime_checkable
+class CoachContextProvider(Protocol):
+    """Protocol for providers that contribute specialist coaching context."""
+
+    async def provide_coach_context(self, result: object) -> str:
+        """Provide specialist context for the coach prompt.
+
+        Returns:
+            A formatted specialist context string.
         """
         ...

@@ -154,9 +154,33 @@ def test_signal_for_day_flags_recovery_compromised() -> None:
     """The day-level signal helper should flag low-recovery training days."""
     # GIVEN a hard training day and a weaker recent recovery trend
     records = [
-        {"date": date(2026, 5, 1), "training_stress": 40.0, "sleep_score": 82, "hrv": 55.0, "resting_hr": 48},
-        {"date": date(2026, 5, 2), "training_stress": 45.0, "sleep_score": 80, "hrv": 54.0, "resting_hr": 48},
-        {"date": date(2026, 5, 3), "training_stress": 80.0, "sleep_score": 60, "hrv": 46.0, "resting_hr": 53},
+        coach_context.CoachDailyRecord(
+            date=date(2026, 5, 1),
+            training_stress=40.0,
+            duration_h=1.0,
+            activity_type="Ride",
+            sleep_score=82,
+            hrv=55.0,
+            resting_hr=48.0,
+        ),
+        coach_context.CoachDailyRecord(
+            date=date(2026, 5, 2),
+            training_stress=45.0,
+            duration_h=1.0,
+            activity_type="Ride",
+            sleep_score=80,
+            hrv=54.0,
+            resting_hr=48.0,
+        ),
+        coach_context.CoachDailyRecord(
+            date=date(2026, 5, 3),
+            training_stress=80.0,
+            duration_h=1.5,
+            activity_type="Ride",
+            sleep_score=60,
+            hrv=46.0,
+            resting_hr=53.0,
+        ),
     ]
 
     # WHEN deriving the daily training signal

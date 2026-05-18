@@ -19,7 +19,7 @@ from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPlan
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
-from app.planning.llm import LLMRole, generate_plan
+from app.planning.llm import LLMResponse, LLMRole, generate_plan
 from app.planning.llm_to_icu import extract_workout_json, llm_json_to_icu_txt
 from app.planning.providers.registry import registry
 from app.services.coach_context import build_coach_context
@@ -78,6 +78,37 @@ def _build_prompt_summary(context: PromptSummaryContext) -> str:
         coach_context=context.coach_text,
         specialist_context=context.specialist_text,
     )
+
+
+def _save_and_stage_weekly_plan(
+    *,
+    session: Session,
+    phase_id: uuid.UUID,
+    week_start: date,
+    llm_response: LLMResponse,
+) -> uuid.UUID:
+    """Persist a generated weekly plan and stage its workout delivery.
+
+    Returns:
+        The saved training plan id.
+    """
+    try:
+        workout_data = extract_workout_json(llm_response.plan)
+    except json.JSONDecodeError:
+        workout_data = []
+    saved_plan = save_training_plan(
+        session,
+        phase_id,
+        week_start,
+        PlanData(
+            raw_content=llm_response.plan,
+            workout_data=workout_data,
+            prompt_history=llm_response.prompt,
+        ),
+    )
+    saved_plan_id = saved_plan.id
+    stage_workout_delivery(session, saved_plan)
+    return saved_plan_id
 
 
 def save_training_plan(
@@ -259,21 +290,12 @@ async def generate_weekly_plan(
 
     # Persist the plan
     with Session(engine) as db_session:
-        try:
-            workout_data = extract_workout_json(llm_response.plan)
-        except json.JSONDecodeError:
-            workout_data = []
-        saved_plan = save_training_plan(
-            db_session,
-            phase.id,
-            target_week_start,
-            PlanData(
-                raw_content=llm_response.plan,
-                workout_data=workout_data,
-                prompt_history=llm_response.prompt,
-            ),
+        saved_plan_id = _save_and_stage_weekly_plan(
+            session=db_session,
+            phase_id=phase.id,
+            week_start=target_week_start,
+            llm_response=llm_response,
         )
-        stage_workout_delivery(db_session, saved_plan)
 
     full_plan_text = (
         llm_response.plan
@@ -286,6 +308,6 @@ async def generate_weekly_plan(
         "plan": full_plan_text,
         "summary": full_summary,
         "prompt": llm_response.prompt,
-        "plan_id": saved_plan.id,
+        "plan_id": saved_plan_id,
         "week_start": target_week_start,
     }

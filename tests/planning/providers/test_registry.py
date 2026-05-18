@@ -105,15 +105,12 @@ async def test_metric_registry_specialist_context() -> None:
     # GIVEN a registry with one specialist and one regular provider.
     registry = MetricRegistry()
     results = {"specialist": {"data": 1}, "regular": {"data": 2}}
-
     specialist = MagicMock(spec=MetricProvider)
     specialist.get_name.return_value = "specialist"
-    specialist.is_specialist = True
     specialist.provide_coach_context = AsyncMock(return_value="Specialist Context")
 
     regular = MagicMock(spec=MetricProvider)
     regular.get_name.return_value = "regular"
-    regular.is_specialist = False
 
     registry.register(specialist)
     registry.register(regular)

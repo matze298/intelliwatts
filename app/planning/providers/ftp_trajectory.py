@@ -22,8 +22,6 @@ class FTPTrajectoryResult:
 class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
     """Provides FTP trajectory context."""
 
-    is_specialist = True
-
     @override
     def get_name(self) -> str:
         """Returns the provider name.

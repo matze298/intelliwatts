@@ -31,8 +31,6 @@ class PowerCurveResult:
 class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
     """Provides power curve context."""
 
-    is_specialist = True
-
     @override
     def get_name(self) -> str:
         """Returns the provider name.

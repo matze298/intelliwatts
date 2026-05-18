@@ -35,8 +35,6 @@ class IntensityResult:
 class IntensityProvider(MetricProvider[IntensityResult]):
     """Provides intensity distribution context."""
 
-    is_specialist = True
-
     @override
     def get_name(self) -> str:
         """Returns the provider name.

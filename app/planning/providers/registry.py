@@ -7,6 +7,7 @@ from app.planning.providers.activity_history import ActivityHistoryProvider
 from app.planning.providers.activity_type import ActivityTypeProvider
 from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider
 from app.planning.providers.intensity import IntensityProvider
+from app.planning.providers.interfaces import CoachContextProvider
 from app.planning.providers.pmc import PMCProvider
 from app.planning.providers.power_curve import PowerCurveProvider
 from app.planning.providers.weekly_volume import WeeklyVolumeProvider
@@ -93,15 +94,12 @@ class MetricRegistry:
         """
         contexts: list[str] = []
         for provider in self.providers:
-            if not getattr(provider, "is_specialist", False):
+            if not isinstance(provider, CoachContextProvider):
                 continue
             res = results.get(provider.get_name())
             if res is None:
                 continue
-            coach_context = getattr(provider, "provide_coach_context", None)
-            if coach_context is None:
-                continue
-            context = await coach_context(res)
+            context = await provider.provide_coach_context(res)
             if context:
                 contexts.append(context)
         return "\n\n".join(contexts)

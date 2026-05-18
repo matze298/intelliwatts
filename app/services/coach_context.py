@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
-from operator import itemgetter
+from operator import attrgetter
 from statistics import fmean
 from typing import TYPE_CHECKING, Any, cast
 
@@ -27,7 +27,20 @@ SLEEP_DROP_THRESHOLD = 10.0
 HRV_DROP_THRESHOLD = 5.0
 RHR_RISE_THRESHOLD = 4.0
 
-DailyRecord = Mapping[str, object]
+DailyRecordInput = Mapping[str, object]
+
+
+@dataclass(frozen=True)
+class CoachDailyRecord:
+    """Normalized daily record used by the coach prompt builder."""
+
+    date: date
+    training_stress: float
+    duration_h: float
+    activity_type: str
+    sleep_score: int | None
+    hrv: float | None
+    resting_hr: float | None
 
 
 @dataclass(frozen=True)
@@ -107,7 +120,7 @@ class CoachContext:
 
 def build_coach_context(
     *,
-    daily_records: Sequence[DailyRecord],
+    daily_records: Sequence[DailyRecordInput],
     phase: TrainingPhase,
     artifact: LongTermPlanArtifact | None,
     week_start: date,
@@ -141,25 +154,22 @@ def build_coach_context(
     )
 
 
-def _prepare_records(daily_records: Sequence[DailyRecord]) -> list[dict[str, object]]:
+def _prepare_records(daily_records: Sequence[DailyRecordInput]) -> list[CoachDailyRecord]:
     """Normalize daily records into sorted dated dictionaries.
 
     Returns:
         The parsed and date-sorted records.
     """
-    parsed_records: list[dict[str, object]] = []
+    parsed_records: list[CoachDailyRecord] = []
     for record in daily_records:
-        parsed_date = _parse_date(record.get("date"))
-        if parsed_date is None:
-            continue
-        parsed_record = dict(record)
-        parsed_record["date"] = parsed_date
-        parsed_records.append(parsed_record)
-    parsed_records.sort(key=itemgetter("date"))
+        parsed_record = _parse_record(record)
+        if parsed_record is not None:
+            parsed_records.append(parsed_record)
+    parsed_records.sort(key=attrgetter("date"))
     return parsed_records
 
 
-def _build_weekly_summaries(records: Sequence[Mapping[str, object]]) -> list[WeeklySummaryRow]:
+def _build_weekly_summaries(records: Sequence[CoachDailyRecord]) -> list[WeeklySummaryRow]:
     """Build six rolling 7-day summaries from the most recent data.
 
     Returns:
@@ -168,9 +178,7 @@ def _build_weekly_summaries(records: Sequence[Mapping[str, object]]) -> list[Wee
     if not records:
         return []
 
-    last_date = records[-1]["date"]
-    if not isinstance(last_date, date):
-        return []
+    last_date = records[-1].date
 
     summaries: list[WeeklySummaryRow] = []
     for window_index in range(LOOKBACK_WEEKS - 1, -1, -1):
@@ -184,7 +192,7 @@ def _build_weekly_summaries(records: Sequence[Mapping[str, object]]) -> list[Wee
 def _summarize_window(
     window_start: date,
     window_end: date,
-    records: Sequence[Mapping[str, object]],
+    records: Sequence[CoachDailyRecord],
 ) -> WeeklySummaryRow:
     """Summarize one rolling training week.
 
@@ -193,17 +201,8 @@ def _summarize_window(
     """
     total_hours = _sum_values(records, "duration_h")
     total_tss = _sum_values(records, "training_stress")
-    sessions = sum(
-        1
-        for record in records
-        if (training_stress := _to_optional_float(record.get("training_stress"))) is not None and training_stress > 0.0
-    )
-    hard_sessions = sum(
-        1
-        for record in records
-        if (training_stress := _to_optional_float(record.get("training_stress"))) is not None
-        and training_stress >= HARD_SESSION_TSS_THRESHOLD
-    )
+    sessions = sum(1 for record in records if record.training_stress > 0.0)
+    hard_sessions = sum(1 for record in records if record.training_stress >= HARD_SESSION_TSS_THRESHOLD)
     avg_sleep_score = _mean_values(records, "sleep_score")
     avg_hrv = _mean_values(records, "hrv")
     avg_resting_hr = _mean_values(records, "resting_hr")
@@ -227,7 +226,7 @@ def _summarize_window(
     )
 
 
-def _build_daily_ledger(records: Sequence[Mapping[str, object]]) -> list[DailyLedgerRow]:
+def _build_daily_ledger(records: Sequence[CoachDailyRecord]) -> list[DailyLedgerRow]:
     """Build the 14-day ledger from the most recent records.
 
     Returns:
@@ -236,14 +235,14 @@ def _build_daily_ledger(records: Sequence[Mapping[str, object]]) -> list[DailyLe
     recent_records = records[-DAILY_LEDGER_DAYS:]
     return [
         DailyLedgerRow(
-            date=record["date"].isoformat() if isinstance(record["date"], date) else str(record["date"]),
-            weekday=record["date"].strftime("%a") if isinstance(record["date"], date) else "-",
-            training_stress=round(_to_optional_float(record.get("training_stress")) or 0.0, 1),
-            duration_h=round(_to_optional_float(record.get("duration_h")) or 0.0, 1),
-            activity_type=_primary_activity_type(record),
-            sleep_score=_to_optional_int(record.get("sleep_score")),
-            hrv=_to_optional_float(record.get("hrv")),
-            resting_hr=_to_optional_float(record.get("resting_hr")),
+            date=record.date.isoformat(),
+            weekday=record.date.strftime("%a"),
+            training_stress=round(record.training_stress, 1),
+            duration_h=round(record.duration_h, 1),
+            activity_type=record.activity_type,
+            sleep_score=record.sleep_score,
+            hrv=record.hrv,
+            resting_hr=record.resting_hr,
             signal=_signal_for_day(record, records),
         )
         for record in recent_records
@@ -255,7 +254,7 @@ def _build_brief_context(
     phase: TrainingPhase,
     artifact: LongTermPlanArtifact | None,
     week_start: date,
-    records: Sequence[Mapping[str, object]],
+    records: Sequence[CoachDailyRecord],
 ) -> str:
     """Build a compact narrative for the weekly brief.
 
@@ -307,16 +306,16 @@ def _build_week_note(
     return "stable training load"
 
 
-def _signal_for_day(record: Mapping[str, object], records: Sequence[Mapping[str, object]]) -> str:
+def _signal_for_day(record: CoachDailyRecord, records: Sequence[CoachDailyRecord]) -> str:
     """Derive a compact readiness label for one day.
 
     Returns:
         A short readiness signal for the day.
     """
-    sleep_score = _to_optional_float(record.get("sleep_score"))
-    hrv = _to_optional_float(record.get("hrv"))
-    resting_hr = _to_optional_float(record.get("resting_hr"))
-    training_stress = _to_optional_float(record.get("training_stress")) or 0.0
+    sleep_score = _to_optional_float(record.sleep_score)
+    hrv = record.hrv
+    resting_hr = record.resting_hr
+    training_stress = record.training_stress
     recent_window = records[-RECOVERY_WINDOW_DAYS:]
     recent_sleep = _mean_values(recent_window, "sleep_score")
     recent_hrv = _mean_values(recent_window, "hrv")
@@ -396,7 +395,58 @@ def _current_block_hint(artifact: LongTermPlanArtifact | None, week_start: date)
     return f"Long-term goal: {structured_data.get('goal', 'not set')}. Macro blocks: {block_names}."
 
 
-def _primary_activity_type(record: Mapping[str, object]) -> str:
+def _mean_values(records: Sequence[CoachDailyRecord], field_name: str) -> float | None:
+    """Compute the mean of a nullable numeric field.
+
+    Returns:
+        The rounded mean, or ``None`` if no numeric values exist.
+    """
+    values = [_to_optional_float(getattr(record, field_name)) for record in records]
+    clean_values = [value for value in values if value is not None]
+    if not clean_values:
+        return None
+    return round(fmean(clean_values), 1)
+
+
+def _sum_values(records: Sequence[CoachDailyRecord], field_name: str) -> float:
+    """Sum a numeric field across records.
+
+    Returns:
+        The field sum.
+    """
+    return sum(_to_optional_float(getattr(record, field_name)) or 0.0 for record in records)
+
+
+def _record_in_window(record: CoachDailyRecord, window_start: date, window_end: date) -> bool:
+    """Return whether a record falls inside a weekly summary window.
+
+    Returns:
+        ``True`` when the record date is in the window.
+    """
+    return window_start <= record.date <= window_end
+
+
+def _parse_record(record: DailyRecordInput) -> CoachDailyRecord | None:
+    """Parse a raw daily record into a normalized dataclass.
+
+    Returns:
+        The parsed record, or ``None`` when the input does not have a valid date.
+    """
+    parsed_date = _parse_date(record.get("date"))
+    if parsed_date is None:
+        return None
+    return CoachDailyRecord(
+        date=parsed_date,
+        training_stress=_to_optional_float(record.get("training_stress")) or 0.0,
+        duration_h=_to_optional_float(record.get("duration_h")) or 0.0,
+        activity_type=_primary_activity_type(record),
+        sleep_score=_to_optional_int(record.get("sleep_score")),
+        hrv=_to_optional_float(record.get("hrv")),
+        resting_hr=_to_optional_float(record.get("resting_hr")),
+    )
+
+
+def _primary_activity_type(record: DailyRecordInput) -> str:
     """Return a readable primary activity type.
 
     Returns:
@@ -408,38 +458,6 @@ def _primary_activity_type(record: Mapping[str, object]) -> str:
     if isinstance(types, str) and types:
         return types
     return "Rest"
-
-
-def _mean_values(records: Sequence[Mapping[str, object]], field_name: str) -> float | None:
-    """Compute the mean of a nullable numeric field.
-
-    Returns:
-        The rounded mean, or ``None`` if no numeric values exist.
-    """
-    values = [_to_optional_float(record.get(field_name)) for record in records]
-    clean_values = [value for value in values if value is not None]
-    if not clean_values:
-        return None
-    return round(fmean(clean_values), 1)
-
-
-def _sum_values(records: Sequence[Mapping[str, object]], field_name: str) -> float:
-    """Sum a numeric field across records.
-
-    Returns:
-        The field sum.
-    """
-    return sum(_to_optional_float(record.get(field_name)) or 0.0 for record in records)
-
-
-def _record_in_window(record: Mapping[str, object], window_start: date, window_end: date) -> bool:
-    """Return whether a record falls inside a weekly summary window.
-
-    Returns:
-        ``True`` when the record date is in the window.
-    """
-    record_date = record.get("date")
-    return isinstance(record_date, date) and window_start <= record_date <= window_end
 
 
 def _to_optional_float(value: object) -> float | None:
