@@ -1,4 +1,5 @@
 {% from "macros/widgets.html" import render_widget %}
+{% from "macros/theme.html" import render_theme_switcher %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -24,11 +25,7 @@
                 <a href="/login" class="text-blue-600 hover:text-blue-800 mr-4">Login</a>
                 <a href="/register" class="text-blue-600 hover:text-blue-800">Register</a>
                 {% endif %}
-                <select id="theme-switcher" class="bg-gray-800 text-pink-500 border border-pink-500 rounded px-2 py-1 ml-4">
-                    <option value="pro">Professional</option>
-                    <option value="retro">Retro90s</option>
-                    <option value="minimal">Minimalistic</option>
-                </select>
+                {{ render_theme_switcher() }}
             </div>
         </nav>
 
@@ -68,29 +65,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Theme Switching
-            const themeStylesheet = document.getElementById('theme-stylesheet');
-            const themeSwitcher = document.getElementById('theme-switcher');
-            const savedTheme = localStorage.getItem('selectedTheme') || 'pro';
-            themeSwitcher.value = savedTheme;
-            updateTheme(savedTheme);
-
-            themeSwitcher.addEventListener('change', (event) => {
-                const selectedTheme = event.target.value;
-                localStorage.setItem('selectedTheme', selectedTheme);
-                updateTheme(selectedTheme);
-            });
-
-            function updateTheme(theme) {
-                if (theme === 'pro') {
-                    themeStylesheet.href = '/static/tailwind-pro.css';
-                } else if (theme === 'retro') {
-                    themeStylesheet.href = '/static/tailwind-retro.css';
-                } else if (theme === 'minimal') {
-                    themeStylesheet.href = '/static/tailwind-minimal.css';
-                }
-            }
-
             // Days Slider
             const slider = document.getElementById('daysSlider');
             const valueDisplay = document.getElementById('daysValue');
