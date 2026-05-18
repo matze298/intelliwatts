@@ -38,7 +38,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 ### 4. UX / Product Experience
 - [ ] **Planner-first cockpit:** Make the planner the primary surface for the app. It should surface the current week, long-term goal, readiness, load intent, and day-by-day workout plan in one place with clear hierarchy and minimal friction.
 - [ ] **Supportive dashboard, not competing dashboard:** Keep the dashboard summary-led and trend-focused, with clear links back into the planner for action. It should explain progress, not try to replace the planning surface.
-- [ ] **Cleaner visual hierarchy:** Reduce card-on-card nesting, use full-width bands and restrained spacing, and reserve strong color for state changes, warnings, and key decisions.
+- [x] **Cleaner visual hierarchy:** Reduced card-on-card nesting on the planner page, used clearer full-width bands, and kept stronger color reserved for state changes, warnings, and key decisions.
 - [ ] **More scan-friendly controls:** Use compact controls, segmented toggles, and consistent iconography for planner actions, filters, and view switches so the interface feels faster to operate.
 - [ ] **Progressive disclosure:** Show the essentials first, then reveal deeper metrics and comparison details on demand. Avoid overwhelming the user with every metric at once.
 - [ ] **More trustworthy comparisons:** Present planned vs. completed, recovery vs. baseline, and week-over-week trend deltas in a format that is easy to scan and hard to misread.
