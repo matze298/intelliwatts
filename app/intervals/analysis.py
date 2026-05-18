@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
-from app.intervals.models import AnalysisResult, PMCResult, TrainingLoad
+from app.intervals.models import AnalysisResult, DailyRecordField, PMCResult, TrainingLoad
 from app.planning.providers.registry import registry
 
 if TYPE_CHECKING:
@@ -56,29 +56,7 @@ def compute_analysis(
         )
         daily = daily.join(df_wellness, on="date", how="left")
 
-    record_columns = [
-        "training_stress",
-        "duration_h",
-        "distance_km",
-        "types",
-        "activity_durations",
-        "activity_tss",
-        "activity_distances",
-        "activity_avg_power",
-        "activity_avg_hr",
-        "activity_max_hr",
-        "activity_elevation_gain",
-        "activity_ftp",
-        "hrv",
-        "resting_hr",
-        "sleep_score",
-        "sleep_quality",
-        "fatigue",
-        "soreness",
-        "stress",
-        "readiness",
-        "comments",
-    ]
+    record_columns = [field.value for field in DailyRecordField]
     record_exprs: list[pl.Expr] = [pl.col("date").dt.to_string("%Y-%m-%d").alias("date")]
     for column in record_columns:
         if column in daily.columns:

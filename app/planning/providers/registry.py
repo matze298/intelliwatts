@@ -85,6 +85,27 @@ class MetricRegistry:
                     contexts.append(context)
         return "\n\n".join(contexts)
 
+    async def get_specialist_context(self, results: dict[str, Any]) -> str:
+        """Collect specialist-only coaching context from flagged providers.
+
+        Returns:
+            Combined context from the specialist providers.
+        """
+        contexts: list[str] = []
+        for provider in self.providers:
+            if not getattr(provider, "is_specialist", False):
+                continue
+            res = results.get(provider.get_name())
+            if res is None:
+                continue
+            coach_context = getattr(provider, "provide_coach_context", None)
+            if coach_context is None:
+                continue
+            context = await coach_context(res)
+            if context:
+                contexts.append(context)
+        return "\n\n".join(contexts)
+
 
 # Global registry instance
 registry = MetricRegistry()

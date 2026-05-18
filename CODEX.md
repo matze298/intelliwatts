@@ -7,6 +7,7 @@ These instructions apply to Codex work in this repository.
 - Use Ruff for linting and formatting. Line length is 120.
 - Treat Ruff errors as advisory, but fix them when practical.
 - Do not add new ignores to `pyproject.toml` or any other config file without explicit user approval.
+- Avoid module-level Ruff ignores. Prefer fixing the lint issue or scoping any temporary ignore to the smallest possible line.
 - Add type hints to all function signatures and to complex variables.
 - Use Google-style docstrings for all modules, classes, and functions.
 - Use `uv` for dependency management.
@@ -63,7 +64,7 @@ These instructions apply to Codex work in this repository.
 - Update `README.md` when setup, usage, or features change.
 - Update `docs/improvement-plan.md` when implementation work changes the project plan.
 - Confirm no files under `docs/superpowers/` are committed.
-- When opening a pull request, use the repository's pull-request template if one is present.
+- When opening a pull request, always use the repository's pull-request template.
 
 ## Known Best Practices
 - Prefer small, focused commits.

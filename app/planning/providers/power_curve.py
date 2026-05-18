@@ -31,6 +31,8 @@ class PowerCurveResult:
 class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
     """Provides power curve context."""
 
+    is_specialist = True
+
     @override
     def get_name(self) -> str:
         """Returns the provider name.
@@ -114,6 +116,14 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
             f"- 20m: {result.peak_20m or '-'}W\n"
             f"- 60m: {result.peak_60m or '-'}W"
         )
+
+    async def provide_coach_context(self, result: PowerCurveResult | None) -> str:
+        """Provides power curve context for the coach prompt.
+
+        Returns:
+            The power curve prompt context.
+        """
+        return await self.provide_context(result)
 
     @override
     def get_dashboard_widget(

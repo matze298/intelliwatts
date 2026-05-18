@@ -92,6 +92,7 @@ def test_save_training_plan_overwrite(session: Session) -> None:
 
 @patch("app.services.planner.IntervalsClient")
 @patch("app.services.planner.stage_workout_delivery")
+@patch("app.services.planner.registry")
 @patch("app.services.planner.build_coach_context")
 @patch("app.services.planner.generate_plan")
 @patch("app.services.planner.derive_weekly_brief")
@@ -108,6 +109,7 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_derive_weekly_brief: MagicMock,
     mock_generate_plan: MagicMock,
     mock_build_coach_context: MagicMock,
+    mock_registry: MagicMock,
     mock_stage_workout_delivery: MagicMock,
     mock_intervals_client: MagicMock,
 ) -> None:
@@ -133,8 +135,8 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_coach_context = MagicMock()
     mock_coach_context.render.return_value = "Coach Context:\n- 42-day weekly summaries"
     mock_coach_context.brief_context = "Recent training is steady."
-    mock_coach_context.specialist_context = "Specialist Context:\n- FTP Trajectory: +8W"
     mock_build_coach_context.return_value = mock_coach_context
+    mock_registry.get_specialist_context = AsyncMock(return_value="FTP Trajectory:\n- Starting FTP: 250.0W")
     mock_user_prompt.return_value = "Formatted prompt"
     mock_generate_plan.return_value = LLMResponse(plan="test plan", prompt=[{"role": "user", "content": "test prompt"}])
     mock_llm_json_to_icu_txt.return_value = "icu workout"
@@ -167,6 +169,7 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     target_week_start = date(2026, 6, 1)
     mock_analysis = MagicMock()
     mock_analysis.provider_results = {"activity": {}}
+    mock_analysis.daily_records = []
     with (
         patch("app.services.planner.Session"),
         patch("app.services.planner._get_analysis", return_value=mock_analysis),
@@ -180,15 +183,15 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
         phase=mock_phase,
         artifact=mock_get_current_artifact.return_value,
         week_start=target_week_start,
-        provider_results=mock_analysis.provider_results,
     )
+    mock_registry.get_specialist_context.assert_awaited_once_with(mock_analysis.provider_results)
     mock_derive_weekly_brief.assert_called_once()
     assert mock_derive_weekly_brief.call_args.kwargs["week_start"] == target_week_start
     mock_user_prompt.assert_called_once_with(
         constraints="- Max Hours: 10.0\n- Max Sessions: 5\n- Primary Goal: Peak for hill climb",
         weekly_brief="Weekly Brief:\n- Goal: Peak for hill climb\n- Current Block: Build",
         coach_context="Coach Context:\n- 42-day weekly summaries",
-        specialist_context="Specialist Context:\n- FTP Trajectory: +8W",
+        specialist_context="FTP Trajectory:\n- Starting FTP: 250.0W",
     )
     assert result["plan"] == "test plan\n\n## intervals.icu workout file (txt)\n\n```text\n\nicu workout\n```"
     assert result["summary"] == "Formatted prompt"

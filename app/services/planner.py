@@ -1,6 +1,6 @@
 """Service for generating the weekly plan."""
 
-# ruff: noqa: RUF029, PLR0914
+from __future__ import annotations
 
 import json
 from dataclasses import dataclass
@@ -21,6 +21,7 @@ from app.models.plan import TrainingPlan
 from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
 from app.planning.llm import LLMRole, generate_plan
 from app.planning.llm_to_icu import extract_workout_json, llm_json_to_icu_txt
+from app.planning.providers.registry import registry
 from app.services.coach_context import build_coach_context
 from app.services.long_term_planner import (
     derive_weekly_brief,
@@ -34,6 +35,7 @@ if TYPE_CHECKING:
     import uuid
 
     from app.intervals.models import AnalysisResult
+    from app.models.plan import TrainingPhase
     from app.models.user import User
 
 
@@ -44,6 +46,38 @@ class PlanData:
     raw_content: str
     workout_data: list[dict[str, Any]]
     prompt_history: list[dict[str, str]]
+
+
+@dataclass(frozen=True)
+class PromptSummaryContext:
+    """Container for the prompt assembly inputs."""
+
+    user: User
+    phase: TrainingPhase
+    weekly_hours: float | None
+    weekly_sessions: int | None
+    weekly_brief: str
+    coach_text: str
+    specialist_text: str
+
+
+def _build_prompt_summary(context: PromptSummaryContext) -> str:
+    """Build the coach prompt payload from the collected planning context.
+
+    Returns:
+        The final prompt string.
+    """
+    constraints_text = (
+        f"- Max Hours: {context.weekly_hours if context.weekly_hours is not None else context.user.weekly_hours}\n"
+        f"- Max Sessions: {context.weekly_sessions if context.weekly_sessions is not None else context.user.weekly_sessions}\n"
+        f"- Primary Goal: {context.phase.primary_goal}"
+    )
+    return user_prompt(
+        constraints=constraints_text,
+        weekly_brief=context.weekly_brief,
+        coach_context=context.coach_text,
+        specialist_context=context.specialist_text,
+    )
 
 
 def save_training_plan(
@@ -194,7 +228,6 @@ async def generate_weekly_plan(
             phase=phase,
             artifact=artifact,
             week_start=target_week_start,
-            provider_results=analysis.provider_results,
         )
         weekly_brief = derive_weekly_brief(
             phase=phase,
@@ -202,21 +235,18 @@ async def generate_weekly_plan(
             analysis_context=coach_context.brief_context,
             week_start=target_week_start,
         )
-
-    # Build the full summary string
-    constraints_text = (
-        f"- Max Hours: {weekly_hours if weekly_hours is not None else user.weekly_hours}\n"
-        f"- Max Sessions: {weekly_sessions if weekly_sessions is not None else user.weekly_sessions}\n"
-        f"- Primary Goal: {phase.primary_goal}"
-    )
-    coach_text = coach_context.render()
-    specialist_text = coach_context.specialist_context
-    full_summary = user_prompt(
-        constraints=constraints_text,
-        weekly_brief=weekly_brief,
-        coach_context=coach_text,
-        specialist_context=specialist_text,
-    )
+        specialist_text = await registry.get_specialist_context(analysis.provider_results)
+        full_summary = _build_prompt_summary(
+            PromptSummaryContext(
+                user=user,
+                phase=phase,
+                weekly_hours=weekly_hours,
+                weekly_sessions=weekly_sessions,
+                weekly_brief=weekly_brief,
+                coach_text=coach_context.render(),
+                specialist_text=specialist_text,
+            )
+        )
 
     llm_response = generate_plan(
         messages=[
@@ -243,7 +273,6 @@ async def generate_weekly_plan(
                 prompt_history=llm_response.prompt,
             ),
         )
-        saved_plan_id = saved_plan.id
         stage_workout_delivery(db_session, saved_plan)
 
     full_plan_text = (
@@ -257,6 +286,6 @@ async def generate_weekly_plan(
         "plan": full_plan_text,
         "summary": full_summary,
         "prompt": llm_response.prompt,
-        "plan_id": saved_plan_id,
+        "plan_id": saved_plan.id,
         "week_start": target_week_start,
     }

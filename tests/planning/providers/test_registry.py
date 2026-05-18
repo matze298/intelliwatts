@@ -97,3 +97,30 @@ async def test_metric_registry_combined_context() -> None:
     provider1.provide_context.assert_called_once_with({"data": 1})
     provider2.provide_context.assert_called_once_with({"data": 2})
     provider3.provide_context.assert_called_once_with({"data": 3})
+
+
+@pytest.mark.asyncio
+async def test_metric_registry_specialist_context() -> None:
+    """Tests that only specialist providers contribute to coach context."""
+    # GIVEN a registry with one specialist and one regular provider.
+    registry = MetricRegistry()
+    results = {"specialist": {"data": 1}, "regular": {"data": 2}}
+
+    specialist = MagicMock(spec=MetricProvider)
+    specialist.get_name.return_value = "specialist"
+    specialist.is_specialist = True
+    specialist.provide_coach_context = AsyncMock(return_value="Specialist Context")
+
+    regular = MagicMock(spec=MetricProvider)
+    regular.get_name.return_value = "regular"
+    regular.is_specialist = False
+
+    registry.register(specialist)
+    registry.register(regular)
+
+    # WHEN requesting the specialist context from the registry.
+    context = await registry.get_specialist_context(results)
+
+    # THEN only the specialist provider should contribute text.
+    assert context == "Specialist Context"
+    specialist.provide_coach_context.assert_awaited_once_with({"data": 1})
