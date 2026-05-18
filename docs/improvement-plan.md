@@ -83,3 +83,69 @@ Enhance the training plan generation by incorporating advanced physiological met
 2. **[Refactor] Logic De-duplication:** Move shared calculation logic (HRV averages, FTP trends) from `analysis.py` into a shared utility or allow providers to contribute data back to `AnalysisResult`.
 3. **[Context] Activity Notes:** Add qualitative text analysis of athlete-entered comments for richer planning context.
 4. **[UI] Theme Consistency:** Ensure the dashboard uses the same request-scoped settings and database preferences as the planner.
+
+## 🧱 Code Maintenance & Refactoring
+These are the engineering hygiene tasks that will keep the repo resilient as planning logic, provider coverage, and prompt assembly continue to grow.
+
+| Effort | Impact | Refactoring effort | Why it matters |
+| --- | --- | --- | --- |
+| Hard | High | Split `app/services/planner.py` into smaller orchestration modules for prompt assembly, analysis loading, plan persistence, and workout delivery. | This file currently coordinates too many responsibilities, which makes planner changes risky and difficult to test in isolation. |
+| Mid | High | Introduce stricter typed result objects for analysis and provider output instead of relying on broad `dict[str, Any]` hand-offs. | Stronger contracts reduce silent breakage when providers evolve and make downstream prompt/context code easier to reason about. |
+| Mid | High | Break `app/services/coach_context.py` into separate normalization, summarization, and rendering units. | The module is doing data shaping and string formatting together, which makes context changes harder to extend cleanly. |
+| Mid | Medium | Replace the hand-maintained provider registration list in `app/planning/providers/registry.py` with a more declarative discovery mechanism or explicit provider grouping. | Provider ordering and registration will become easier to maintain as new metric sources are added. |
+| Easy | Medium | Centralize shared date-window and lookback constants used by coach context, analysis, and weekly planning. | Today the same planning windows are encoded in multiple places, which invites drift and off-by-one inconsistencies. |
+| Easy | Medium | Add reusable test fixtures and factories for analysis, coach context, and planner payloads. | Better test inputs will make regression coverage faster to expand and reduce duplication across the test suite. |
+| Mid | High | Tighten validation at boundaries for Intervals.icu payloads and LLM outputs before they enter planning services. | Defensive boundary checks make the system more bullet-proof when upstream payloads change or model output degrades. |
+
+## 🗺️ Prioritized Architecture & UX Roadmap
+This is the recommended sequence if the goal is to keep the repo technically durable while making the UI feel meaningfully more polished.
+
+### Now
+| Priority | Area | Effort | Impact | Why now |
+| --- | --- | --- | --- | --- |
+| P0 | Split planner orchestration | Hard | High | `app/services/planner.py` is already the main concentration point for change risk. |
+| P0 | Tighten typed contracts | Mid | High | The analysis/provider boundary needs stronger guarantees before more features land on top of it. |
+| P0 | Add boundary validation | Mid | High | Defensive checks reduce the chance that bad upstream data or malformed model output cascades into planning. |
+| P0 | Create shared test fixtures | Easy | Medium | This lowers the cost of every future refactor and makes the rest of the roadmap safer. |
+
+### Next
+| Priority | Area | Effort | Impact | Why next |
+| --- | --- | --- | --- | --- |
+| P1 | Refine coach-context layering | Mid | High | `app/services/coach_context.py` is ready to be separated into reusable normalization and rendering pieces. |
+| P1 | Centralize lookback constants | Easy | Medium | This removes subtle drift between planner, analysis, and summary windows. |
+| P1 | Declarative provider registration | Mid | Medium | Better provider structure will help as more analysis sources are added. |
+| P1 | Design-system pass inside the current stack | Mid | High | The fastest UX gain comes from better hierarchy, spacing, and typography, not a framework switch. |
+
+### Later
+| Priority | Area | Effort | Impact | Why later |
+| --- | --- | --- | --- | --- |
+| P2 | Progressive disclosure and planner-first layout | Mid | High | This is the main UX productization step once the information architecture is stable. |
+| P2 | Developer mode / prompt inspection surface | Mid | Medium | Valuable for support and tuning, but not essential to core user success. |
+| P2 | User prompt customization | Mid | Medium | Useful for power users, but it should remain behind a settings gate until the core experience is stable. |
+
+### Design-System Pass
+Concrete steps for the recommended frontend direction:
+
+1. **Create a shared base layout**
+   - Extract common `<head>`, navigation, container, footer, and theme-switcher behavior into a single base template.
+   - Ensure planner, dashboard, auth, and secrets pages inherit the same shell.
+
+2. **Define a small design token layer**
+   - Standardize spacing, radii, shadows, surface colors, accent colors, and typography in one place.
+   - Make `pro`, `retro`, and `minimal` theme files map to the same semantic tokens where possible.
+
+3. **Build reusable UI primitives**
+   - Create shared Jinja fragments for page headers, section cards, stat rows, alert banners, form groups, and primary/secondary buttons.
+   - Replace repeated ad hoc Tailwind class blocks with these fragments.
+
+4. **Reshape the planner page first**
+   - Give the planner a stronger hierarchy: long-term goal, current week, plan generation, delivery status, and adjustments.
+   - Reduce nested boxes and make the page read as one workflow instead of many independent forms.
+
+5. **Rework the dashboard as a summary surface**
+   - Use wider bands, fewer competing cards, and clearer section separation.
+   - Emphasize trend summaries and direct calls back to the planner.
+
+6. **Polish the interaction states**
+   - Add consistent loading, empty, error, and success states.
+   - Make destructive or uncertain actions visually distinct from normal planning actions.
