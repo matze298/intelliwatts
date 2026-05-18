@@ -1,9 +1,6 @@
-"""Converts the plan JSON to text format usable by intervals.icu."""
+"""Converts weekly plan JSON into structured Intervals.icu workout payloads."""
 
 import json
-import logging
-
-_LOGGER = logging.getLogger(__name__)
 
 
 def extract_workout_json(ai_response: str) -> list[dict]:
@@ -55,23 +52,3 @@ def workout_json_to_icu_txt(workout: dict) -> str:
 
     file_content += "\n\n"
     return file_content
-
-
-def llm_json_to_icu_txt(ai_response: str) -> str:
-    """Parses the AI JSON response and generates .txt workout files for intervals.icu.
-
-    Args:
-        ai_response: The AI response containing the plan and JSON.
-
-    Returns:
-        The workout structured as intervals.icu .txt file.
-    """
-    # 1. Extract JSON
-    try:
-        workouts = extract_workout_json(ai_response)
-    except json.JSONDecodeError:
-        _LOGGER.warning("Failed to parse JSON from AI response.", exc_info=True)
-        return "Failed to parse workout JSON."
-
-    # 2. Generate .txt files from JSON
-    return "\n".join(workout_json_to_icu_txt(workout) for workout in workouts)
