@@ -77,6 +77,24 @@
                     {% endif %}
                 </div>
             </div>
+            <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">Weekly planning limits</h2>
+                        <p class="mt-1 text-sm text-slate-600">Set the weekly caps that shape the plan before you generate it.</p>
+                    </div>
+                </div>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label for="max_hours" class="block text-sm font-medium text-gray-700">Weekly max hours:</label>
+                        <input type="number" id="max_hours" name="max_hours" form="generate-plan-form" value="{% if user %}{{ user.weekly_hours }}{% else %}8{% endif %}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="max_sessions" class="block text-sm font-medium text-gray-700">Weekly max sessions:</label>
+                        <input type="number" id="max_sessions" name="max_sessions" form="generate-plan-form" value="{% if user %}{{ user.weekly_sessions }}{% else %}4{% endif %}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    </div>
+                </div>
+            </div>
         </section>
 
         {% if error %}
@@ -107,7 +125,7 @@
 
         <details class="planner-card mb-6 rounded-xl p-6">
             <summary class="cursor-pointer text-xl font-semibold text-slate-900">Advanced settings</summary>
-            <p class="mt-1 text-sm text-slate-600">Language model, prompt templates, and weekly input limits.</p>
+            <p class="mt-1 text-sm text-slate-600">Language model, prompt templates, and wellness toggle.</p>
             <form id="generate-plan-form" method="post" action="/generate" class="mt-4 space-y-4">
                 <input type="hidden" name="week_start" value="{{ selected_week_start }}">
                 <div>
@@ -125,16 +143,6 @@
                 <div>
                     <label for="user_prompt" class="block text-sm font-medium text-gray-700">User Prompt:</label>
                     <textarea id="user_prompt" name="user_prompt" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">{{ settings.settings.USER_PROMPT }}</textarea>
-                </div>
-                <div class="flex space-x-4">
-                    <div class="flex-1">
-                        <label for="max_hours" class="block text-sm font-medium text-gray-700">Weekly max hours:</label>
-                        <input type="number" id="max_hours" name="max_hours" value="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-                    </div>
-                    <div class="flex-1">
-                        <label for="max_sessions" class="block text-sm font-medium text-gray-700">Weekly max sessions:</label>
-                        <input type="number" id="max_sessions" name="max_sessions" value="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-                    </div>
                 </div>
                 <div class="flex items-center">
                     <input type="checkbox" id="use_wellness" name="use_wellness" checked class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
