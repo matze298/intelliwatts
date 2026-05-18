@@ -53,6 +53,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] **Dynamic Plans:** Allow for mid-week updates of the plan based on requests.
 - [x] **Week-specific Restore:** The planner page can select a planning week and restores the saved workout plan for that exact week.
 - [x] **Persistent Preferences:** User training volume (hours/sessions) now persists in the database.
+- [x] **Weekly Limits Surface:** Weekly max hours now lives in the main planner control area so it stays visible during weekly planning.
 - [ ] **Weekly Availability Toggles:** Replace the weekly max sessions input with per-day availability toggles so the planner can model real weekly capacity instead of a single session cap.
 - [ ] **Adaptive Re-planning:** Compare planned vs. actual training data daily/weekly; trigger automated LLM re-plan on deviations.
 
