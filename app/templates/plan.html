@@ -28,35 +28,81 @@
         <h1 class="text-3xl font-bold text-gray-800 mb-6">🚴 AI Training Plan</h1>
 
         {% if user %}
-        <div class="mb-8 grid gap-4 md:grid-cols-3">
-            <div class="planner-card rounded-xl p-5 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Primary goal</p>
-                <p class="mt-2 text-lg font-semibold text-slate-900">{{ primary_goal or "Not set yet" }}</p>
-            </div>
-            <div class="planner-card rounded-xl p-5 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Planning week</p>
-                <p class="mt-2 text-lg font-semibold text-slate-900">
-                    {% if selected_week_start %}
-                    {{ selected_week_start }}
+        <section class="planner-card mb-6 rounded-xl p-6">
+            <div class="grid gap-4 lg:grid-cols-3 lg:items-end">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Current plan status</p>
+                    <p class="mt-2 text-lg font-semibold text-slate-900">
+                        {% if delivery_status %}
+                        {{ delivery_status }}
+                        {% elif plan_html %}
+                        Ready to review
+                        {% else %}
+                        Not staged
+                        {% endif %}
+                    </p>
+                    <p class="mt-1 text-sm text-slate-600">Review the selected week before generating or publishing.</p>
+                </div>
+                <div class="space-y-2">
+                    <p class="block text-sm font-medium text-slate-700">Planning week</p>
+                    {% if week_options %}
+                    <form method="get" action="/">
+                        <select id="week_start_view" name="week_start" onchange="this.form.submit()" class="block w-full rounded-md border-blue-300 px-3 py-3 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500">
+                            {% for option in week_options %}
+                            <option value="{{ option.week_start.isoformat() }}" {% if option.week_start.isoformat() == selected_week_start %}selected{% endif %}>{{ option.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
                     {% else %}
-                    Auto-selected
+                    <p class="text-base font-semibold text-slate-900">{{ selected_week_start or "Auto-selected" }}</p>
                     {% endif %}
-                </p>
-            </div>
-            <div class="planner-card rounded-xl p-5 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Delivery</p>
-                <p class="mt-2 text-lg font-semibold text-slate-900">
-                    {% if delivery_status %}
-                    {{ delivery_status }}
-                    {% else %}
-                    Not staged
+                </div>
+                <div class="flex flex-wrap gap-2 lg:justify-end">
+                    <button type="submit" form="generate-plan-form" class="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        Generate Plan
+                    </button>
+                    {% if plan_html %}
+                    <button type="submit" form="publish-workout-form" class="inline-flex justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                        {% if delivery_status == "published" %}
+                        Republish Workout
+                        {% elif delivery_status == "publishing" %}
+                        Publishing...
+                        {% else %}
+                        Publish Workout
+                        {% endif %}
+                    </button>
+                    <button type="submit" form="update-plan-form" class="inline-flex justify-center rounded-md border border-transparent bg-green-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                        Update Plan
+                    </button>
                     {% endif %}
-                </p>
+                </div>
             </div>
+            <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">Weekly planning limits</h2>
+                        <p class="mt-1 text-sm text-slate-600">Set the weekly caps that shape the plan before you generate it.</p>
+                    </div>
+                </div>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label for="max_hours" class="block text-sm font-medium text-gray-700">Weekly max hours:</label>
+                        <input type="number" id="max_hours" name="max_hours" form="generate-plan-form" value="{% if user %}{{ user.weekly_hours }}{% else %}8{% endif %}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="max_sessions" class="block text-sm font-medium text-gray-700">Weekly max sessions:</label>
+                        <input type="number" id="max_sessions" name="max_sessions" form="generate-plan-form" value="{% if user %}{{ user.weekly_sessions }}{% else %}4{% endif %}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {% if error %}
+        <div class="mb-6 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {{ error }}
         </div>
         {% endif %}
 
-        {% if user %}
         <section class="planner-card mb-6 rounded-xl p-6">
             <div class="flex items-start justify-between gap-4">
                 <div>
@@ -64,11 +110,6 @@
                     <p class="mt-1 text-sm text-slate-600">Set the long-term target that anchors weekly planning.</p>
                 </div>
             </div>
-            {% if error %}
-            <div class="mt-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {{ error }}
-            </div>
-            {% endif %}
             <form method="post" action="/long-term-plan" class="mt-4 space-y-4">
                 <div>
                     <label for="primary_goal" class="block text-sm font-medium text-gray-700">Primary goal:</label>
@@ -78,93 +119,50 @@
                     <label for="target_date" class="block text-sm font-medium text-gray-700">Target date:</label>
                     <input type="date" id="target_date" name="target_date" value="{{ target_date or '' }}" required class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
                 </div>
-                <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-slate-700 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500">Save Long-term Goal</button>
+                <button type="submit" class="inline-flex justify-center rounded-md border border-transparent bg-slate-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2">Save Long-term Goal</button>
             </form>
         </section>
-        {% endif %}
 
-        {% if week_options %}
-        <section class="planner-card planner-card-accent mb-6 rounded-xl p-6">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <h2 class="text-xl font-semibold text-slate-900">Planning week</h2>
-                    <p class="mt-1 text-sm text-slate-600">Switch the active week without losing the saved plan for that week.</p>
-                </div>
-            </div>
-            <form method="get" action="/" class="mt-4">
-                <div class="flex flex-col gap-3 sm:flex-row">
-                    <select id="week_start_view" name="week_start" onchange="this.form.submit()" class="block w-full pl-3 pr-10 py-3 text-base border-blue-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
-                        {% for option in week_options %}
-                        <option value="{{ option.week_start.isoformat() }}" {% if option.week_start.isoformat() == selected_week_start %}selected{% endif %}>{{ option.label }}</option>
-                        {% endfor %}
-                    </select>
-                    <button type="submit" class="inline-flex justify-center py-3 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Show Week</button>
-                </div>
-            </form>
-        </section>
-        {% endif %}
-
-        <section class="planner-card mb-6 rounded-xl p-6">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <h2 class="text-xl font-semibold text-slate-900">Plan inputs</h2>
-                    <p class="mt-1 text-sm text-slate-600">Tune the generation settings before asking for a new weekly plan.</p>
-                </div>
-            </div>
-            <form method="post" action="/generate" class="mt-4 space-y-4">
+        <details class="planner-card mb-6 rounded-xl p-6">
+            <summary class="cursor-pointer text-xl font-semibold text-slate-900">Advanced settings</summary>
+            <p class="mt-1 text-sm text-slate-600">Language model, prompt templates, and wellness toggle.</p>
+            <form id="generate-plan-form" method="post" action="/generate" class="mt-4 space-y-4">
                 <input type="hidden" name="week_start" value="{{ selected_week_start }}">
                 <div>
-                <label for="language_model" class="block text-sm font-medium text-gray-700">Large Language model:</label>
-                <select id="language_model" name="language_model" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
-                    {% for model in settings.models %}
-                    <option value="{{ model }}" {% if model==settings.settings.LANGUAGE_MODEL %}selected{% endif %}>{{ model
-                        }}
-                    </option>
-                    {% endfor %}
-                </select>
+                    <label for="language_model" class="block text-sm font-medium text-gray-700">Large Language model:</label>
+                    <select id="language_model" name="language_model" class="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm">
+                        {% for model in settings.models %}
+                        <option value="{{ model }}" {% if model==settings.settings.LANGUAGE_MODEL %}selected{% endif %}>{{ model }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div>
-                <label for="system_prompt" class="block text-sm font-medium text-gray-700">System Prompt:</label>
-                <textarea id="system_prompt" name="system_prompt" rows="8"
-                    class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">{{ settings.settings.SYSTEM_PROMPT }}</textarea>
+                    <label for="system_prompt" class="block text-sm font-medium text-gray-700">System Prompt:</label>
+                    <textarea id="system_prompt" name="system_prompt" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">{{ settings.settings.SYSTEM_PROMPT }}</textarea>
                 </div>
                 <div>
-                <label for="user_prompt" class="block text-sm font-medium text-gray-700">User Prompt:</label>
-                <textarea id="user_prompt" name="user_prompt" rows="8"
-                    class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">{{ settings.settings.USER_PROMPT }}</textarea>
-                </div>
-                <div class="flex space-x-4">
-                    <div class="flex-1">
-                        <label for="max_hours" class="block text-sm font-medium text-gray-700">Weekly max hours:</label>
-                        <input type="number" id="max_hours" name="max_hours" value="8" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                    </div>
-                    <div class="flex-1">
-                        <label for="max_sessions" class="block text-sm font-medium text-gray-700">Weekly max sessions:</label>
-                        <input type="number" id="max_sessions" name="max_sessions" value="4" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                    </div>
+                    <label for="user_prompt" class="block text-sm font-medium text-gray-700">User Prompt:</label>
+                    <textarea id="user_prompt" name="user_prompt" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">{{ settings.settings.USER_PROMPT }}</textarea>
                 </div>
                 <div class="flex items-center">
-                    <input type="checkbox" id="use_wellness" name="use_wellness" checked
-                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <input type="checkbox" id="use_wellness" name="use_wellness" checked class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                     <label for="use_wellness" class="ml-2 block text-sm text-gray-700">
                         Include Readiness & Recovery (Wellness) Data
                     </label>
                 </div>
-                <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Generate Plan</button>
+                <p class="text-sm text-slate-500">Use the Generate Plan button above after adjusting these settings.</p>
             </form>
-        </section>
+        </details>
 
         {% if long_term_summary_html %}
-        <section class="planner-card mb-6 rounded-xl p-6">
-            <details open>
-                <summary class="text-xl font-semibold text-gray-700 cursor-pointer hover:text-blue-600 outline-none">
-                    Long-term plan
-                </summary>
-                <div class="prose max-w-none mt-4">
-                    {{ long_term_summary_html | safe }}
-                </div>
-            </details>
-        </section>
+        <details class="planner-card mb-6 rounded-xl p-6">
+            <summary class="cursor-pointer text-xl font-semibold text-gray-700 hover:text-blue-600 outline-none">
+                Long-term plan
+            </summary>
+            <div class="prose max-w-none mt-4">
+                {{ long_term_summary_html | safe }}
+            </div>
+        </details>
         {% endif %}
 
         {% if plan_html %}
@@ -194,17 +192,8 @@
                         </p>
                     </div>
                 </div>
-                <form method="post" action="/publish-workout" class="mt-4">
+                <form id="publish-workout-form" method="post" action="/publish-workout" class="mt-4">
                     <input type="hidden" name="week_start" value="{{ selected_week_start }}">
-                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
-                        {% if delivery_status == "published" %}
-                        Republish Workout
-                        {% elif delivery_status == "publishing" %}
-                        Publishing...
-                        {% else %}
-                        Publish Workout
-                        {% endif %}
-                    </button>
                 </form>
                 {% if delivery_last_error %}
                 <p class="mt-3 text-sm text-red-700">Last error: {{ delivery_last_error }}</p>
@@ -212,14 +201,13 @@
             </div>
             <div class="planner-card rounded-xl p-6">
                 <h3 class="text-lg font-semibold text-slate-900">Adjust plan</h3>
-                <form method="post" action="/update" class="mt-4 space-y-4">
+                <p class="mt-1 text-sm text-slate-600">Write feedback here, then use the top bar to apply it to the selected week.</p>
+                <form id="update-plan-form" method="post" action="/update" class="mt-4 space-y-4">
                     <input type="hidden" name="week_start" value="{{ selected_week_start }}">
                     <div>
                         <label for="feedback" class="block text-sm font-medium text-gray-700">What would you like to change?</label>
-                        <textarea id="feedback" name="feedback" rows="2" placeholder="e.g. Make Tuesday harder, or I have more time on Sunday"
-                            class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+                        <textarea id="feedback" name="feedback" rows="2" placeholder="e.g. Make Tuesday harder, or I have more time on Sunday" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
                     </div>
-                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">Update Plan</button>
                 </form>
             </div>
         </section>
@@ -248,6 +236,7 @@
                 {{ prompt | safe }}
             </div>
         </details>
+        {% endif %}
         {% endif %}
     </div>
 </body>

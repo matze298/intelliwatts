@@ -424,7 +424,8 @@ def test_home_page_renders_long_term_goal_inputs_and_current_summary(
     assert "Long-term plan" in body
     assert "Current macro focus." in body
     assert 'name="week_start"' in body
-    assert body.index('name="primary_goal"') < body.index('name="max_hours"')
+    assert body.index('name="max_hours"') < body.index("Advanced settings")
+    assert body.index('name="max_sessions"') < body.index("Advanced settings")
 
 
 @pytest.mark.asyncio
