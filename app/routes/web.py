@@ -28,6 +28,7 @@ from app.models.user import User
 from app.services.long_term_planner import (
     LongTermWeekOption,
     generate_long_term_plan_artifact,
+    get_active_phase,
     get_current_long_term_plan_artifact,
     get_long_term_week_options,
     is_week_in_long_term_plan,
@@ -83,9 +84,7 @@ def _get_active_phase(session: Session, user: User | None) -> TrainingPhase | No
     if not user:
         return None
 
-    return session.exec(
-        select(TrainingPhase).where(TrainingPhase.user_id == user.id, TrainingPhase.status == "active")
-    ).first()
+    return get_active_phase(session, user.id)
 
 
 def _phase_form_values(phase: TrainingPhase | None) -> tuple[str, str]:
