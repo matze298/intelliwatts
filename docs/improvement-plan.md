@@ -53,6 +53,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] **Dynamic Plans:** Allow for mid-week updates of the plan based on requests.
 - [x] **Week-specific Restore:** The planner page can select a planning week and restores the saved workout plan for that exact week.
 - [x] **Persistent Preferences:** User training volume (hours/sessions) now persists in the database.
+- [x] **Read-only Startup Load:** Loading the planner now reads the active long-term phase from the database instead of creating a placeholder default goal during startup or login.
 - [x] **Weekly Limits Surface:** Weekly max hours now lives in the main planner control area so it stays visible during weekly planning.
 - [ ] **Weekly Availability Toggles:** Replace the weekly max sessions input with per-day availability toggles so the planner can model real weekly capacity instead of a single session cap.
 - [ ] **Adaptive Re-planning:** Compare planned vs. actual training data daily/weekly; trigger automated LLM re-plan on deviations.
@@ -128,26 +129,16 @@ This is the recommended sequence if the goal is to keep the repo technically dur
 ### Design-System Pass
 Concrete steps for the recommended frontend direction:
 
-1. **Create a shared base layout**
-   - Extract common `<head>`, navigation, container, footer, and theme-switcher behavior into a single base template.
-   - Ensure planner, dashboard, auth, and secrets pages inherit the same shell.
-
-2. **Define a small design token layer**
-   - Standardize spacing, radii, shadows, surface colors, accent colors, and typography in one place.
-   - Make `pro`, `retro`, and `minimal` theme files map to the same semantic tokens where possible.
-
-3. **Build reusable UI primitives**
-   - Create shared Jinja fragments for page headers, section cards, stat rows, alert banners, form groups, and primary/secondary buttons.
-   - Replace repeated ad hoc Tailwind class blocks with these fragments.
-
-4. **Reshape the planner page first**
-   - Give the planner a stronger hierarchy: long-term goal, current week, plan generation, delivery status, and adjustments.
-   - Reduce nested boxes and make the page read as one workflow instead of many independent forms.
-
-5. **Rework the dashboard as a summary surface**
-   - Use wider bands, fewer competing cards, and clearer section separation.
-   - Emphasize trend summaries and direct calls back to the planner.
-
-6. **Polish the interaction states**
-   - Add consistent loading, empty, error, and success states.
-   - Make destructive or uncertain actions visually distinct from normal planning actions.
+- [ ] Create a shared base layout for the common `<head>`, navigation, container, footer, and theme-switcher behavior.
+- [ ] Ensure planner, dashboard, auth, and secrets pages inherit the same shell.
+- [ ] Define a small design token layer for spacing, radii, shadows, surface colors, accent colors, and typography.
+- [ ] Make `pro`, `retro`, and `minimal` theme files map to the same semantic tokens where possible.
+- [x] Build reusable Jinja fragments for page headers, stat widgets, and the theme switcher.
+- [ ] Build reusable Jinja fragments for alert banners, form groups, and primary/secondary buttons.
+- [ ] Replace repeated ad hoc Tailwind class blocks with the shared fragments.
+- [x] Reshape the planner page first so the hierarchy is long-term goal, current week, plan generation, delivery status, and adjustments.
+- [x] Reduce nested boxes so the page reads as one workflow instead of many independent forms.
+- [x] Rework the dashboard as a summary surface with wider bands, fewer competing cards, and clearer section separation.
+- [x] Emphasize trend summaries and direct calls back to the planner.
+- [ ] Polish the interaction states so loading, empty, error, and success states are consistent across the app.
+- [ ] Make destructive or uncertain actions visually distinct from normal planning actions.
