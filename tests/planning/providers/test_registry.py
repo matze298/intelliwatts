@@ -4,8 +4,10 @@ from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 
+from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider, FTPTrajectoryResult
 from app.planning.providers.interfaces import MetricProvider
 from app.planning.providers.registry import MetricRegistry
+from app.planning.providers.weekly_volume import WeeklyVolumeProvider, WeeklyVolumeResult
 
 
 def test_metric_registry_registration() -> None:
@@ -104,13 +106,21 @@ async def test_metric_registry_specialist_context() -> None:
     """Tests that only specialist providers contribute to coach context."""
     # GIVEN a registry with one specialist and one regular provider.
     registry = MetricRegistry()
-    results = {"specialist": {"data": 1}, "regular": {"data": 2}}
-    specialist = MagicMock(spec=MetricProvider)
-    specialist.get_name.return_value = "specialist"
-    specialist.provide_coach_context = AsyncMock(return_value="Specialist Context")
+    specialist = FTPTrajectoryProvider()
+    regular = WeeklyVolumeProvider()
 
-    regular = MagicMock(spec=MetricProvider)
-    regular.get_name.return_value = "regular"
+    results = {
+        specialist.get_name(): FTPTrajectoryResult(
+            dates=["2026-05-01", "2026-05-08"],
+            ftp_values=[250.0, 255.0],
+        ),
+        regular.get_name(): WeeklyVolumeResult(
+            weeks=["01.05", "08.05"],
+            duration_by_type={"Road": [8.0, 9.0]},
+            tss_by_type={"Road": [320.0, 340.0]},
+            has_data=True,
+        ),
+    }
 
     registry.register(specialist)
     registry.register(regular)
@@ -119,5 +129,6 @@ async def test_metric_registry_specialist_context() -> None:
     context = await registry.get_specialist_context(results)
 
     # THEN only the specialist provider should contribute text.
-    assert context == "Specialist Context"
-    specialist.provide_coach_context.assert_awaited_once_with({"data": 1})
+    assert context == (
+        "FTP Trajectory (Last 2 days):\n- Starting FTP: 250.0W\n- Current FTP: 255.0W\n- Total Change: +5.0W (+2.0%)"
+    )
