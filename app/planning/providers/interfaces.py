@@ -80,10 +80,10 @@ class MetricProvider(Protocol[T_co]):
 
 
 @runtime_checkable
-class CoachContextProvider(Protocol):
-    """Protocol for providers that contribute specialist coaching context."""
+class CoachContextProvider(MetricProvider[T_co], Protocol[T_co]):
+    """Protocol for metric providers that also contribute specialist coaching context."""
 
-    async def provide_coach_context(self, result: object) -> str:
+    async def provide_coach_context(self, result: T_co) -> str:
         """Provide specialist context for the coach prompt.
 
         Returns:
