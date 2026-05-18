@@ -261,3 +261,26 @@ async def test_update_training_plan_uses_history(
     assert len(artifacts) == 1
     assert artifacts[0].id == artifact_id
     mock_stage_workout_delivery.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_update_training_plan_fallback_uses_selected_week(session: Session) -> None:
+    """Updating a missing selected week should generate that same week."""
+    # GIVEN a user, active phase, and selected week without a saved plan
+    user = User(id=uuid.uuid4(), email="fallback@example.com", password_hash="hash")  # noqa: S106
+    session.add(user)
+    phase = get_or_create_active_phase(session, user.id)
+    selected_week = date(2026, 6, 1)
+
+    # WHEN updating the selected week without an existing plan
+    with (
+        patch("app.services.planner.Session", return_value=session),
+        patch("app.services.planner.generate_weekly_plan", new_callable=AsyncMock) as mock_generate_weekly_plan,
+    ):
+        mock_generate_weekly_plan.return_value = {"plan": "generated", "week_start": selected_week}
+        result = await update_training_plan(user, "make it easier", week_start=selected_week)
+
+    # THEN the fallback generation preserves the selected week
+    mock_generate_weekly_plan.assert_awaited_once_with(user, ANY, week_start=selected_week)
+    assert result["week_start"] == selected_week
+    assert phase.user_id == user.id

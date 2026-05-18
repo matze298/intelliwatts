@@ -45,7 +45,13 @@ router = APIRouter(tags=["web"])
 
 templates = Jinja2Templates(directory="app/templates")
 
-_WEEK_SELECTION_ERROR = "Selected planning week must be part of the active long-term plan."
+
+class WeekSelectionError(ValueError):
+    """Raised when the selected week is outside the active long-term plan."""
+
+    def __init__(self) -> None:
+        """Create the standard selected-week validation error."""
+        super().__init__("Selected planning week must be part of the active long-term plan.")
 
 
 class WeekSelection(NamedTuple):
@@ -55,7 +61,7 @@ class WeekSelection(NamedTuple):
     target_date: str
     week_options: list[LongTermWeekOption]
     selected_week_start: date | None
-    error: str | None
+    error: WeekSelectionError | None
 
 
 def _today() -> date:
@@ -111,7 +117,7 @@ def _resolve_week_selection(session: Session, user: User, raw_week_start: str) -
         try:
             selected_week_start = date.fromisoformat(raw_week_start)
         except ValueError:
-            return WeekSelection(primary_goal, target_date, week_options, None, _WEEK_SELECTION_ERROR)
+            return WeekSelection(primary_goal, target_date, week_options, None, WeekSelectionError())
     elif week_options:
         selected_week_start = week_options[0].week_start
 
@@ -125,7 +131,7 @@ def _resolve_week_selection(session: Session, user: User, raw_week_start: str) -
             week_start=selected_week_start,
         )
     ):
-        return WeekSelection(primary_goal, target_date, week_options, selected_week_start, _WEEK_SELECTION_ERROR)
+        return WeekSelection(primary_goal, target_date, week_options, selected_week_start, WeekSelectionError())
     return WeekSelection(primary_goal, target_date, week_options, selected_week_start, None)
 
 
@@ -579,7 +585,7 @@ async def generate(
                 target_date=week_selection.target_date,
                 week_options=week_selection.week_options,
                 selected_week_start=raw_week_start,
-                error=week_selection.error,
+                error=str(week_selection.error),
             )
 
     result = await generate_weekly_plan(
