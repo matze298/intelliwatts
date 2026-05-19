@@ -1,0 +1,16 @@
+{% macro render_state_banner(title, tone="neutral", extra_classes="", body_class="mt-2") -%}
+{% set tone_classes = {
+    "neutral": "rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700",
+    "warning": "rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900",
+    "error": "rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-red-700",
+    "empty": "rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-slate-600",
+} %}
+<div class="{{ tone_classes.get(tone, tone_classes['neutral']) }} {{ extra_classes }}">
+    {% if title %}
+    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{{ title }}</p>
+    {% endif %}
+    <div class="{{ body_class }}">
+        {{ caller() }}
+    </div>
+</div>
+{%- endmacro %}

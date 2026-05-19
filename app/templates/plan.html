@@ -1,5 +1,6 @@
 {% from "macros/controls.html" import render_action_button, render_week_select %}
 {% from "macros/disclosure.html" import render_disclosure %}
+{% from "macros/state.html" import render_state_banner %}
 {% from "macros/theme.html" import render_theme_switcher %}
 <!DOCTYPE html>
 <html>
@@ -81,7 +82,8 @@
                     {{ render_action_button(
                         "Republish Workout" if delivery_status == "published" else "Publishing..." if delivery_status == "publishing" else "Publish Workout",
                         form="publish-workout-form",
-                        tone="success",
+                        tone="warning",
+                        disabled=delivery_status == "publishing",
                         extra_classes="px-4 py-3 text-sm"
                     ) }}
                     {{ render_action_button("Update Plan", form="update-plan-form", tone="success-subtle", extra_classes="px-4 py-3 text-sm") }}
@@ -109,9 +111,9 @@
         </section>
 
         {% if error %}
-        <div class="mb-6 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {% call render_state_banner("Validation error", tone="error", extra_classes="mb-6", body_class="mt-1 text-sm") %}
             {{ error }}
-        </div>
+        {% endcall %}
         {% endif %}
 
         {% call render_disclosure("Advanced settings", details_class="planner-card mb-6 rounded-xl p-6") %}
@@ -183,7 +185,9 @@
                     <input type="hidden" name="week_start" value="{{ selected_week_start }}">
                 </form>
                 {% if delivery_last_error %}
-                <p class="mt-3 text-sm text-red-700">Last error: {{ delivery_last_error }}</p>
+                {% call render_state_banner("Delivery error", tone="error", extra_classes="mt-4", body_class="mt-1 text-sm") %}
+                    {{ delivery_last_error }}
+                {% endcall %}
                 {% endif %}
             </div>
             <div class="planner-card rounded-xl p-6">
@@ -200,7 +204,9 @@
         </section>
         {% else %}
         <h2 class="text-2xl font-semibold text-gray-700 mb-4 mt-8">Weekly Training Plan</h2>
-        <p class="text-gray-600">No plan generated yet.</p>
+        {% call render_state_banner("No weekly plan yet", tone="empty") %}
+            Generate a plan to see the week here.
+        {% endcall %}
         {% endif %}
 
         {% if summary %}
