@@ -153,6 +153,23 @@ button:hover {
     letter-spacing: 0.08em;
 }
 
+.control-field {
+    background-color: #0d0d0d;
+    border: 1px solid #ff00ff;
+    border-radius: 0.5rem;
+    color: #00ffff;
+    font: inherit;
+    padding: 10px;
+    text-shadow: 0 0 2px #00ffff;
+    width: 100%;
+}
+
+.control-field:focus {
+    outline: none;
+    border-color: #ff00ff;
+    box-shadow: 0 0 8px #ff00ff;
+}
+
 .control-select,
 .control-range,
 .control-theme-switcher {

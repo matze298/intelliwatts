@@ -514,9 +514,6 @@
   .border-red-300 {
     border-color: var(--color-red-300);
   }
-  .border-slate-200 {
-    border-color: var(--color-slate-200);
-  }
   .border-slate-700 {
     border-color: var(--color-slate-700);
   }
@@ -555,9 +552,6 @@
   }
   .bg-rose-500 {
     background-color: var(--color-rose-500);
-  }
-  .bg-slate-50 {
-    background-color: var(--color-slate-50);
   }
   .bg-slate-500 {
     background-color: var(--color-slate-500);
@@ -1070,6 +1064,20 @@ p {
   font-size: 0.875rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
+}
+.control-field {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  color: #334155;
+  font: inherit;
+  padding: 8px 12px;
+  width: 100%;
+}
+.control-field:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 .control-select, .control-range, .control-theme-switcher {
   width: auto;

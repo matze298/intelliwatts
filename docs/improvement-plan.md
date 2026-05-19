@@ -40,6 +40,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [ ] **Supportive dashboard, not competing dashboard:** Keep the dashboard summary-led and trend-focused, with clear links back into the planner for action. It should explain progress, not try to replace the planning surface.
 - [x] **Cleaner visual hierarchy:** Reduced card-on-card nesting on the planner page, used clearer full-width bands, and kept stronger color reserved for state changes, warnings, and key decisions.
 - [x] **More scan-friendly controls:** Added shared control macros and semantic state classes for planner actions, filters, and view switches so the interface feels faster to operate and easier to extend across themes.
+- [x] **Weekly planning limits alignment:** Replaced the white weekly-limits panel with the shared control surface and field styles so it matches the rest of the planner in all themes.
 - [ ] **Progressive disclosure:** Show the essentials first, then reveal deeper metrics and comparison details on demand. Avoid overwhelming the user with every metric at once.
 - [ ] **More trustworthy comparisons:** Present planned vs. completed, recovery vs. baseline, and week-over-week trend deltas in a format that is easy to scan and hard to misread.
 - [ ] **Developer's view:** Add a settings-gated developer mode that is hidden by default and only enabled locally or by explicit opt-in. It should expose debugging details such as the exact LLM prompt, prompt sections, derived context packet, and analysis payloads.
