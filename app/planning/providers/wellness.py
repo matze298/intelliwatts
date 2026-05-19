@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, cast, override
 
 import polars as pl
 
-from app.planning.providers.interfaces import DashboardWidget, MetricProvider
+from app.planning.providers.interfaces import DashboardWidget, DashboardWidgetGroup, MetricProvider
 
 if TYPE_CHECKING:
     from app.intervals.client import IntervalsClient
@@ -179,6 +179,7 @@ class WellnessProvider(MetricProvider[WellnessResult | None]):
             name="wellness",
             title="Wellness Trends",
             custom_template="widgets/wellness_chart.html",
+            display_group=DashboardWidgetGroup.MAIN,
             data={
                 "dates": result.dates,
                 "hrv": result.hrv,

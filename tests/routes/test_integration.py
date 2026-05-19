@@ -358,6 +358,7 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
             "name": "wellness",
             "title": "Wellness Trends",
             "custom_template": "widgets/wellness_chart.html",
+            "display_group": "main",
             "data": {
                 "dates": ["2026-04-01"],
                 "hrv": [60.0],
@@ -367,6 +368,18 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
                 "avg_hrv": 60.0,
                 "avg_resting_hr": 50.0,
                 "hrv_trend": "stable",
+            },
+        },
+        {
+            "name": "pmc",
+            "title": "Performance Management",
+            "custom_template": "widgets/pmc_chart.html",
+            "display_group": "main",
+            "data": {
+                "dates": ["2026-04-01"],
+                "ctl": [42.0],
+                "atl": [50.0],
+                "tsb": [-8.0],
             },
         },
         {
@@ -450,9 +463,13 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     assert "control-surface" in body_text
     assert "control-disclosure" in body_text
     assert "More charts and comparisons" in body_text
+    assert "requestAnimationFrame(resizeCharts)" in body_text
     assert "control-toggle-group" in body_text
     assert "Recent Training" in body_text
+    assert "Performance Management" in body_text
     assert "Wellness Trends" in body_text
+    assert body_text.index("Performance Management") < body_text.index("More charts and comparisons")
+    assert body_text.index("Wellness Trends") < body_text.index("More charts and comparisons")
     assert "100 TSS" in body_text
     assert "Training Intensity" in body_text
     assert "Highly Polarized" in body_text

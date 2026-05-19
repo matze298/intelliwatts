@@ -1,6 +1,7 @@
 """Base classes for metric providers."""
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
 
 if TYPE_CHECKING:
@@ -9,6 +10,13 @@ if TYPE_CHECKING:
     from app.intervals.client import IntervalsClient
 
 T_co = TypeVar("T_co", covariant=True)
+
+
+class DashboardWidgetGroup(StrEnum):
+    """Display grouping for dashboard widgets."""
+
+    MAIN = "main"
+    ADDITIONAL = "additional"
 
 
 @dataclass(frozen=True)
@@ -21,6 +29,7 @@ class DashboardWidget:
     trend: str | None = None
     trend_positive: bool | None = None
     custom_template: str | None = None
+    display_group: DashboardWidgetGroup = DashboardWidgetGroup.ADDITIONAL
     data: dict[str, Any] | None = None
 
 

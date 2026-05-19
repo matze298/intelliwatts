@@ -52,13 +52,22 @@
             {% endfor %}
         </div>
 
-        {% if analysis.widgets | selectattr("custom_template") | list %}
+        {% set primary_custom_widgets = analysis.widgets | selectattr("custom_template") | selectattr("display_group", "equalto", "main") | list %}
+        {% set secondary_custom_widgets = analysis.widgets | selectattr("custom_template") | rejectattr("display_group", "equalto", "main") | list %}
+
+        {% if primary_custom_widgets %}
+        <div class="grid grid-cols-1 gap-12 mb-12">
+            {% for widget in primary_custom_widgets %}
+                {{ render_widget(widget) }}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if secondary_custom_widgets %}
         {% call render_disclosure("More charts and comparisons", details_class="control-surface mb-12") %}
             <div class="grid grid-cols-1 gap-12">
-                {% for widget in analysis.widgets %}
-                    {% if widget.custom_template %}
+                {% for widget in secondary_custom_widgets %}
                         {{ render_widget(widget) }}
-                    {% endif %}
                 {% endfor %}
             </div>
         {% endcall %}
@@ -86,6 +95,22 @@
                 const selectedDays = event.target.value;
                 window.location.href = `/dashboard?days=${selectedDays}`;
             });
+
+            const resizeCharts = function () {
+                window.dispatchEvent(new Event('resize'));
+            };
+
+            document.querySelectorAll('.control-disclosure').forEach(function (details) {
+                details.addEventListener('toggle', function () {
+                    if (details.open) {
+                        window.requestAnimationFrame(resizeCharts);
+                    }
+                });
+            });
+
+            if (document.querySelector('.control-disclosure[open]')) {
+                window.requestAnimationFrame(resizeCharts);
+            }
         });
     </script>
 </body>
