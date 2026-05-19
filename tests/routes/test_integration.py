@@ -448,6 +448,8 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     body_text = bytes(resp.body).decode()
     assert "Performance Center" in body_text
     assert "control-surface" in body_text
+    assert "control-disclosure" in body_text
+    assert "More charts and comparisons" in body_text
     assert "control-toggle-group" in body_text
     assert "Recent Training" in body_text
     assert "Wellness Trends" in body_text
@@ -786,6 +788,7 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
     body = bytes(resp.body).decode()
     assert "Long-term plan" in body
     assert "Current macro focus." in body
+    assert "control-disclosure" in body
     assert "Advanced settings" in body
     assert "control-button" in body
     assert "control-theme-switcher" in body
@@ -814,6 +817,7 @@ def test_home_page_renders_selected_week_plan(selected_week_route_context: Selec
     assert "Current Week Plan" not in body
     assert body.index("Current plan status") < body.index("Planning week") < body.index("Generate Plan")
     assert body.index("Generate Plan") < body.index("Publish Workout") < body.index("Update Plan")
+    assert "control-disclosure" in body
     assert "Advanced settings" in body
     assert "control-button" in body
     assert "control-select" in body

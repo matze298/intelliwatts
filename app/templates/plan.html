@@ -1,4 +1,5 @@
 {% from "macros/controls.html" import render_action_button, render_week_select %}
+{% from "macros/disclosure.html" import render_disclosure %}
 {% from "macros/theme.html" import render_theme_switcher %}
 <!DOCTYPE html>
 <html>
@@ -113,8 +114,7 @@
         </form>
         </section>
 
-        <details class="planner-card mb-6 rounded-xl p-6">
-            <summary class="control-summary">Advanced settings</summary>
+        {% call render_disclosure("Advanced settings", details_class="planner-card mb-6 rounded-xl p-6") %}
             <p class="mt-1 text-sm text-slate-600">Language model, prompt templates, and wellness toggle.</p>
             <form id="generate-plan-form" method="post" action="/generate" class="mt-4 space-y-4">
                 <input type="hidden" name="week_start" value="{{ selected_week_start }}">
@@ -142,17 +142,14 @@
                 </div>
                 <p class="text-sm text-slate-500">Use the Generate Plan button above after adjusting these settings.</p>
             </form>
-        </details>
+        {% endcall %}
 
         {% if long_term_summary_html %}
-        <details class="planner-card mb-6 rounded-xl p-6">
-            <summary class="control-summary">
-                Long-term plan
-            </summary>
+        {% call render_disclosure("Long-term plan", details_class="planner-card mb-6 rounded-xl p-6") %}
             <div class="prose max-w-none mt-4">
                 {{ long_term_summary_html | safe }}
             </div>
-        </details>
+        {% endcall %}
         {% endif %}
 
         {% if plan_html %}
@@ -207,25 +204,19 @@
         {% endif %}
 
         {% if summary %}
-        <details class="mt-8">
-            <summary class="control-summary">
-                Weekly Summary
-            </summary>
+        {% call render_disclosure("Weekly Summary", details_class="mt-8") %}
             <div class="prose max-w-none mt-4">
                 {{ summary | safe }}
             </div>
-        </details>
+        {% endcall %}
         {% endif %}
 
         {% if prompt %}
-        <details class="mt-8">
-            <summary class="control-summary">
-                LLM Prompt
-            </summary>
+        {% call render_disclosure("LLM Prompt", details_class="mt-8") %}
             <div class="prose max-w-none mt-4">
                 {{ prompt | safe }}
             </div>
-        </details>
+        {% endcall %}
         {% endif %}
         {% endif %}
     </div>

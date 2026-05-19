@@ -1,0 +1,8 @@
+{% macro render_disclosure(title, details_class="", body_class="mt-4", open=false) -%}
+<details class="control-disclosure {{ details_class }}"{% if open %} open{% endif %}>
+    <summary class="control-summary">{{ title }}</summary>
+    <div class="{{ body_class }}">
+        {{ caller() }}
+    </div>
+</details>
+{%- endmacro %}

@@ -274,6 +274,14 @@ button:hover {
     text-transform: uppercase;
 }
 
+.control-disclosure {
+    margin-top: 1rem;
+}
+
+.control-disclosure > summary {
+    list-style: none;
+}
+
 .control-summary::-webkit-details-marker {
     display: none;
 }
