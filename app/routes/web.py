@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, date, datetime, timedelta
-from typing import TYPE_CHECKING, Annotated, NamedTuple
+from typing import Annotated, NamedTuple
 
 import markdown
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.routing import APIRoute
 from fastapi.templating import Jinja2Templates
 from requests_cache import CachedSession
 from sqlmodel import Session, select
@@ -29,6 +28,7 @@ from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPhase, TrainingPlan
 from app.models.user import User
+from app.routes.planner_errors import PlannerErrorRoute
 from app.services.long_term_planner import (
     LongTermWeekOption,
     generate_long_term_plan_artifact,
@@ -46,12 +46,9 @@ from app.services.planner import (
 from app.services.workout_delivery import publish_workout_delivery
 from app.utils.datetime import get_monday
 
-if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine
-    from typing import Any
-
 router = APIRouter(tags=["web"])
-planner_router = APIRouter(tags=["web"])
+
+planner_router = APIRouter(tags=["web"], route_class=PlannerErrorRoute)
 
 templates = Jinja2Templates(directory="app/templates")
 _LOGGER = logging.getLogger(__name__)
@@ -73,32 +70,6 @@ class WeekSelection(NamedTuple):
     week_options: list[LongTermWeekOption]
     selected_week_start: date | None
     error: WeekSelectionError | None
-
-
-class PlannerErrorRoute(APIRoute):
-    """Route wrapper that renders the planner fallback page on unexpected errors."""
-
-    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:  # type: ignore[override]
-        """Wrap the route handler with planner-specific error rendering.
-
-        Returns:
-            A route handler that renders the planner fallback page on crashes.
-        """
-        original_route_handler = super().get_route_handler()
-
-        async def planner_route_handler(request: Request) -> Response:
-            try:
-                return await original_route_handler(request)
-            except HTTPException:
-                raise
-            except Exception:
-                _LOGGER.exception("Unhandled planner error on %s", request.url.path)
-                return render_planner_error_response(request)
-
-        return planner_route_handler
-
-
-planner_router.route_class = PlannerErrorRoute
 
 
 def _today() -> date:

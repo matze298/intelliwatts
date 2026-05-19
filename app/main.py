@@ -47,6 +47,7 @@ init_db()
 
 # Add settings to the App state for templates
 app.state.settings = {"settings": get_settings(), "models": LanguageModel}
+app.state.render_planner_error_response = web.render_planner_error_response
 
 
 @app.get("/health", tags=["infra"])
