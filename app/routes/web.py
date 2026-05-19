@@ -1,5 +1,6 @@
 """Web routes for the app."""
 
+import traceback
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, NamedTuple
 
@@ -68,6 +69,15 @@ class WeekSelection(NamedTuple):
 def _today() -> date:
     """Return today's UTC date for planner lifecycle validation."""
     return datetime.now(UTC).date()
+
+
+def _format_traceback(exc: BaseException) -> str:
+    """Format an exception traceback for inline planner error reporting.
+
+    Returns:
+        The traceback as a single string.
+    """
+    return "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)).strip()
 
 
 def get_optional_user(request: Request) -> User | None:
@@ -160,13 +170,14 @@ def _resolve_home_week_selection(session: Session, user: User | None, raw_week_s
     return WeekSelection(primary_goal, target_date, week_options, selected_week_start, None)
 
 
-def _render_publish_workout_error_page(
+def _render_publish_workout_error_page(  # noqa: PLR0913
     request: Request,
     *,
     user: User,
-    phase: TrainingPhase,
+    phase: TrainingPhase | None,
     week_start: date,
     error: str,
+    error_traceback: str | None = None,
 ) -> HTMLResponse:
     """Render the planner page after a workout publish failure.
 
@@ -191,6 +202,7 @@ def _render_publish_workout_error_page(
         week_options=week_options,
         selected_week_start=week_start.isoformat(),
         error=error,
+        error_traceback=error_traceback,
     )
 
 
@@ -209,6 +221,7 @@ def _render_plan_page(  # noqa: PLR0913
     week_options: list[LongTermWeekOption] | None = None,
     selected_week_start: str = "",
     error: str | None = None,
+    error_traceback: str | None = None,
 ) -> HTMLResponse:
     """Render the planner page with shared context.
 
@@ -230,6 +243,7 @@ def _render_plan_page(  # noqa: PLR0913
             "week_options": week_options or [],
             "selected_week_start": selected_week_start,
             "error": error,
+            "error_traceback": error_traceback,
             "settings": request.app.state.settings,
             "user": user,
         },
@@ -286,7 +300,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
 
 
 @router.post("/long-term-plan", response_class=HTMLResponse)
-async def long_term_plan(
+async def long_term_plan(  # noqa: PLR0911
     request: Request,
     user: Annotated[User, Depends(get_current_user_from_token)],
 ) -> Response:
@@ -294,6 +308,9 @@ async def long_term_plan(
 
     Returns:
         A redirect on success or the rendered planner page on validation errors.
+
+    Raises:
+        HTTPException: If the planner database update fails unexpectedly.
     """
     input_data = await request.form()
     primary_goal = str(input_data.get("primary_goal", "")).strip()
@@ -382,16 +399,36 @@ async def long_term_plan(
             error="Target date must be after the start date.",
         )
 
-    with Session(engine) as session:
-        phase = replace_active_phase(
-            session,
-            user_id=user.id,
+    try:
+        with Session(engine) as session:
+            phase = replace_active_phase(
+                session,
+                user_id=user.id,
+                primary_goal=primary_goal,
+                target_date=target_date,
+                start_date=start_date,
+            )
+            generate_long_term_plan_artifact(session, phase=phase)
+            session.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        loaded = load_user_plan(user)
+        return _render_plan_page(
+            request,
+            user=user,
+            plan_html=loaded.plan_html,
+            long_term_summary_html=loaded.long_term_summary_html,
+            delivery_status=loaded.delivery_status,
+            delivery_last_error=loaded.delivery_last_error,
+            summary=None,
+            prompt=loaded.prompt,
             primary_goal=primary_goal,
-            target_date=target_date,
-            start_date=start_date,
+            target_date=raw_target_date,
+            week_options=[],
+            error=f"Planning failed: {exc.__class__.__name__}: {exc}",
+            error_traceback=_format_traceback(exc),
         )
-        generate_long_term_plan_artifact(session, phase=phase)
-        session.commit()
 
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -565,7 +602,7 @@ def secrets(request: Request, user: Annotated[User, Depends(get_current_user_fro
 
 
 @router.post("/generate", response_class=HTMLResponse)
-async def generate(
+async def generate(  # noqa: C901
     request: Request,
     user: Annotated[User, Depends(get_current_user_from_token)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -574,39 +611,26 @@ async def generate(
 
     Returns:
         The weekly plan and summary as HTML.
+
+    Raises:
+        HTTPException: If a downstream planner dependency raises unexpectedly.
     """
     input_data = await request.form()
-
-    # Training constraints from form
     raw_hours = input_data.get("max_hours")
     raw_sessions = input_data.get("max_sessions")
     raw_week_start = str(input_data.get("week_start", "")).strip()
+    week_selection: WeekSelection | None = None
 
-    weekly_hours: float | None = None
-    if isinstance(raw_hours, str) and raw_hours:
-        weekly_hours = float(raw_hours)
+    try:
+        try:
+            weekly_hours: float | None = None
+            if isinstance(raw_hours, str) and raw_hours:
+                weekly_hours = float(raw_hours)
 
-    weekly_sessions: int | None = None
-    if isinstance(raw_sessions, str) and raw_sessions:
-        weekly_sessions = int(raw_sessions)
-
-    # Persist the preferences if provided
-    if weekly_hours is not None or weekly_sessions is not None:
-        with Session(engine) as session:
-            db_user = session.get(User, user.id)
-            if db_user:
-                if weekly_hours is not None:
-                    db_user.weekly_hours = weekly_hours
-                if weekly_sessions is not None:
-                    db_user.weekly_sessions = weekly_sessions
-                session.add(db_user)
-                session.commit()
-                session.refresh(db_user)
-                user = db_user
-
-    with Session(engine) as session:
-        week_selection = _resolve_week_selection(session, user, raw_week_start)
-        if week_selection.error:
+            weekly_sessions: int | None = None
+            if isinstance(raw_sessions, str) and raw_sessions:
+                weekly_sessions = int(raw_sessions)
+        except ValueError:
             loaded = load_user_plan(user)
             return _render_plan_page(
                 request,
@@ -617,49 +641,111 @@ async def generate(
                 delivery_last_error=loaded.delivery_last_error,
                 summary=None,
                 prompt=loaded.prompt,
-                primary_goal=week_selection.primary_goal,
-                target_date=week_selection.target_date,
-                week_options=week_selection.week_options,
+                primary_goal="",
+                target_date="",
+                week_options=[],
                 selected_week_start=raw_week_start,
-                error=str(week_selection.error),
+                error="Weekly planning limits must be numbers.",
             )
 
-    result = await generate_weekly_plan(
-        user=user,
-        settings=settings,
-        weekly_hours=weekly_hours,
-        weekly_sessions=weekly_sessions,
-        week_start=week_selection.selected_week_start,
-    )
+        if weekly_hours is not None or weekly_sessions is not None:
+            with Session(engine) as session:
+                db_user = session.get(User, user.id)
+                if db_user:
+                    if weekly_hours is not None:
+                        db_user.weekly_hours = weekly_hours
+                    if weekly_sessions is not None:
+                        db_user.weekly_sessions = weekly_sessions
+                    session.add(db_user)
+                    session.commit()
+                    session.refresh(db_user)
+                    user = db_user
 
-    plan_html = markdown.markdown(
-        result["plan"],
-        extensions=["tables", "fenced_code"],
-    )
-    loaded = load_user_plan(user, week_start=result["week_start"])
+        with Session(engine) as session:
+            week_selection = _resolve_week_selection(session, user, raw_week_start)
+            if week_selection.error:
+                loaded = load_user_plan(user)
+                return _render_plan_page(
+                    request,
+                    user=user,
+                    plan_html=loaded.plan_html,
+                    long_term_summary_html=loaded.long_term_summary_html,
+                    delivery_status=loaded.delivery_status,
+                    delivery_last_error=loaded.delivery_last_error,
+                    summary=None,
+                    prompt=loaded.prompt,
+                    primary_goal=week_selection.primary_goal,
+                    target_date=week_selection.target_date,
+                    week_options=week_selection.week_options,
+                    selected_week_start=raw_week_start,
+                    error=str(week_selection.error),
+                )
 
-    summary_html = markdown.markdown(
-        # Pretty print the dict
-        f"""{result["summary"]}""",
-        extensions=["tables", "fenced_code"],
-    )
-    with Session(engine) as session:
-        week_selection = _resolve_week_selection(session, user, result["week_start"].isoformat())
+        result = await generate_weekly_plan(
+            user=user,
+            settings=settings,
+            weekly_hours=weekly_hours,
+            weekly_sessions=weekly_sessions,
+            week_start=week_selection.selected_week_start,
+        )
 
-    return _render_plan_page(
-        request,
-        user=user,
-        plan_html=plan_html,
-        long_term_summary_html=loaded.long_term_summary_html,
-        delivery_status=loaded.delivery_status,
-        delivery_last_error=loaded.delivery_last_error,
-        summary=summary_html,
-        prompt=result["prompt"],
-        primary_goal=week_selection.primary_goal,
-        target_date=week_selection.target_date,
-        week_options=week_selection.week_options,
-        selected_week_start=result["week_start"].isoformat(),
-    )
+        plan_html = markdown.markdown(
+            result["plan"],
+            extensions=["tables", "fenced_code"],
+        )
+        loaded = load_user_plan(user, week_start=result["week_start"])
+
+        summary_html = markdown.markdown(
+            # Pretty print the dict
+            f"""{result["summary"]}""",
+            extensions=["tables", "fenced_code"],
+        )
+        with Session(engine) as session:
+            week_selection = _resolve_week_selection(session, user, result["week_start"].isoformat())
+
+        return _render_plan_page(
+            request,
+            user=user,
+            plan_html=plan_html,
+            long_term_summary_html=loaded.long_term_summary_html,
+            delivery_status=loaded.delivery_status,
+            delivery_last_error=loaded.delivery_last_error,
+            summary=summary_html,
+            prompt=result["prompt"],
+            primary_goal=week_selection.primary_goal,
+            target_date=week_selection.target_date,
+            week_options=week_selection.week_options,
+            selected_week_start=result["week_start"].isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        loaded = load_user_plan(
+            user,
+            week_start=week_selection.selected_week_start
+            if week_selection and week_selection.selected_week_start
+            else None,
+        )
+        return _render_plan_page(
+            request,
+            user=user,
+            plan_html=loaded.plan_html,
+            long_term_summary_html=loaded.long_term_summary_html,
+            delivery_status=loaded.delivery_status,
+            delivery_last_error=loaded.delivery_last_error,
+            summary=None,
+            prompt=loaded.prompt,
+            primary_goal=week_selection.primary_goal if week_selection else "",
+            target_date=week_selection.target_date if week_selection else "",
+            week_options=week_selection.week_options if week_selection else [],
+            selected_week_start=(
+                week_selection.selected_week_start.isoformat()
+                if week_selection and week_selection.selected_week_start
+                else raw_week_start
+            ),
+            error=f"Planning failed: {exc.__class__.__name__}: {exc}",
+            error_traceback=_format_traceback(exc),
+        )
 
 
 @router.post("/update", response_class=HTMLResponse)
@@ -672,43 +758,93 @@ async def update(
 
     Returns:
         The updated weekly plan as HTML.
+
+    Raises:
+        HTTPException: If a downstream planner dependency raises unexpectedly.
     """
     input_data = await request.form()
     feedback = str(input_data.get("feedback", ""))
     raw_week_start = str(input_data.get("week_start", "")).strip()
-    week_start = date.fromisoformat(raw_week_start) if raw_week_start else None
+    week_start: date | None = None
 
-    result = await update_training_plan(user=user, feedback=feedback, settings=settings, week_start=week_start)
+    try:
+        try:
+            week_start = date.fromisoformat(raw_week_start) if raw_week_start else None
+        except ValueError:
+            loaded = load_user_plan(user)
+            return _render_plan_page(
+                request,
+                user=user,
+                plan_html=loaded.plan_html,
+                long_term_summary_html=loaded.long_term_summary_html,
+                delivery_status=loaded.delivery_status,
+                delivery_last_error=loaded.delivery_last_error,
+                summary=None,
+                prompt=loaded.prompt,
+                primary_goal="",
+                target_date="",
+                week_options=[],
+                selected_week_start=raw_week_start,
+                error="Selected planning week must be a valid date.",
+            )
 
-    plan_html = markdown.markdown(
-        result["plan"],
-        extensions=["tables", "fenced_code"],
-    )
-    loaded = load_user_plan(user, week_start=result["week_start"])
-    primary_goal, target_date = ("", "")
-    with Session(engine) as session:
-        phase = _get_active_phase(session, user)
-        primary_goal, target_date = _phase_form_values(phase)
-        week_options = _week_options_for_phase(session, phase)
+        result = await update_training_plan(user=user, feedback=feedback, settings=settings, week_start=week_start)
 
-    return _render_plan_page(
-        request,
-        user=user,
-        plan_html=plan_html,
-        long_term_summary_html=loaded.long_term_summary_html,
-        delivery_status=loaded.delivery_status,
-        delivery_last_error=loaded.delivery_last_error,
-        summary=None,
-        prompt=None,
-        primary_goal=primary_goal,
-        target_date=target_date,
-        week_options=week_options,
-        selected_week_start=result["week_start"].isoformat(),
-    )
+        plan_html = markdown.markdown(
+            result["plan"],
+            extensions=["tables", "fenced_code"],
+        )
+        loaded = load_user_plan(user, week_start=result["week_start"])
+        primary_goal, target_date = ("", "")
+        with Session(engine) as session:
+            phase = _get_active_phase(session, user)
+            primary_goal, target_date = _phase_form_values(phase)
+            week_options = _week_options_for_phase(session, phase)
+
+        return _render_plan_page(
+            request,
+            user=user,
+            plan_html=plan_html,
+            long_term_summary_html=loaded.long_term_summary_html,
+            delivery_status=loaded.delivery_status,
+            delivery_last_error=loaded.delivery_last_error,
+            summary=None,
+            prompt=None,
+            primary_goal=primary_goal,
+            target_date=target_date,
+            week_options=week_options,
+            selected_week_start=result["week_start"].isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        loaded = load_user_plan(user, week_start=week_start)
+        primary_goal, target_date = ("", "")
+        with Session(engine) as session:
+            phase = _get_active_phase(session, user)
+            primary_goal, target_date = _phase_form_values(phase)
+            week_options = _week_options_for_phase(session, phase)
+
+        return _render_plan_page(
+            request,
+            user=user,
+            plan_html=loaded.plan_html,
+            long_term_summary_html=loaded.long_term_summary_html,
+            delivery_status=loaded.delivery_status,
+            delivery_last_error=loaded.delivery_last_error,
+            summary=None,
+            prompt=loaded.prompt,
+            primary_goal=primary_goal,
+            target_date=target_date,
+            week_options=week_options,
+            selected_week_start=week_start.isoformat() if week_start else raw_week_start,
+            error=f"Planning failed: {exc.__class__.__name__}: {exc}",
+            error_traceback=_format_traceback(exc),
+        )
 
 
 @router.post("/publish-workout", response_class=HTMLResponse)
-async def publish_workout(
+async def publish_workout(  # noqa: C901
     request: Request,
     user: Annotated[User, Depends(get_current_user_from_token)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -723,44 +859,60 @@ async def publish_workout(
     """
     input_data = await request.form()
     raw_week_start = str(input_data.get("week_start", "")).strip()
+    week_start = get_monday(datetime.now(UTC).date())
+    phase: TrainingPhase | None = None
     try:
-        week_start = date.fromisoformat(raw_week_start) if raw_week_start else get_monday(datetime.now(UTC).date())
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(WeekSelectionError())) from exc
-
-    with Session(engine) as session:
-        phase = _get_active_phase(session, user)
-        if not phase:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active training phase.")
         if raw_week_start:
-            week_selection = _resolve_week_selection(session, user, raw_week_start)
-            if week_selection.error:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(week_selection.error))
+            try:
+                week_start = date.fromisoformat(raw_week_start)
+            except ValueError as exc:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(WeekSelectionError())) from exc
 
-        plan = session.exec(
-            select(TrainingPlan).where(TrainingPlan.phase_id == phase.id, TrainingPlan.week_start == week_start)
-        ).first()
-        if not plan:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No weekly training plan.")
+        with Session(engine) as session:
+            phase = _get_active_phase(session, user)
+            if not phase:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active training phase.")
+            if raw_week_start:
+                week_selection = _resolve_week_selection(session, user, raw_week_start)
+                if week_selection.error:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(week_selection.error))
 
-        session_factory = requests.Session()
-        if settings.CACHE_INTERVALS_HOURS > 0:
-            session_factory = CachedSession(
-                "intervals_cache",
-                backend="sqlite",
-                expire_after=timedelta(hours=settings.CACHE_INTERVALS_HOURS),
-            )
-        client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session_factory)
+            plan = session.exec(
+                select(TrainingPlan).where(TrainingPlan.phase_id == phase.id, TrainingPlan.week_start == week_start)
+            ).first()
+            if not plan:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No weekly training plan.")
 
-        try:
-            publish_workout_delivery(session, plan, client)
-        except Exception as exc:  # noqa: BLE001
-            return _render_publish_workout_error_page(
-                request,
-                user=user,
-                phase=phase,
-                week_start=week_start,
-                error=f"Failed to publish workouts: {exc}",
-            )
+            session_factory = requests.Session()
+            if settings.CACHE_INTERVALS_HOURS > 0:
+                session_factory = CachedSession(
+                    "intervals_cache",
+                    backend="sqlite",
+                    expire_after=timedelta(hours=settings.CACHE_INTERVALS_HOURS),
+                )
+            client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session_factory)
+
+            try:
+                publish_workout_delivery(session, plan, client)
+            except Exception as exc:  # noqa: BLE001
+                return _render_publish_workout_error_page(
+                    request,
+                    user=user,
+                    phase=phase,
+                    week_start=week_start,
+                    error=f"Failed to publish workouts: {exc.__class__.__name__}: {exc}",
+                    error_traceback=_format_traceback(exc),
+                )
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        return _render_publish_workout_error_page(
+            request,
+            user=user,
+            phase=phase,
+            week_start=week_start,
+            error=f"Failed to publish workouts: {exc.__class__.__name__}: {exc}",
+            error_traceback=_format_traceback(exc),
+        )
 
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)

@@ -644,6 +644,108 @@ async def test_weekly_generation_rejects_invalid_selected_week(
 
 @pytest.mark.asyncio
 @patch("app.services.planner.generate_plan")
+async def test_weekly_generation_shows_traceback_on_unexpected_error(
+    mock_generate_plan: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The weekly planner route should render the traceback when generation fails unexpectedly."""
+    # GIVEN an authenticated user with a saved long-term goal and isolated planner state
+    context = _build_weekly_planner_route_context(email="weekly_traceback@example.com")
+    _seed_long_term_phase(
+        context.engine,
+        user_id=context.user_id,
+        primary_goal="Peak for gravel race",
+        start_date=date(2026, 5, 16),
+        target_date=date(2026, 9, 20),
+    )
+    _configure_isolated_planner_dependencies(
+        monkeypatch,
+        test_engine=context.engine,
+        generate_plan_mock=mock_generate_plan,
+    )
+    mock_generate_plan.side_effect = RuntimeError("boom")
+
+    # WHEN generating a weekly plan and the planner backend crashes
+    resp = await web_routes.generate(
+        build_request(
+            context.app,
+            method="POST",
+            path="/generate",
+            body=b"max_hours=10&max_sessions=5&week_start=2026-06-01",
+        ),
+        context.route_user,
+        context.settings,
+    )
+
+    # THEN the page should render the traceback instead of a bare 500
+    body_text = bytes(resp.body).decode()
+    assert resp.status_code == 200
+    assert "Planning error" in body_text
+    assert "RuntimeError: boom" in body_text
+    assert "Traceback (most recent call last):" in body_text
+
+
+@pytest.mark.asyncio
+@patch("app.services.planner.generate_plan")
+async def test_publish_workout_shows_traceback_on_unexpected_error(
+    mock_generate_plan: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The publish route should render the traceback when delivery fails unexpectedly."""
+    # GIVEN an authenticated user with a staged weekly plan
+    context = _build_weekly_planner_route_context(email="publish_traceback@example.com")
+    _seed_long_term_phase(
+        context.engine,
+        user_id=context.user_id,
+        primary_goal="Peak for gravel race",
+        start_date=date(2026, 5, 16),
+        target_date=date(2026, 9, 20),
+    )
+    _configure_isolated_planner_dependencies(
+        monkeypatch,
+        test_engine=context.engine,
+        generate_plan_mock=mock_generate_plan,
+    )
+    mock_generate_plan.return_value = LLMResponse(
+        plan="## Weekly Plan\n\n- Tuesday: Threshold work",
+        prompt=[{"role": "user", "content": "weekly"}],
+    )
+
+    await web_routes.generate(
+        build_request(
+            context.app,
+            method="POST",
+            path="/generate",
+            body=b"max_hours=10&max_sessions=5&week_start=2026-06-01",
+        ),
+        context.route_user,
+        context.settings,
+    )
+
+    with patch("app.routes.web.publish_workout_delivery") as mock_publish_workout_delivery:
+        mock_publish_workout_delivery.side_effect = RuntimeError("delivery exploded")
+
+        # WHEN publishing the staged workout and the delivery step fails
+        resp = await web_routes.publish_workout(
+            build_request(
+                context.app,
+                method="POST",
+                path="/publish-workout",
+                body=b"week_start=2026-06-01",
+            ),
+            context.route_user,
+            context.settings,
+        )
+
+    # THEN the page should render the traceback instead of a bare 500
+    body_text = bytes(resp.body).decode()
+    assert resp.status_code == 200
+    assert "Failed to publish workouts: RuntimeError: delivery exploded" in body_text
+    assert "Traceback (most recent call last):" in body_text
+
+
+@pytest.mark.asyncio
+@patch("app.services.planner.generate_plan")
 async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
     mock_generate_plan: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
