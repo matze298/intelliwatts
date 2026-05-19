@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, override
 
 import polars as pl
 
-from app.planning.providers.interfaces import DashboardWidget, MetricProvider
+from app.planning.providers.interfaces import DashboardWidget, DashboardWidgetGroup, MetricProvider
 
 if TYPE_CHECKING:
     from app.intervals.client import IntervalsClient
@@ -127,6 +127,7 @@ class PMCProvider(MetricProvider[PMCResult]):
             name="pmc",
             title="Fitness Trend",
             custom_template="widgets/pmc_chart.html",
+            display_group=DashboardWidgetGroup.MAIN,
             data={
                 "dates": dates,
                 "ctl": ctl,
