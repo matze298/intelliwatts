@@ -218,6 +218,17 @@ button:hover {
     color: #00ffff;
 }
 
+.control-button-warning {
+    background: #ffb000;
+    border-color: #ffb000;
+    color: #000;
+}
+
+.control-button-warning:hover {
+    background: #ffd000;
+    border-color: #ffd000;
+}
+
 .control-toggle-group {
     display: inline-flex;
     gap: 0.35rem;

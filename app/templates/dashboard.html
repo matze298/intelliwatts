@@ -1,5 +1,6 @@
 {% from "macros/widgets.html" import render_widget %}
 {% from "macros/sections.html" import render_section_band %}
+{% from "macros/state.html" import render_state_banner %}
 {% from "macros/theme.html" import render_theme_switcher %}
 <!DOCTYPE html>
 <html lang="en">
@@ -63,6 +64,12 @@
 
         {% set primary_custom_widgets = analysis.widgets | selectattr("custom_template") | selectattr("display_group", "equalto", "main") | list %}
         {% set secondary_custom_widgets = analysis.widgets | selectattr("custom_template") | rejectattr("display_group", "equalto", "main") | list %}
+
+        {% if not analysis.widgets %}
+        {% call render_state_banner("No dashboard data yet", tone="empty", extra_classes="mb-12") %}
+            Sync activities and wellness data to populate the dashboard.
+        {% endcall %}
+        {% endif %}
 
         {% if primary_custom_widgets %}
         {% call render_section_band("Headline trends") %}

@@ -141,5 +141,5 @@ Concrete steps for the recommended frontend direction:
 - [x] Reduce nested boxes so the page reads as one workflow instead of many independent forms.
 - [x] Rework the dashboard as a summary surface with wider bands, fewer competing cards, and clearer section separation.
 - [x] Emphasize trend summaries and direct calls back to the planner.
-- [ ] Polish the interaction states so loading, empty, error, and success states are consistent across the app.
-- [ ] Make destructive or uncertain actions visually distinct from normal planning actions.
+- [x] Polish the interaction states so loading, empty, error, and success states are consistent across the app.
+- [x] Make destructive or uncertain actions visually distinct from normal planning actions.

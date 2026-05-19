@@ -234,6 +234,15 @@ p {
     color: #047857;
 }
 
+.control-button-warning {
+    background: #f59e0b;
+    color: #ffffff;
+}
+
+.control-button-warning:hover {
+    background: #d97706;
+}
+
 .control-toggle-group {
     display: inline-flex;
     gap: 0.35rem;

@@ -521,6 +521,7 @@ def test_dashboard_flow_passes_days_filter(  # noqa: PLR0913, PLR0917
     assert resp.status_code == 200
     mock_compute.assert_called_once()
     assert mock_compute.call_args.kwargs["display_days"] == 21
+    assert "No dashboard data yet" in bytes(resp.body).decode()
 
 
 @pytest.mark.asyncio
@@ -809,6 +810,8 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
     assert "Long-term plan" in body
     assert "Current macro focus." in body
     assert body.index("Goal & planning horizon") < body.index("Current plan status")
+    assert "No weekly plan yet" in body
+    assert "Generate a plan to see the week here." in body
     assert "control-disclosure" in body
     assert "Advanced settings" in body
     assert "control-button" in body
@@ -844,9 +847,44 @@ def test_home_page_renders_selected_week_plan(selected_week_route_context: Selec
     assert "control-disclosure" in body
     assert "Advanced settings" in body
     assert "control-button" in body
+    assert "control-button-warning" in body
     assert "control-select" in body
     assert 'value="2026-05-18" selected' in body
     assert "Week 3 of 4 - 2026-05-18" in body
+
+
+def test_home_page_shows_publishing_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The home page should visually mark the workout publish flow as in progress."""
+    # GIVEN an authenticated user with a plan currently publishing
+    test_app = FastAPI()
+    test_app.include_router(web_routes.router)
+    test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
+
+    user = User(id=uuid.uuid4(), email="planner_publishing@example.com", password_hash="hash")  # noqa: S106
+
+    monkeypatch.setattr("app.routes.web.engine", engine)
+    monkeypatch.setattr("app.routes.web._get_active_phase", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        "app.routes.web.load_user_plan",
+        lambda _user, **_kwargs: SimpleNamespace(
+            plan_html="<h1>Weekly Plan</h1>",
+            long_term_summary_html=None,
+            prompt=None,
+            delivery_status="publishing",
+            delivery_last_error=None,
+            week_start=None,
+        ),
+    )
+
+    # WHEN the home page is rendered while publishing is in progress
+    resp = web_routes.home(build_request(test_app, method="GET", path="/"), user)
+
+    # THEN the publish action should be clearly marked as in progress
+    assert resp.status_code == 200
+    body = bytes(resp.body).decode()
+    assert "Publishing..." in body
+    assert "control-button-warning" in body
+    assert "control-disabled" in body
 
 
 def test_home_page_rejects_out_of_plan_selected_week(
@@ -870,6 +908,7 @@ def test_home_page_rejects_out_of_plan_selected_week(
     # THEN it should show the validation error instead of a saved weekly plan
     assert resp.status_code == 200
     body = bytes(resp.body).decode()
+    assert "Validation error" in body
     assert "Selected planning week must be part of the active long-term plan." in body
     assert "Selected Week Plan" not in body
     assert "Current Week Plan" not in body
