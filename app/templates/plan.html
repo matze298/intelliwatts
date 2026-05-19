@@ -112,7 +112,7 @@
 
         {% if error %}
         {% call render_state_banner("Validation error", tone="error", extra_classes="mb-6", body_class="mt-1 text-sm") %}
-            {{ error }}
+            <p>{{ error }}</p>
         {% endcall %}
         {% endif %}
 

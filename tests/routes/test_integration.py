@@ -2,6 +2,7 @@
 
 import asyncio
 import uuid
+from contextlib import AsyncExitStack
 from datetime import date
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, NamedTuple, cast
@@ -25,6 +26,7 @@ from app.planning.llm import LLMResponse
 from app.routes import api as api_routes
 from app.routes import secrets as secrets_routes
 from app.routes import web as web_routes
+from app.routes.planner_errors import PlannerErrorRoute
 from app.services.long_term_planner import generate_long_term_plan_artifact
 
 if TYPE_CHECKING:
@@ -640,6 +642,41 @@ async def test_weekly_generation_rejects_invalid_selected_week(
     assert resp.status_code == 200
     assert "Selected planning week must be part of the active long-term plan." in body_text
     mock_generate_plan.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_planner_exception_handler_renders_dedicated_page() -> None:
+    """Unexpected planner failures should render the dedicated planner error page."""
+    # GIVEN a planner route wrapper and a downstream handler that crashes
+    test_app = FastAPI()
+    test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
+    test_app.state.render_planner_error_response = web_routes.render_planner_error_response
+
+    async def explode(_request: Request) -> None:
+        """Crash to exercise the planner error route wrapper.
+
+        Raises:
+            RuntimeError: Always, to simulate an unexpected planner failure.
+        """
+        await asyncio.sleep(0)
+        message = "boom"
+        raise RuntimeError(message)
+
+    route = PlannerErrorRoute(path="/generate", endpoint=explode, methods=["POST"], name="explode")
+
+    # WHEN the crashing route is handled by the planner wrapper
+    request = build_request(test_app, method="POST", path="/generate")
+    async with AsyncExitStack() as astack:
+        request.scope["fastapi_middleware_astack"] = astack
+        resp = await route.get_route_handler()(request)
+
+    # THEN the dedicated planner error page should render without leaking internals
+    assert resp.status_code == 500
+    body_text = bytes(resp.body).decode()
+    assert "Something went wrong while planning" in body_text
+    assert "Please return to the home page and try again." in body_text
+    assert "RuntimeError: boom" not in body_text
+    assert "Traceback" not in body_text
 
 
 @pytest.mark.asyncio
