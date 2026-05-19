@@ -70,10 +70,10 @@ async def planner_error_middleware(
         return await call_next(request)
     except HTTPException:
         raise
-    except Exception as exc:
+    except Exception:
         if request.url.path in web.PLANNER_ERROR_PATHS:
             _LOGGER.exception("Unhandled planner error on %s", request.url.path)
-            return web.render_planner_error_response(request, exc)
+            return web.render_planner_error_response(request)
         raise
 
 

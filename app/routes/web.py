@@ -1,6 +1,5 @@
 """Web routes for the app."""
 
-import traceback
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, NamedTuple
 
@@ -72,19 +71,16 @@ def _today() -> date:
     return datetime.now(UTC).date()
 
 
-def render_planner_error_response(request: Request, exc: BaseException) -> HTMLResponse:
+def render_planner_error_response(request: Request) -> HTMLResponse:
     """Render the dedicated planner error page for unexpected failures.
 
     Returns:
-        A 500 response that shows the traceback to the user.
+        A 500 response with a generic planner error message.
     """
-    traceback_text = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)).strip()
     return templates.TemplateResponse(
         request,
         "planner_error.html",
         {
-            "error_message": f"{exc.__class__.__name__}: {exc}",
-            "traceback": traceback_text,
             "settings": request.app.state.settings,
             "user": None,
         },

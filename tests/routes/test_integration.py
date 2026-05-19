@@ -662,12 +662,13 @@ async def test_planner_exception_handler_renders_dedicated_page() -> None:
     # WHEN the crashing route is handled by the planner middleware
     resp = await planner_error_middleware(build_request(test_app, method="POST", path="/generate"), explode)
 
-    # THEN the dedicated planner error page should render with the traceback
+    # THEN the dedicated planner error page should render without leaking internals
     assert resp.status_code == 500
     body_text = bytes(resp.body).decode()
     assert "Something went wrong while planning" in body_text
-    assert "RuntimeError: boom" in body_text
-    assert "Technical details" in body_text
+    assert "Please return to the home page and try again." in body_text
+    assert "RuntimeError: boom" not in body_text
+    assert "Traceback" not in body_text
 
 
 @pytest.mark.asyncio
