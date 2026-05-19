@@ -147,7 +147,9 @@ def _phase_form_values(phase: TrainingPhase | None) -> tuple[str, str]:
     return phase.primary_goal, phase.target_date.isoformat()
 
 
-def _parse_iso_date(raw_value: str) -> tuple[date | None, str | None]:
+def _parse_iso_date(
+    raw_value: str, *, error_message: str = "Selected planning week must be a valid date."
+) -> tuple[date | None, str | None]:
     """Parse an ISO date string when present.
 
     Returns:
@@ -158,7 +160,7 @@ def _parse_iso_date(raw_value: str) -> tuple[date | None, str | None]:
     try:
         return date.fromisoformat(raw_value), None
     except ValueError:
-        return None, "Selected planning week must be a valid date."
+        return None, error_message
 
 
 def _parse_weekly_limits(raw_hours: object, raw_sessions: object) -> tuple[float | None, int | None, str | None]:
@@ -368,7 +370,7 @@ async def long_term_plan(
             error="Primary goal is required.",
         )
 
-    target_date, date_error = _parse_iso_date(raw_target_date)
+    target_date, date_error = _parse_iso_date(raw_target_date, error_message="Target date must be a valid date.")
     if date_error is not None:
         return _render_plan_page(
             request,
