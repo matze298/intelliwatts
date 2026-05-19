@@ -447,6 +447,8 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     assert resp.status_code == 200
     body_text = bytes(resp.body).decode()
     assert "Performance Center" in body_text
+    assert "control-surface" in body_text
+    assert "control-toggle-group" in body_text
     assert "Recent Training" in body_text
     assert "Wellness Trends" in body_text
     assert "100 TSS" in body_text
@@ -785,6 +787,8 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
     assert "Long-term plan" in body
     assert "Current macro focus." in body
     assert "Advanced settings" in body
+    assert "control-button" in body
+    assert "control-theme-switcher" in body
 
 
 def test_home_page_renders_selected_week_plan(selected_week_route_context: SelectedWeekRouteContext) -> None:
@@ -811,7 +815,10 @@ def test_home_page_renders_selected_week_plan(selected_week_route_context: Selec
     assert body.index("Current plan status") < body.index("Planning week") < body.index("Generate Plan")
     assert body.index("Generate Plan") < body.index("Publish Workout") < body.index("Update Plan")
     assert "Advanced settings" in body
-    assert '<option value="2026-05-18" selected>Week 3 of 4 - 2026-05-18</option>' in body
+    assert "control-button" in body
+    assert "control-select" in body
+    assert 'value="2026-05-18" selected' in body
+    assert "Week 3 of 4 - 2026-05-18" in body
 
 
 def test_home_page_rejects_out_of_plan_selected_week(

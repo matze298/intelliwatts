@@ -136,5 +136,158 @@ button:hover {
         inset 0 0 12px rgba(255, 0, 255, 0.08) !important;
 }
 
+.control-surface {
+    background: rgba(18, 18, 18, 0.85);
+    border: 2px solid #ff00ff;
+    border-radius: 0.75rem;
+    padding: 1rem;
+}
+
+.control-label {
+    display: block;
+    color: #00ffff;
+    font-size: 0.875rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.control-field {
+    background-color: #0d0d0d;
+    border: 1px solid #ff00ff;
+    border-radius: 0.5rem;
+    color: #00ffff;
+    font: inherit;
+    padding: 10px;
+    text-shadow: 0 0 2px #00ffff;
+    width: 100%;
+}
+
+.control-field:focus {
+    outline: none;
+    border-color: #ff00ff;
+    box-shadow: 0 0 8px #ff00ff;
+}
+
+.control-select,
+.control-range,
+.control-theme-switcher {
+    width: auto;
+}
+
+.control-select { min-width: 12rem; }
+
+.control-theme-switcher { min-width: 0; }
+
+.control-button {
+    border: 2px solid transparent;
+    border-radius: 0.5rem;
+    font-family: 'VT323', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.5rem 0.9rem;
+    text-transform: uppercase;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease, color 0.2s ease;
+}
+
+.control-button:hover { transform: translateY(-1px); }
+.control-button:active { transform: translateY(0); }
+.control-button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.35); }
+
+.control-button-primary { background: #ff00ff; color: #000; border-color: #ff00ff; }
+.control-button-primary:hover { background: #00ffff; border-color: #00ffff; }
+
+.control-button-secondary {
+    background: transparent;
+    border-color: #ff00ff;
+    color: #00ffff;
+}
+
+.control-button-secondary:hover {
+    background: rgba(0, 255, 255, 0.12);
+}
+
+.control-button-success { background: #00ffff; color: #000; border-color: #00ffff; }
+.control-button-success:hover { background: #ff00ff; border-color: #ff00ff; }
+
+.control-button-success-subtle {
+    background: rgba(0, 255, 255, 0.12);
+    border-color: rgba(0, 255, 255, 0.65);
+    color: #00ffff;
+}
+
+.control-toggle-group {
+    display: inline-flex;
+    gap: 0.35rem;
+    padding: 0.25rem;
+    background: rgba(0, 0, 0, 0.45);
+    border: 2px solid #ff00ff;
+    border-radius: 0.5rem;
+}
+
+.control-toggle {
+    background: transparent;
+    color: #ff00ff;
+    padding: 0.45rem 0.85rem;
+}
+
+.control-toggle:hover {
+    background: rgba(255, 0, 255, 0.18);
+    color: #00ffff;
+}
+
+.control-toggle-active {
+    background: #ff00ff;
+    color: #000;
+}
+
+.control-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 2px solid #00ffff;
+    background: rgba(0, 0, 0, 0.4);
+    color: #00ffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.75rem;
+    text-transform: uppercase;
+}
+
+.control-nav-link {
+    color: #ff00ff;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.control-nav-link:hover { color: #00ffff; }
+
+.control-summary {
+    cursor: pointer;
+    color: #ff00ff;
+    font-size: 1.25rem;
+    font-weight: 700;
+    outline: none;
+    text-transform: uppercase;
+}
+
+.control-summary::-webkit-details-marker {
+    display: none;
+}
+
+.control-disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.control-range {
+    width: 100%;
+    accent-color: #00ffff;
+}
+
 /* Ensure Tailwind base styles are still applied, but custom styles take precedence */
 /* You can add your custom CSS here if needed, it will be processed by PostCSS */

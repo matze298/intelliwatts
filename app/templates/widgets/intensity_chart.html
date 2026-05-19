@@ -1,3 +1,4 @@
+{% from "macros/controls.html" import render_toggle_button %}
 <!-- app/templates/widgets/intensity_chart.html -->
 <div class="p-8 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 space-y-8">
     <div class="flex justify-between items-center">
@@ -5,9 +6,9 @@
             <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">🔥 Training Intensity</h2>
             <p class="text-sm text-slate-300 dark:text-slate-200">Time-in-zone distribution and style.</p>
         </div>
-        <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
-            <button id="toggle-hr" onclick="updateIntensityChart('hr')" class="px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm">HR</button>
-            <button id="toggle-power" onclick="updateIntensityChart('power')" class="px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50">Power</button>
+        <div class="control-toggle-group">
+            {{ render_toggle_button("toggle-hr", "HR", true, "updateIntensityChart('hr')") }}
+            {{ render_toggle_button("toggle-power", "Power", false, "updateIntensityChart('power')") }}
         </div>
     </div>
 
@@ -102,12 +103,12 @@
             const ssContainer = document.getElementById('ss-container');
 
             if (type === 'hr') {
-                btnHr.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm";
-                btnPower.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50";
+                btnHr.className = "control-button control-toggle control-toggle-active";
+                btnPower.className = "control-button control-toggle";
                 ssContainer.classList.add('hidden');
             } else {
-                btnPower.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm";
-                btnHr.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50";
+                btnPower.className = "control-button control-toggle control-toggle-active";
+                btnHr.className = "control-button control-toggle";
                 ssContainer.classList.remove('hidden');
             }
 

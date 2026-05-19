@@ -1,3 +1,4 @@
+{% from "macros/controls.html" import render_action_button, render_week_select %}
 {% from "macros/theme.html" import render_theme_switcher %}
 <!DOCTYPE html>
 <html>
@@ -11,16 +12,16 @@
     <div class="container max-w-3xl mx-auto p-8 rounded-lg shadow-md mt-10">
         <nav class="flex justify-between items-center mb-6">
             <div>
-                <a href="/" class="text-blue-600 hover:text-blue-800 mr-4">Home</a>
-                <a href="/dashboard" class="text-blue-600 hover:text-blue-800 mr-4">Dashboard</a>
+                <a href="/" class="control-nav-link mr-4">Home</a>
+                <a href="/dashboard" class="control-nav-link mr-4">Dashboard</a>
             </div>
             <div>
             {% if user %}
-            <a href="/secrets" class="text-blue-600 hover:text-blue-800 mr-4">Secrets</a>
-            <a href="/logout" class="text-blue-600 hover:text-blue-800">Logout</a>
+            <a href="/secrets" class="control-nav-link mr-4">Secrets</a>
+            <a href="/logout" class="control-nav-link">Logout</a>
             {% else %}
-            <a href="/login" class="text-blue-600 hover:text-blue-800 mr-4">Login</a>
-            <a href="/register" class="text-blue-600 hover:text-blue-800">Register</a>
+            <a href="/login" class="control-nav-link mr-4">Login</a>
+            <a href="/register" class="control-nav-link">Register</a>
             {% endif %}
             {{ render_theme_switcher() }}
             </div>
@@ -44,40 +45,29 @@
                     <p class="mt-1 text-sm text-slate-600">Review the selected week before generating or publishing.</p>
                 </div>
                 <div class="space-y-2">
-                    <p class="block text-sm font-medium text-slate-700">Planning week</p>
                     {% if week_options %}
                     <form method="get" action="/">
-                        <select id="week_start_view" name="week_start" onchange="this.form.submit()" class="block w-full rounded-md border-blue-300 px-3 py-3 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500">
-                            {% for option in week_options %}
-                            <option value="{{ option.week_start.isoformat() }}" {% if option.week_start.isoformat() == selected_week_start %}selected{% endif %}>{{ option.label }}</option>
-                            {% endfor %}
-                        </select>
+                        {{ render_week_select("Planning week", "week_start_view", week_options, selected_week_start) }}
                     </form>
                     {% else %}
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Planning week</p>
                     <p class="text-base font-semibold text-slate-900">{{ selected_week_start or "Auto-selected" }}</p>
                     {% endif %}
                 </div>
                 <div class="flex flex-wrap gap-2 lg:justify-end">
-                    <button type="submit" form="generate-plan-form" class="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                        Generate Plan
-                    </button>
+                    {{ render_action_button("Generate Plan", form="generate-plan-form", tone="primary", extra_classes="px-4 py-3 text-sm") }}
                     {% if plan_html %}
-                    <button type="submit" form="publish-workout-form" class="inline-flex justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
-                        {% if delivery_status == "published" %}
-                        Republish Workout
-                        {% elif delivery_status == "publishing" %}
-                        Publishing...
-                        {% else %}
-                        Publish Workout
-                        {% endif %}
-                    </button>
-                    <button type="submit" form="update-plan-form" class="inline-flex justify-center rounded-md border border-transparent bg-green-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
-                        Update Plan
-                    </button>
+                    {{ render_action_button(
+                        "Republish Workout" if delivery_status == "published" else "Publishing..." if delivery_status == "publishing" else "Publish Workout",
+                        form="publish-workout-form",
+                        tone="success",
+                        extra_classes="px-4 py-3 text-sm"
+                    ) }}
+                    {{ render_action_button("Update Plan", form="update-plan-form", tone="success-subtle", extra_classes="px-4 py-3 text-sm") }}
                     {% endif %}
                 </div>
             </div>
-            <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div class="control-surface mt-6">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h2 class="text-lg font-semibold text-slate-900">Weekly planning limits</h2>
@@ -86,12 +76,12 @@
                 </div>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div>
-                        <label for="max_hours" class="block text-sm font-medium text-gray-700">Weekly max hours:</label>
-                        <input type="number" id="max_hours" name="max_hours" form="generate-plan-form" value="{% if user %}{{ user.weekly_hours }}{% else %}8{% endif %}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                        <label for="max_hours" class="control-label">Weekly max hours</label>
+                        <input type="number" id="max_hours" name="max_hours" form="generate-plan-form" value="{% if user %}{{ user.weekly_hours }}{% else %}8{% endif %}" class="control-field">
                     </div>
                     <div>
-                        <label for="max_sessions" class="block text-sm font-medium text-gray-700">Weekly max sessions:</label>
-                        <input type="number" id="max_sessions" name="max_sessions" form="generate-plan-form" value="{% if user %}{{ user.weekly_sessions }}{% else %}4{% endif %}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                        <label for="max_sessions" class="control-label">Weekly max sessions</label>
+                        <input type="number" id="max_sessions" name="max_sessions" form="generate-plan-form" value="{% if user %}{{ user.weekly_sessions }}{% else %}4{% endif %}" class="control-field">
                     </div>
                 </div>
             </div>
@@ -119,12 +109,12 @@
                     <label for="target_date" class="block text-sm font-medium text-gray-700">Target date:</label>
                     <input type="date" id="target_date" name="target_date" value="{{ target_date or '' }}" required class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
                 </div>
-                <button type="submit" class="inline-flex justify-center rounded-md border border-transparent bg-slate-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2">Save Long-term Goal</button>
-            </form>
+            {{ render_action_button("Save Long-term Goal", tone="secondary", extra_classes="px-4 py-2 text-sm") }}
+        </form>
         </section>
 
         <details class="planner-card mb-6 rounded-xl p-6">
-            <summary class="cursor-pointer text-xl font-semibold text-slate-900">Advanced settings</summary>
+            <summary class="control-summary">Advanced settings</summary>
             <p class="mt-1 text-sm text-slate-600">Language model, prompt templates, and wellness toggle.</p>
             <form id="generate-plan-form" method="post" action="/generate" class="mt-4 space-y-4">
                 <input type="hidden" name="week_start" value="{{ selected_week_start }}">
@@ -156,7 +146,7 @@
 
         {% if long_term_summary_html %}
         <details class="planner-card mb-6 rounded-xl p-6">
-            <summary class="cursor-pointer text-xl font-semibold text-gray-700 hover:text-blue-600 outline-none">
+            <summary class="control-summary">
                 Long-term plan
             </summary>
             <div class="prose max-w-none mt-4">
@@ -183,7 +173,7 @@
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-900">Intervals.icu delivery</h3>
-                        <p class="mt-1 text-sm text-slate-600">
+                    <p class="mt-1 text-sm text-slate-600">
                             {% if delivery_status %}
                             Current status: <span class="font-medium">{{ delivery_status }}</span>
                             {% else %}
@@ -218,7 +208,7 @@
 
         {% if summary %}
         <details class="mt-8">
-            <summary class="text-2xl font-semibold text-gray-700 cursor-pointer hover:text-blue-600 outline-none">
+            <summary class="control-summary">
                 Weekly Summary
             </summary>
             <div class="prose max-w-none mt-4">
@@ -229,7 +219,7 @@
 
         {% if prompt %}
         <details class="mt-8">
-            <summary class="text-2xl font-semibold text-gray-700 cursor-pointer hover:text-blue-600 outline-none">
+            <summary class="control-summary">
                 LLM Prompt
             </summary>
             <div class="prose max-w-none mt-4">
