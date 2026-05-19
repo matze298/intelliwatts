@@ -461,7 +461,7 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
     body_text = bytes(resp.body).decode()
     assert "Performance Center" in body_text
     assert "control-surface" in body_text
-    assert "Dashboard evidence surface" in body_text
+    assert "Plan impact" in body_text
     assert "Headline trends" in body_text
     assert "Supporting evidence" in body_text
     assert "More charts and comparisons" not in body_text

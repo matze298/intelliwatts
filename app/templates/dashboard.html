@@ -1,4 +1,5 @@
 {% from "macros/widgets.html" import render_widget %}
+{% from "macros/sections.html" import render_section_band %}
 {% from "macros/theme.html" import render_theme_switcher %}
 <!DOCTYPE html>
 <html lang="en">
@@ -35,10 +36,7 @@
 
         <div class="control-surface mb-12">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Dashboard evidence surface</p>
-                    <p class="mt-2 text-sm text-slate-600">Scan the latest trends, then return to the planner if the plan needs to change.</p>
-                </div>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Plan impact</p>
                 <a href="/" class="control-button control-button-secondary inline-flex items-center justify-center px-4 py-2 text-sm">
                     Open Planner
                 </a>
@@ -67,31 +65,19 @@
         {% set secondary_custom_widgets = analysis.widgets | selectattr("custom_template") | rejectattr("display_group", "equalto", "main") | list %}
 
         {% if primary_custom_widgets %}
-        <section class="mb-12">
-            <div class="mb-4">
-                <h2 class="text-lg font-semibold text-slate-900">Headline trends</h2>
-                <p class="mt-1 text-sm text-slate-600">The most important charts stay visible so changes are easy to spot.</p>
-            </div>
-            <div class="grid grid-cols-1 gap-12">
-                {% for widget in primary_custom_widgets %}
-                    {{ render_widget(widget) }}
-                {% endfor %}
-            </div>
-        </section>
+        {% call render_section_band("Headline trends") %}
+            {% for widget in primary_custom_widgets %}
+                {{ render_widget(widget) }}
+            {% endfor %}
+        {% endcall %}
         {% endif %}
 
         {% if secondary_custom_widgets %}
-        <section class="mb-12">
-            <div class="mb-4">
-                <h2 class="text-lg font-semibold text-slate-900">Supporting evidence</h2>
-                <p class="mt-1 text-sm text-slate-600">History, distribution, and load detail stay on the page without hiding the story.</p>
-            </div>
-            <div class="grid grid-cols-1 gap-12">
-                {% for widget in secondary_custom_widgets %}
-                    {{ render_widget(widget) }}
-                {% endfor %}
-            </div>
-        </section>
+        {% call render_section_band("Supporting evidence") %}
+            {% for widget in secondary_custom_widgets %}
+                {{ render_widget(widget) }}
+            {% endfor %}
+        {% endcall %}
         {% endif %}
         </div>
 
