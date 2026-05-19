@@ -1,0 +1,38 @@
+{% macro render_action_button(label, form=None, tone="primary", type="submit", disabled=false, extra_classes="") -%}
+<button
+    {% if form %}form="{{ form }}"{% endif %}
+    type="{{ type }}"
+    {% if disabled %}disabled{% endif %}
+    class="control-button control-button-{{ tone }}{% if disabled %} control-disabled{% endif %} {{ extra_classes }}"
+>
+    {{ label }}
+</button>
+{%- endmacro %}
+
+{% macro render_week_select(label, name, options, selected_value) -%}
+<div class="space-y-2">
+    <label for="{{ name }}" class="control-label">{{ label }}</label>
+    <select id="{{ name }}" name="{{ name }}" class="control-select" onchange="this.form.submit()">
+        {% for option in options %}
+        <option value="{{ option.week_start.isoformat() }}" {% if option.week_start.isoformat() == selected_value %}selected{% endif %}>
+            {{ option.label }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+{%- endmacro %}
+
+{% macro render_toggle_button(id, label, active, onclick) -%}
+<button
+    id="{{ id }}"
+    type="button"
+    onclick="{{ onclick }}"
+    class="control-button control-toggle{% if active %} control-toggle-active{% endif %}"
+>
+    {{ label }}
+</button>
+{%- endmacro %}
+
+{% macro render_status_chip(label, tone="neutral") -%}
+<span class="control-chip control-chip-{{ tone }}">{{ label }}</span>
+{%- endmacro %}

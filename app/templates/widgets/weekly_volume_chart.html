@@ -1,3 +1,4 @@
+{% from "macros/controls.html" import render_toggle_button %}
 <!-- app/templates/widgets/weekly_volume_chart.html -->
 <div class="p-8 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 space-y-8">
     <div class="flex justify-between items-center">
@@ -5,9 +6,9 @@
             <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">📊 Weekly Volume</h2>
             <p class="text-sm text-slate-300 dark:text-slate-200">Volume trends and training stress.</p>
         </div>
-        <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
-            <button id="toggle-hours" onclick="updateVolumeChart('duration')" class="px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm">Hours</button>
-            <button id="toggle-tss" onclick="updateVolumeChart('tss')" class="px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50">TSS</button>
+        <div class="control-toggle-group">
+            {{ render_toggle_button("toggle-hours", "Hours", true, "updateVolumeChart('duration')") }}
+            {{ render_toggle_button("toggle-tss", "TSS", false, "updateVolumeChart('tss')") }}
         </div>
     </div>
 
@@ -124,11 +125,11 @@
             const btnTss = document.getElementById('toggle-tss');
 
             if (metric === 'duration') {
-                btnHours.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm";
-                btnTss.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50";
+                btnHours.className = "control-button control-toggle control-toggle-active";
+                btnTss.className = "control-button control-toggle";
             } else {
-                btnTss.className = "px-3 py-1 text-xs font-bold rounded-md transition-all bg-blue-600 text-white shadow-sm";
-                btnHours.className = "px-3 py-1 text-xs font-bold rounded-md transition-all text-slate-200 hover:text-slate-50";
+                btnTss.className = "control-button control-toggle control-toggle-active";
+                btnHours.className = "control-button control-toggle";
             }
 
             window.volumeChart.data.datasets = createDatasets(metric);
