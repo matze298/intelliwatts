@@ -116,6 +116,40 @@ def _phase_form_values(phase: TrainingPhase | None) -> tuple[str, str]:
     return phase.primary_goal, phase.target_date.isoformat()
 
 
+def _parse_iso_date(raw_value: str) -> tuple[date | None, str | None]:
+    """Parse an ISO date string when present.
+
+    Returns:
+        The parsed date and an error message if parsing fails.
+    """
+    if not raw_value:
+        return None, None
+    try:
+        return date.fromisoformat(raw_value), None
+    except ValueError:
+        return None, "Selected planning week must be a valid date."
+
+
+def _parse_weekly_limits(raw_hours: object, raw_sessions: object) -> tuple[float | None, int | None, str | None]:
+    """Parse weekly limit form values.
+
+    Returns:
+        The parsed hours, parsed sessions, and an error message if parsing failed.
+    """
+    try:
+        weekly_hours: float | None = None
+        if isinstance(raw_hours, str) and raw_hours:
+            weekly_hours = float(raw_hours)
+
+        weekly_sessions: int | None = None
+        if isinstance(raw_sessions, str) and raw_sessions:
+            weekly_sessions = int(raw_sessions)
+    except ValueError:
+        return None, None, "Weekly planning limits must be numbers."
+
+    return weekly_hours, weekly_sessions, None
+
+
 def _week_options_for_phase(session: Session, phase: TrainingPhase | None) -> list[LongTermWeekOption]:
     """Return selectable upcoming weeks for a phase."""
     if phase is None:
@@ -319,9 +353,8 @@ async def long_term_plan(
             error="Target date is required.",
         )
 
-    try:
-        target_date = date.fromisoformat(raw_target_date)
-    except ValueError:
+    target_date, date_error = _parse_iso_date(raw_target_date)
+    if date_error or target_date is None:
         return _render_plan_page(
             request,
             user=user,
@@ -334,7 +367,7 @@ async def long_term_plan(
             primary_goal=primary_goal,
             target_date=raw_target_date,
             week_options=[],
-            error="Target date must be a valid date.",
+            error=date_error or "Target date must be a valid date.",
         )
 
     start_date = _today()
@@ -569,15 +602,8 @@ async def generate(
     raw_week_start = str(input_data.get("week_start", "")).strip()
     week_selection: WeekSelection | None = None
 
-    try:
-        weekly_hours: float | None = None
-        if isinstance(raw_hours, str) and raw_hours:
-            weekly_hours = float(raw_hours)
-
-        weekly_sessions: int | None = None
-        if isinstance(raw_sessions, str) and raw_sessions:
-            weekly_sessions = int(raw_sessions)
-    except ValueError:
+    weekly_hours, weekly_sessions, limit_error = _parse_weekly_limits(raw_hours, raw_sessions)
+    if limit_error:
         loaded = load_user_plan(user)
         return _render_plan_page(
             request,
@@ -592,7 +618,7 @@ async def generate(
             target_date="",
             week_options=[],
             selected_week_start=raw_week_start,
-            error="Weekly planning limits must be numbers.",
+            error=limit_error,
         )
 
     if weekly_hours is not None or weekly_sessions is not None:
@@ -682,9 +708,8 @@ async def update(
     raw_week_start = str(input_data.get("week_start", "")).strip()
     week_start: date | None = None
 
-    try:
-        week_start = date.fromisoformat(raw_week_start) if raw_week_start else None
-    except ValueError:
+    week_start, week_error = _parse_iso_date(raw_week_start)
+    if week_error:
         loaded = load_user_plan(user)
         return _render_plan_page(
             request,
@@ -699,7 +724,7 @@ async def update(
             target_date="",
             week_options=[],
             selected_week_start=raw_week_start,
-            error="Selected planning week must be a valid date.",
+            error=week_error,
         )
 
     result = await update_training_plan(user=user, feedback=feedback, settings=settings, week_start=week_start)
@@ -750,10 +775,11 @@ async def publish_workout(
     week_start = get_monday(datetime.now(UTC).date())
     phase: TrainingPhase | None = None
     if raw_week_start:
-        try:
-            week_start = date.fromisoformat(raw_week_start)
-        except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(WeekSelectionError())) from exc
+        week_start, week_error = _parse_iso_date(raw_week_start)
+        if week_error or week_start is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(WeekSelectionError()))
+    else:
+        week_start = get_monday(datetime.now(UTC).date())
 
     with Session(engine) as session:
         phase = _get_active_phase(session, user)
