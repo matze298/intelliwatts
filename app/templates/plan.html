@@ -111,11 +111,8 @@
         </section>
 
         {% if error %}
-        {% call render_state_banner("Planning error" if error_traceback else "Validation error", tone="error", extra_classes="mb-6", body_class="mt-1 text-sm") %}
+        {% call render_state_banner("Validation error", tone="error", extra_classes="mb-6", body_class="mt-1 text-sm") %}
             <p>{{ error }}</p>
-            {% if error_traceback %}
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-white/70 p-3 text-xs leading-5 text-red-900 whitespace-pre-wrap">{{ error_traceback }}</pre>
-            {% endif %}
         {% endcall %}
         {% endif %}
 
