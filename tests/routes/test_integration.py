@@ -18,7 +18,7 @@ from app.db import engine
 from app.intervals.parser.activity import ParsedActivity
 from app.intervals.parser.power_curve import ParsedPowerCurve, PowerCurvePoint
 from app.intervals.parser.wellness import ParsedWellness
-from app.main import app, planner_error_middleware
+from app.main import app
 from app.models.plan import LongTermPlanArtifact, TrainingPhase, TrainingPlan, WorkoutDelivery
 from app.models.user import User
 from app.planning.llm import LLMResponse
@@ -645,12 +645,12 @@ async def test_weekly_generation_rejects_invalid_selected_week(
 @pytest.mark.asyncio
 async def test_planner_exception_handler_renders_dedicated_page() -> None:
     """Unexpected planner failures should render the dedicated planner error page."""
-    # GIVEN a minimal app context and a downstream handler that crashes
+    # GIVEN a planner route wrapper and a downstream handler that crashes
     test_app = FastAPI()
     test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
 
     async def explode(_request: Request) -> None:
-        """Crash to exercise the planner error middleware.
+        """Crash to exercise the planner error route wrapper.
 
         Raises:
             RuntimeError: Always, to simulate an unexpected planner failure.
@@ -659,8 +659,10 @@ async def test_planner_exception_handler_renders_dedicated_page() -> None:
         message = "boom"
         raise RuntimeError(message)
 
-    # WHEN the crashing route is handled by the planner middleware
-    resp = await planner_error_middleware(build_request(test_app, method="POST", path="/generate"), explode)
+    route = web_routes.PlannerErrorRoute(path="/generate", endpoint=explode, methods=["POST"], name="explode")
+
+    # WHEN the crashing route is handled by the planner wrapper
+    resp = await route.get_route_handler()(build_request(test_app, method="POST", path="/generate"))
 
     # THEN the dedicated planner error page should render without leaking internals
     assert resp.status_code == 500

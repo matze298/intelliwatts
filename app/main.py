@@ -1,13 +1,11 @@
 """Main entrypoint for the IntelliWatts app."""
 
-from __future__ import annotations
-
 import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -20,10 +18,7 @@ from app.routes import api, auth, secrets, web
 from app.services.planner import generate_weekly_plan
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable, Callable
-
-    from starlette.requests import Request
-    from starlette.responses import Response
+    from collections.abc import AsyncIterator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,6 +39,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(api.router)
+app.include_router(web.planner_router)
 app.include_router(web.router)
 app.include_router(auth.router)
 app.include_router(secrets.router)
@@ -51,30 +47,6 @@ init_db()
 
 # Add settings to the App state for templates
 app.state.settings = {"settings": get_settings(), "models": LanguageModel}
-
-
-@app.middleware("http")
-async def planner_error_middleware(
-    request: Request,
-    call_next: Callable[[Request], Awaitable[Response]],
-) -> Response:
-    """Render a dedicated page for unexpected planner failures.
-
-    Returns:
-        The downstream response or a dedicated planner error page.
-
-    Raises:
-        HTTPException: Re-raised so FastAPI can handle validation errors.
-    """
-    try:
-        return await call_next(request)
-    except HTTPException:
-        raise
-    except Exception:
-        if request.url.path in web.PLANNER_ERROR_PATHS:
-            _LOGGER.exception("Unhandled planner error on %s", request.url.path)
-            return web.render_planner_error_response(request)
-        raise
 
 
 @app.get("/health", tags=["infra"])
