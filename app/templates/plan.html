@@ -31,6 +31,26 @@
 
         {% if user %}
         <section class="planner-card mb-6 rounded-xl p-6">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-semibold text-slate-900">Goal & planning horizon</h2>
+                    <p class="mt-1 text-sm text-slate-600">Set the long-term target that anchors weekly planning.</p>
+                </div>
+            </div>
+            <form method="post" action="/long-term-plan" class="mt-4 space-y-4">
+                <div>
+                    <label for="primary_goal" class="block text-sm font-medium text-gray-700">Primary goal:</label>
+                    <input type="text" id="primary_goal" name="primary_goal" value="{{ primary_goal or '' }}" required class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                </div>
+                <div>
+                    <label for="target_date" class="block text-sm font-medium text-gray-700">Target date:</label>
+                    <input type="date" id="target_date" name="target_date" value="{{ target_date or '' }}" required class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                </div>
+                {{ render_action_button("Save Long-term Goal", tone="secondary", extra_classes="px-4 py-2 text-sm") }}
+            </form>
+        </section>
+
+        <section class="planner-card mb-6 rounded-xl p-6">
             <div class="grid gap-4 lg:grid-cols-3 lg:items-end">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Current plan status</p>
@@ -93,26 +113,6 @@
             {{ error }}
         </div>
         {% endif %}
-
-        <section class="planner-card mb-6 rounded-xl p-6">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <h2 class="text-xl font-semibold text-slate-900">Goal & planning horizon</h2>
-                    <p class="mt-1 text-sm text-slate-600">Set the long-term target that anchors weekly planning.</p>
-                </div>
-            </div>
-            <form method="post" action="/long-term-plan" class="mt-4 space-y-4">
-                <div>
-                    <label for="primary_goal" class="block text-sm font-medium text-gray-700">Primary goal:</label>
-                    <input type="text" id="primary_goal" name="primary_goal" value="{{ primary_goal or '' }}" required class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                </div>
-                <div>
-                    <label for="target_date" class="block text-sm font-medium text-gray-700">Target date:</label>
-                    <input type="date" id="target_date" name="target_date" value="{{ target_date or '' }}" required class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                </div>
-            {{ render_action_button("Save Long-term Goal", tone="secondary", extra_classes="px-4 py-2 text-sm") }}
-        </form>
-        </section>
 
         {% call render_disclosure("Advanced settings", details_class="planner-card mb-6 rounded-xl p-6") %}
             <p class="mt-1 text-sm text-slate-600">Language model, prompt templates, and wellness toggle.</p>
