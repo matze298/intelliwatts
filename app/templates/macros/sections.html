@@ -1,0 +1,19 @@
+{% macro render_section_band(
+    title,
+    description="",
+    section_class="mb-12",
+    heading_class="text-lg font-semibold text-slate-900",
+    body_class="grid grid-cols-1 gap-12"
+) -%}
+<section class="{{ section_class }}">
+    <div class="mb-4">
+        <h2 class="{{ heading_class }}">{{ title }}</h2>
+        {% if description %}
+        <p class="mt-1 text-sm text-slate-600">{{ description }}</p>
+        {% endif %}
+    </div>
+    <div class="{{ body_class }}">
+        {{ caller() }}
+    </div>
+</section>
+{%- endmacro %}

@@ -1,5 +1,5 @@
-{% from "macros/disclosure.html" import render_disclosure %}
 {% from "macros/widgets.html" import render_widget %}
+{% from "macros/sections.html" import render_section_band %}
 {% from "macros/theme.html" import render_theme_switcher %}
 <!DOCTYPE html>
 <html lang="en">
@@ -34,6 +34,15 @@
             <p class="text-gray-600 font-medium">Holistic athlete analysis and physiological trends.</p>
         </div>
 
+        <div class="control-surface mb-12">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Plan impact</p>
+                <a href="/" class="control-button control-button-secondary inline-flex items-center justify-center px-4 py-2 text-sm">
+                    Open Planner
+                </a>
+            </div>
+        </div>
+
         <!-- Analysis Range Control -->
         <div class="control-surface mb-12">
             <div class="flex justify-between items-center mb-4">
@@ -56,20 +65,18 @@
         {% set secondary_custom_widgets = analysis.widgets | selectattr("custom_template") | rejectattr("display_group", "equalto", "main") | list %}
 
         {% if primary_custom_widgets %}
-        <div class="grid grid-cols-1 gap-12 mb-12">
+        {% call render_section_band("Headline trends") %}
             {% for widget in primary_custom_widgets %}
                 {{ render_widget(widget) }}
             {% endfor %}
-        </div>
+        {% endcall %}
         {% endif %}
 
         {% if secondary_custom_widgets %}
-        {% call render_disclosure("More charts and comparisons", details_class="control-surface mb-12") %}
-            <div class="grid grid-cols-1 gap-12">
-                {% for widget in secondary_custom_widgets %}
-                        {{ render_widget(widget) }}
-                {% endfor %}
-            </div>
+        {% call render_section_band("Supporting evidence") %}
+            {% for widget in secondary_custom_widgets %}
+                {{ render_widget(widget) }}
+            {% endfor %}
         {% endcall %}
         {% endif %}
         </div>
@@ -95,22 +102,6 @@
                 const selectedDays = event.target.value;
                 window.location.href = `/dashboard?days=${selectedDays}`;
             });
-
-            const resizeCharts = function () {
-                window.dispatchEvent(new Event('resize'));
-            };
-
-            document.querySelectorAll('.control-disclosure').forEach(function (details) {
-                details.addEventListener('toggle', function () {
-                    if (details.open) {
-                        window.requestAnimationFrame(resizeCharts);
-                    }
-                });
-            });
-
-            if (document.querySelector('.control-disclosure[open]')) {
-                window.requestAnimationFrame(resizeCharts);
-            }
         });
     </script>
 </body>
