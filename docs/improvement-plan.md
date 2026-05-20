@@ -7,14 +7,21 @@ Enhance the training plan generation by incorporating advanced physiological met
 ### 1. Athlete Context & Historical Trends
 - [ ] **Activity Notes:** Utilize unstructured text analysis of athlete-entered comments for qualitative context. The raw comment field is already parsed; semantic interpretation and coaching use are still open.
 
-### 2. LLM Prompt Optimization After Coach Context Merge
+### 2. Long-term Contextual Goal Planning
+- [ ] **Dashboard Summary View:** Surface long-term plan summaries on the dashboard as a follow-up, not part of the first planner-page release.
+- [ ] **Automatic Macro Refresh Policies:** Explore context-drift or schedule-drift triggers that suggest regenerating the long-term plan automatically.
+- [ ] **Richer Macro Schema:** Consider future structured fields such as milestone checkpoints, per-block objectives, and workout emphasis.
+- [ ] **Weekly Brief Persistence/Inspection:** Add optional storage or debug visibility for derived weekly briefs if prompt tuning or support workflows need it.
+- [ ] **Feedback-As-Strategy Signal:** Consider treating repeated tactical feedback patterns as input to future long-term planning revisions.
+
+### 3. LLM Prompt Optimization After Coach Context Merge
 - [ ] **Planned vs. completed training:** Provide a compact comparison of intended workouts versus what was actually completed, so the coach can react to missed intensity, shortened sessions, or accidental overload.
 - [ ] **Subjective recovery detail:** Add explicit day-level labels for fatigue, soreness, stress, motivation, and illness instead of only raw scores where available.
 - [ ] **Recovery deltas, not just absolutes:** Surface changes versus athlete baseline and versus recent moving averages for sleep, HRV, and resting HR so the coach can see trend direction quickly.
 - [ ] **Workout role labels:** Classify sessions as key workout, support workout, recovery ride, long ride, taper ride, rest day, or unplanned stressor before prompt assembly.
 - [ ] **Confidence / missing-data flags:** Mark days or weeks where the data is sparse, late, or inconsistent so the coach can down-weight uncertain signals rather than overfit to gaps.
 
-### 3. UX / Product Experience
+### 4. UX / Product Experience
 - [ ] **More trustworthy comparisons:** Present planned vs. completed, recovery vs. baseline, and week-over-week trend deltas in a format that is easy to scan and hard to misread.
 - [ ] **Debug view safety:** Keep developer-only information out of the normal user flow, and make sure the toggle does not affect the normal planner or dashboard experience when disabled.
 - [ ] **Reset prompt to default:** Add a one-click action in Settings to restore the global LLM prompt back to the app default after experimentation.

@@ -42,8 +42,8 @@ render_settings_section, render_settings_textarea %}
 
         {% if developer_mode_enabled %}
         {% call render_settings_section(
-        "Trainer Prompt",
-        description="Trainer prompt used for the current process. Changes affect new plans only."
+        "LLM prompt",
+        description="Global prompt text for the current process. Changes affect new plans only."
         ) %}
         {% call render_settings_form("developerPromptForm") %}
         <input type="hidden" name="form_type" value="developer_prompt">
