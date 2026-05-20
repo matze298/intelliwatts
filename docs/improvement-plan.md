@@ -42,10 +42,11 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] **More scan-friendly controls:** Added shared control macros and semantic state classes for planner actions, filters, and view switches so the interface feels faster to operate and easier to extend across themes.
 - [x] **Weekly planning limits alignment:** Replaced the white weekly-limits panel with the shared control surface and field styles so it matches the rest of the planner in all themes.
 - [x] **Progressive disclosure:** Show the essentials first, then reveal deeper metrics and comparison details on demand. The dashboard now keeps summary widgets visible and hides richer charts behind a disclosure block, while the planner uses the same pattern for advanced, summary, and prompt sections.
+- [x] **Unified settings surface:** Moved developer mode, prompt overrides, and API secrets into a single authenticated settings page so the app has one place for account-level controls.
 - [ ] **More trustworthy comparisons:** Present planned vs. completed, recovery vs. baseline, and week-over-week trend deltas in a format that is easy to scan and hard to misread.
 - [ ] **Developer's view:** Add a settings-gated developer mode that is hidden by default and only enabled locally or by explicit opt-in. It should expose debugging details such as the exact LLM prompt, prompt sections, derived context packet, and analysis payloads.
 - [ ] **Debug view safety:** Keep developer-only information out of the normal user flow, and make sure the toggle does not affect the normal planner or dashboard experience when disabled.
-- [ ] **User prompt customization:** Move the user-prompt and LLM prompt templates behind a settings gate, hide them from the normal settings surface, and persist per-user overrides when someone intentionally changes them. The default experience should use shared app-level prompts unless a user has opted into custom prompt behavior.
+- [x] **User prompt customization:** Move the user-prompt and LLM prompt templates into Settings, persist per-user overrides when someone intentionally changes them, and keep the app-level prompt as the default when no override is set.
 
 ## Workflow & Feature Enhancements
 
@@ -131,7 +132,7 @@ This is the recommended sequence if the goal is to keep the repo technically dur
 Concrete steps for the recommended frontend direction:
 
 - [ ] Create a shared base layout for the common `<head>`, navigation, container, footer, and theme-switcher behavior.
-- [ ] Ensure planner, dashboard, auth, and secrets pages inherit the same shell.
+- [ ] Ensure planner, dashboard, auth, and settings pages inherit the same shell.
 - [ ] Define a small design token layer for spacing, radii, shadows, surface colors, accent colors, and typography.
 - [ ] Make `pro`, `retro`, and `minimal` theme files map to the same semantic tokens where possible.
 - [x] Build reusable Jinja fragments for page headers, stat widgets, and the theme switcher.
