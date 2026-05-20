@@ -45,7 +45,7 @@
 
         {% if developer_mode_enabled %}
         {% call render_settings_section(
-            "Developer Prompt",
+            "LLM prompt",
             description="Global prompt text for the current process. Changes affect new plans only."
         ) %}
             {% call render_settings_form("developerPromptForm") %}
@@ -111,8 +111,8 @@
                     });
 
                     if (response.ok) {
-                        settingsMessage.textContent = "Preferences stored successfully.";
-                        settingsMessage.className = "mt-4 text-sm font-medium text-green-600";
+                        window.location.reload();
+                        return;
                     } else {
                         settingsMessage.textContent = "Failed to store preferences.";
                         settingsMessage.className = "mt-4 text-sm font-medium text-red-600";

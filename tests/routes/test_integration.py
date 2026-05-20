@@ -1113,7 +1113,7 @@ def test_settings_page_renders_preferences_and_secrets(monkeypatch: pytest.Monke
     body = bytes(resp.body).decode()
     assert "Settings & Account" in body
     assert "Enable developer mode" in body
-    assert "Developer Prompt" in body
+    assert "LLM prompt" in body
     assert "system default" in body
     assert "user default" in body
     assert "Store Secrets" in body
