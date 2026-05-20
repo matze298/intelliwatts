@@ -1,5 +1,6 @@
 {% from "macros/controls.html" import render_action_button %}
-{% from "macros/settings.html" import render_settings_checkbox, render_settings_form, render_settings_input, render_settings_section, render_settings_textarea %}
+{% from "macros/settings.html" import render_settings_checkbox, render_settings_form, render_settings_input,
+render_settings_section, render_settings_textarea %}
 {% from "macros/theme.html" import render_theme_switcher %}
 <!DOCTYPE html>
 <html lang="en">
@@ -25,64 +26,60 @@
 
         <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-800 mb-2">⚙️ Settings & Account</h1>
-            <p class="text-slate-600">
-                Enable developer mode to edit the process-wide prompt used for new plans. Secrets remain tied to your
-                account.
-            </p>
         </div>
 
         {% call render_settings_section(
-            "Account & Preferences",
-            description="Developer mode is stored per user and unlocks the prompt editor below."
+        "Account & Preferences",
+        description="Developer mode is stored per user and unlocks the prompt editor below."
         ) %}
-            {% call render_settings_form("settingsForm") %}
-                <input type="hidden" name="form_type" value="preferences">
-                {{ render_settings_checkbox("developer_mode_enabled", "Enable developer mode", developer_mode_enabled) }}
-                {{ render_action_button("Save Preferences", tone="primary", extra_classes="px-4 py-2 text-sm") }}
-            {% endcall %}
-            <p id="settingsMessage" class="mt-4 text-sm font-medium"></p>
+        {% call render_settings_form("settingsForm") %}
+        <input type="hidden" name="form_type" value="preferences">
+        {{ render_settings_checkbox("developer_mode_enabled", "Enable developer mode", developer_mode_enabled) }}
+        {{ render_action_button("Save Preferences", tone="primary", extra_classes="px-4 py-2 text-sm") }}
+        {% endcall %}
+        <p id="settingsMessage" class="mt-4 text-sm font-medium"></p>
         {% endcall %}
 
         {% if developer_mode_enabled %}
         {% call render_settings_section(
-            "LLM prompt",
-            description="Global prompt text for the current process. Changes affect new plans only."
+        "Trainer Prompt",
+        description="Trainer prompt used for the current process. Changes affect new plans only."
         ) %}
-            {% call render_settings_form("developerPromptForm") %}
-                <input type="hidden" name="form_type" value="developer_prompt">
-                {{ render_settings_textarea(
-                    "system_prompt",
-                    "System prompt",
-                    settings.settings.SYSTEM_PROMPT
-                ) }}
-                {{ render_settings_textarea(
-                    "user_prompt",
-                    "User prompt",
-                    settings.settings.USER_PROMPT
-                ) }}
-                <p class="text-sm text-slate-600">
-                    Leave these unchanged if you want to keep the current app-level prompt for future plans.
-                </p>
-                {{ render_action_button("Save Global Prompt", tone="primary", extra_classes="px-4 py-2 text-sm") }}
-            {% endcall %}
-            <p id="developerPromptMessage" class="mt-4 text-sm font-medium"></p>
+        {% call render_settings_form("developerPromptForm") %}
+        <input type="hidden" name="form_type" value="developer_prompt">
+        {{ render_settings_textarea(
+        "system_prompt",
+        "System prompt",
+        settings.settings.SYSTEM_PROMPT
+        ) }}
+        {{ render_settings_textarea(
+        "user_prompt",
+        "User prompt",
+        settings.settings.USER_PROMPT
+        ) }}
+        <p class="text-sm text-slate-600">
+            Leave these unchanged if you want to keep the current app-level prompt for future plans.
+        </p>
+        {{ render_action_button("Save Global Prompt", tone="primary", extra_classes="px-4 py-2 text-sm") }}
+        {% endcall %}
+        <p id="developerPromptMessage" class="mt-4 text-sm font-medium"></p>
         {% endcall %}
         {% endif %}
 
         {% call render_settings_section(
-            "Secrets",
-            description="Store the intervals.icu and LLM API keys for this account.",
-            section_id="secrets"
+        "Secrets",
+        description="Store the intervals.icu and LLM API keys for this account.",
+        section_id="secrets"
         ) %}
-            {% call render_settings_form("secretsForm") %}
-                <input type="hidden" name="form_type" value="secrets">
-                {{ render_settings_input("athlete_id", "intervals.icu Athlete ID", intervals_athlete_id, required=true) }}
-                {{ render_settings_input("intervals_api_key", "intervals.icu API Key", input_type="password", required=true) }}
-                {{ render_settings_input("openai_api_key", "OpenAI API Key", input_type="password") }}
-                {{ render_settings_input("gemini_api_key", "Gemini API Key", input_type="password") }}
-                {{ render_action_button("Store Secrets", tone="secondary", extra_classes="px-4 py-2 text-sm") }}
-            {% endcall %}
-            <p id="secretsMessage" class="mt-4 text-sm font-medium"></p>
+        {% call render_settings_form("secretsForm") %}
+        <input type="hidden" name="form_type" value="secrets">
+        {{ render_settings_input("athlete_id", "intervals.icu Athlete ID", intervals_athlete_id, required=true) }}
+        {{ render_settings_input("intervals_api_key", "intervals.icu API Key", input_type="password", required=true) }}
+        {{ render_settings_input("openai_api_key", "OpenAI API Key", input_type="password") }}
+        {{ render_settings_input("gemini_api_key", "Gemini API Key", input_type="password") }}
+        {{ render_action_button("Store Secrets", tone="secondary", extra_classes="px-4 py-2 text-sm") }}
+        {% endcall %}
+        <p id="secretsMessage" class="mt-4 text-sm font-medium"></p>
         {% endcall %}
     </div>
 
