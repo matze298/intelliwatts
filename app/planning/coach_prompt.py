@@ -75,7 +75,14 @@ TASK:
 """
 
 
-def user_prompt(*, constraints: str, weekly_brief: str, coach_context: str, specialist_context: str) -> str:
+def user_prompt(
+    *,
+    constraints: str,
+    weekly_brief: str,
+    coach_context: str,
+    specialist_context: str,
+    task_prompt: str | None = None,
+) -> str:
     """Generate the structured prompt for the LLM.
 
     Returns:
@@ -88,5 +95,5 @@ def user_prompt(*, constraints: str, weekly_brief: str, coach_context: str, spec
     ]
     if specialist_context.strip():
         sections.append("Specialist Context:\n" + specialist_context.strip())
-    sections.append(USER_PROMPT.strip())
+    sections.append((task_prompt or USER_PROMPT).strip())
     return "\n\n".join(sections)

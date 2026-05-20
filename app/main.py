@@ -14,7 +14,8 @@ from app.config import LanguageModel, get_settings
 from app.db import init_db
 from app.dev.bootstrap import bootstrap_dev_user
 from app.models.user import User
-from app.routes import api, auth, secrets, web
+from app.routes import api, auth, web
+from app.routes import settings as settings_routes
 from app.services.planner import generate_weekly_plan
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ app.include_router(api.router)
 app.include_router(web.planner_router)
 app.include_router(web.router)
 app.include_router(auth.router)
-app.include_router(secrets.router)
+app.include_router(settings_routes.router)
 init_db()
 
 # Add settings to the App state for templates

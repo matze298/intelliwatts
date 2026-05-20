@@ -129,6 +129,8 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_settings.weekly_sessions = 5
     mock_settings.weekly_hours = 10
     mock_settings.LANGUAGE_MODEL = "test_model"
+    mock_settings.SYSTEM_PROMPT = "custom system prompt"
+    mock_settings.USER_PROMPT = "custom user prompt"
 
     mock_coach_context = MagicMock()
     mock_coach_context.render.return_value = "Coach Context:\n- 42-day weekly summaries"
@@ -189,7 +191,9 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
         weekly_brief="Weekly Brief:\n- Goal: Peak for hill climb\n- Current Block: Build",
         coach_context="Coach Context:\n- 42-day weekly summaries",
         specialist_context="FTP Trajectory:\n- Starting FTP: 250.0W",
+        task_prompt="custom user prompt",
     )
+    assert mock_generate_plan.call_args.kwargs["messages"][0]["content"] == "custom system prompt"
     assert result["plan"] == "test plan"
     assert result["summary"] == "Formatted prompt"
     mock_stage_workout_delivery.assert_called_once()

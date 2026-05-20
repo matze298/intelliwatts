@@ -30,6 +30,7 @@ class User(SQLModel, table=True):
     password_hash: str
     weekly_hours: float = 8.0
     weekly_sessions: int = 4
+    developer_mode_enabled: bool = False
 
     def create_secrets(
         self,

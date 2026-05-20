@@ -19,7 +19,7 @@
             </div>
             <div>
             {% if user %}
-            <a href="/secrets" class="control-nav-link mr-4">Secrets</a>
+            <a href="/settings" class="control-nav-link mr-4">Settings</a>
             <a href="/logout" class="control-nav-link">Logout</a>
             {% else %}
             <a href="/login" class="control-nav-link mr-4">Login</a>
@@ -94,7 +94,7 @@
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h2 class="text-lg font-semibold text-slate-900">Weekly planning limits</h2>
-                        <p class="mt-1 text-sm text-slate-600">Set the weekly caps that shape the plan before you generate it.</p>
+                        <p class="mt-1 text-sm text-slate-600">Set the weekly caps and model that shape the plan before you generate it.</p>
                     </div>
                 </div>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
@@ -107,6 +107,22 @@
                         <input type="number" id="max_sessions" name="max_sessions" form="generate-plan-form" value="{% if user %}{{ user.weekly_sessions }}{% else %}4{% endif %}" class="control-field">
                     </div>
                 </div>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label for="language_model" class="control-label">Large Language model</label>
+                        <select id="language_model" name="language_model" form="generate-plan-form" class="control-field">
+                            {% for model in settings.models %}
+                            <option value="{{ model }}" {% if model==settings.settings.LANGUAGE_MODEL %}selected{% endif %}>{{ model }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex items-center rounded-xl border border-slate-200 bg-white/70 px-4 py-3">
+                        <input type="checkbox" id="use_wellness" name="use_wellness" form="generate-plan-form" checked class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <label for="use_wellness" class="ml-2 block text-sm text-gray-700">
+                            Include Readiness & Recovery (Wellness) Data
+                        </label>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -116,35 +132,9 @@
         {% endcall %}
         {% endif %}
 
-        {% call render_disclosure("Advanced settings", details_class="planner-card mb-6 rounded-xl p-6") %}
-            <p class="mt-1 text-sm text-slate-600">Language model, prompt templates, and wellness toggle.</p>
-            <form id="generate-plan-form" method="post" action="/generate" class="mt-4 space-y-4">
-                <input type="hidden" name="week_start" value="{{ selected_week_start }}">
-                <div>
-                    <label for="language_model" class="block text-sm font-medium text-gray-700">Large Language model:</label>
-                    <select id="language_model" name="language_model" class="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm">
-                        {% for model in settings.models %}
-                        <option value="{{ model }}" {% if model==settings.settings.LANGUAGE_MODEL %}selected{% endif %}>{{ model }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label for="system_prompt" class="block text-sm font-medium text-gray-700">System Prompt:</label>
-                    <textarea id="system_prompt" name="system_prompt" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">{{ settings.settings.SYSTEM_PROMPT }}</textarea>
-                </div>
-                <div>
-                    <label for="user_prompt" class="block text-sm font-medium text-gray-700">User Prompt:</label>
-                    <textarea id="user_prompt" name="user_prompt" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">{{ settings.settings.USER_PROMPT }}</textarea>
-                </div>
-                <div class="flex items-center">
-                    <input type="checkbox" id="use_wellness" name="use_wellness" checked class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                    <label for="use_wellness" class="ml-2 block text-sm text-gray-700">
-                        Include Readiness & Recovery (Wellness) Data
-                    </label>
-                </div>
-                <p class="text-sm text-slate-500">Use the Generate Plan button above after adjusting these settings.</p>
-            </form>
-        {% endcall %}
+        <form id="generate-plan-form" method="post" action="/generate" class="hidden">
+            <input type="hidden" name="week_start" value="{{ selected_week_start }}">
+        </form>
 
         {% if long_term_summary_html %}
         {% call render_disclosure("Long-term plan", details_class="planner-card mb-6 rounded-xl p-6") %}
