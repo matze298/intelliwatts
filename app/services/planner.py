@@ -18,7 +18,7 @@ from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPlan
-from app.planning.coach_prompt import SYSTEM_PROMPT, user_prompt
+from app.planning.coach_prompt import user_prompt
 from app.planning.intervals_payload import extract_workout_json
 from app.planning.llm import LLMResponse, LLMRole, generate_plan
 from app.planning.providers.registry import registry
@@ -77,6 +77,7 @@ def _build_prompt_summary(context: PromptSummaryContext) -> str:
         weekly_brief=context.weekly_brief,
         coach_context=context.coach_text,
         specialist_context=context.specialist_text,
+        task_prompt=context.user.effective_user_prompt(),
     )
 
 
@@ -274,7 +275,7 @@ async def generate_weekly_plan(
 
     llm_response = generate_plan(
         messages=[
-            {"role": LLMRole.SYSTEM, "content": SYSTEM_PROMPT},
+            {"role": LLMRole.SYSTEM, "content": user.effective_system_prompt()},
             {"role": LLMRole.USER, "content": full_summary},
         ],
         language_model=settings.LANGUAGE_MODEL,

@@ -94,7 +94,7 @@ def test_init_db() -> None:
 
 
 def test_init_db_upgrades_half_migrated_sqlite_schema(tmp_path, monkeypatch) -> None:  # noqa: ANN001
-    """init_db should repair a sqlite database missing trainingphase.target_date."""
+    """init_db should repair a sqlite database missing the latest user settings columns."""
     # GIVEN a sqlite database stuck between revisions
     db_path = tmp_path / "half_migrated.db"
     database_url = build_half_migrated_db(db_path)
@@ -106,14 +106,12 @@ def test_init_db_upgrades_half_migrated_sqlite_schema(tmp_path, monkeypatch) -> 
     # WHEN init_db runs at startup
     init_db()
 
-    # THEN the missing target_date column should be added and backfilled
+    # THEN the missing settings columns should be added and the migration version should advance
     with sqlite3.connect(db_path) as connection:
-        columns = connection.execute("PRAGMA table_info(trainingphase)").fetchall()
-        target_date = connection.execute(
-            "SELECT target_date FROM trainingphase WHERE id = '22222222222222222222222222222222'"
-        ).fetchone()
+        columns = connection.execute("PRAGMA table_info(user)").fetchall()
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
 
-    assert any(column[1] == "target_date" for column in columns)
-    assert target_date == ("2026-09-20",)
-    assert version == ("20260517_01",)
+    assert any(column[1] == "developer_mode_enabled" for column in columns)
+    assert any(column[1] == "system_prompt_override" for column in columns)
+    assert any(column[1] == "user_prompt_override" for column in columns)
+    assert version == ("20260520_01",)

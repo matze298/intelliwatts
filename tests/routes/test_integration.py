@@ -21,10 +21,10 @@ from app.intervals.parser.power_curve import ParsedPowerCurve, PowerCurvePoint
 from app.intervals.parser.wellness import ParsedWellness
 from app.main import app
 from app.models.plan import LongTermPlanArtifact, TrainingPhase, TrainingPlan, WorkoutDelivery
-from app.models.user import User
+from app.models.user import User, UserSecrets
 from app.planning.llm import LLMResponse
 from app.routes import api as api_routes
-from app.routes import secrets as secrets_routes
+from app.routes import settings as settings_routes
 from app.routes import web as web_routes
 from app.routes.planner_errors import PlannerErrorRoute
 from app.services.long_term_planner import generate_long_term_plan_artifact
@@ -951,20 +951,139 @@ def test_home_page_rejects_out_of_plan_selected_week(
     assert "Current Week Plan" not in body
 
 
-def test_secrets_flow() -> None:
-    """Tests the Secrets storage flow."""
-    # GIVEN an authenticated user
-    user = User(id=uuid.uuid4(), email="secrets_journey@example.com", password_hash="hash")  # noqa: S106
+def test_settings_preferences_flow(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests the settings preferences storage flow."""
+    # GIVEN an authenticated user in an isolated database
+    test_engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    SQLModel.metadata.create_all(test_engine)
+    monkeypatch.setattr("app.routes.settings.engine", test_engine)
 
-    # WHEN storing secrets
-    resp = secrets_routes.store(
-        secrets_routes.StoreSecretsRequest(
+    user = User(id=uuid.uuid4(), email="settings_journey@example.com", password_hash="hash")  # noqa: S106
+    with Session(test_engine) as session:
+        session.add(user)
+        session.commit()
+        user_id = user.id
+
+    route_user = User(id=user_id, email="settings_journey@example.com", password_hash="hash")  # noqa: S106
+
+    # WHEN storing user settings
+    resp = settings_routes.store(
+        settings_routes.StoreSettingsRequest(
+            developer_mode_enabled=True,
+            system_prompt_override="custom system",
+            user_prompt_override="custom user",
+        ),
+        route_user,
+    )
+
+    # THEN it should be successful and persist the preferences
+    assert resp == {"stored": True}
+    with Session(test_engine) as session:
+        stored_user = session.exec(select(User).where(User.id == user_id)).one()
+    assert stored_user.developer_mode_enabled is True
+    assert stored_user.system_prompt_override == "custom system"
+    assert stored_user.user_prompt_override == "custom user"
+
+
+def test_settings_secrets_flow(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests the settings secrets storage flow."""
+    # GIVEN an authenticated user in an isolated database
+    test_engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    SQLModel.metadata.create_all(test_engine)
+    monkeypatch.setattr("app.routes.settings.engine", test_engine)
+
+    user = User(
+        id=uuid.uuid4(),
+        email="settings_secrets@example.com",
+        password_hash="hash",  # noqa: S106
+        developer_mode_enabled=True,
+        system_prompt_override="custom system",
+        user_prompt_override="custom user",
+    )
+    with Session(test_engine) as session:
+        session.add(user)
+        session.commit()
+        user_id = user.id
+
+    route_user = User(id=user_id, email="settings_secrets@example.com", password_hash="hash")  # noqa: S106
+
+    # WHEN storing secrets through the settings endpoint
+    resp = settings_routes.store(
+        settings_routes.StoreSettingsRequest(
+            form_type="secrets",
             athlete_id="123",
             intervals_api_key="abc",
             openai_api_key="sk-123",
         ),
-        user,
+        route_user,
     )
 
-    # THEN it should be successful
+    # THEN it should be successful and persist the secrets
     assert resp == {"stored": True}
+    with Session(test_engine) as session:
+        stored_user = session.exec(select(User).where(User.id == user_id)).one()
+        stored_secrets = session.exec(select(UserSecrets).where(UserSecrets.user_id == user_id)).one()
+    assert stored_user.developer_mode_enabled is True
+    assert stored_user.system_prompt_override == "custom system"
+    assert stored_user.user_prompt_override == "custom user"
+    assert stored_secrets.intervals_athlete_id == "123"
+
+
+def test_settings_page_renders_preferences_and_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The settings page should unify preferences and secrets in one surface."""
+    # GIVEN an authenticated user with stored settings and secrets
+    test_app = FastAPI()
+    test_app.include_router(web_routes.router)
+    test_app.state.settings = {
+        "settings": SimpleNamespace(
+            SYSTEM_PROMPT="system default", USER_PROMPT="user default", LANGUAGE_MODEL="test-model"
+        ),
+        "models": ["test-model"],
+    }
+    test_engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    SQLModel.metadata.create_all(test_engine)
+    monkeypatch.setattr("app.routes.web.engine", test_engine)
+
+    user = User(
+        id=uuid.uuid4(),
+        email="settings_page@example.com",
+        password_hash="hash",  # noqa: S106
+        developer_mode_enabled=True,
+        system_prompt_override="custom system",
+        user_prompt_override="custom user",
+    )
+    with Session(test_engine) as session:
+        session.add(user)
+        session.add(
+            UserSecrets(
+                user_id=user.id,
+                intervals_athlete_id="athlete-123",
+                intervals_api_key=b"api-key",
+            )
+        )
+        session.commit()
+        user_id = user.id
+
+    route_user = User(
+        id=user_id,
+        email="settings_page@example.com",
+        password_hash="hash",  # noqa: S106
+        developer_mode_enabled=True,
+        system_prompt_override="custom system",
+        user_prompt_override="custom user",
+    )
+
+    # WHEN the settings page is rendered
+    resp = web_routes.settings(build_request(test_app, method="GET", path="/settings"), route_user)
+
+    # THEN the page should expose the preferences and secrets sections
+    assert resp.status_code == 200
+    body = bytes(resp.body).decode()
+    assert "Settings & Account" in body
+    assert "Enable developer mode" in body
+    assert "custom system" in body
+    assert "custom user" in body
+    assert "Current app defaults" in body
+    assert "Store Secrets" in body
+    assert 'value="athlete-123"' in body
+    assert 'href="/settings#secrets"' not in body

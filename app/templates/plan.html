@@ -19,7 +19,7 @@
             </div>
             <div>
             {% if user %}
-            <a href="/secrets" class="control-nav-link mr-4">Secrets</a>
+            <a href="/settings" class="control-nav-link mr-4">Settings</a>
             <a href="/logout" class="control-nav-link">Logout</a>
             {% else %}
             <a href="/login" class="control-nav-link mr-4">Login</a>
@@ -117,7 +117,7 @@
         {% endif %}
 
         {% call render_disclosure("Advanced settings", details_class="planner-card mb-6 rounded-xl p-6") %}
-            <p class="mt-1 text-sm text-slate-600">Language model, prompt templates, and wellness toggle.</p>
+            <p class="mt-1 text-sm text-slate-600">Language model and wellness toggle. Prompt templates and developer mode now live in Settings.</p>
             <form id="generate-plan-form" method="post" action="/generate" class="mt-4 space-y-4">
                 <input type="hidden" name="week_start" value="{{ selected_week_start }}">
                 <div>
@@ -128,19 +128,21 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div>
-                    <label for="system_prompt" class="block text-sm font-medium text-gray-700">System Prompt:</label>
-                    <textarea id="system_prompt" name="system_prompt" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">{{ settings.settings.SYSTEM_PROMPT }}</textarea>
-                </div>
-                <div>
-                    <label for="user_prompt" class="block text-sm font-medium text-gray-700">User Prompt:</label>
-                    <textarea id="user_prompt" name="user_prompt" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">{{ settings.settings.USER_PROMPT }}</textarea>
-                </div>
                 <div class="flex items-center">
                     <input type="checkbox" id="use_wellness" name="use_wellness" checked class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                     <label for="use_wellness" class="ml-2 block text-sm text-gray-700">
                         Include Readiness & Recovery (Wellness) Data
                     </label>
+                </div>
+                <div class="rounded-lg border border-slate-200 bg-white/70 p-4">
+                    <p class="text-sm font-medium text-slate-900">Prompt customization moved</p>
+                    <p class="mt-1 text-sm text-slate-600">
+                        Use the Settings page to change developer mode or override the default LLM prompts.
+                        New prompt changes affect new plans only.
+                    </p>
+                    <a href="/settings" class="control-button control-button-secondary mt-3 inline-flex items-center justify-center px-4 py-2 text-sm">
+                        Open Settings
+                    </a>
                 </div>
                 <p class="text-sm text-slate-500">Use the Generate Plan button above after adjusting these settings.</p>
             </form>

@@ -27,7 +27,7 @@ from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPhase, TrainingPlan
-from app.models.user import User
+from app.models.user import User, UserSecrets
 from app.routes.planner_errors import PlannerErrorRoute
 from app.services.long_term_planner import (
     LongTermWeekOption,
@@ -218,6 +218,26 @@ def _resolve_home_week_selection(session: Session, user: User | None, raw_week_s
     if user and week_options:
         selected_week_start = week_options[0].week_start
     return WeekSelection(primary_goal, target_date, week_options, selected_week_start, None)
+
+
+def _settings_page_context(request: Request, user: User) -> dict[str, object]:
+    """Build the settings page context for the current user.
+
+    Returns:
+        A template context dictionary for the unified settings page.
+    """
+    with Session(engine) as session:
+        secrets = session.exec(select(UserSecrets).where(UserSecrets.user_id == user.id)).first()
+        intervals_athlete_id = secrets.intervals_athlete_id if secrets else ""
+
+    return {
+        "user": user,
+        "settings": request.app.state.settings,
+        "developer_mode_enabled": user.developer_mode_enabled,
+        "system_prompt_override": user.system_prompt_override or "",
+        "user_prompt_override": user.user_prompt_override or "",
+        "intervals_athlete_id": intervals_athlete_id,
+    }
 
 
 def _render_plan_page(  # noqa: PLR0913
@@ -578,14 +598,14 @@ def logout() -> RedirectResponse:
     return response
 
 
-@router.get("/secrets", response_class=HTMLResponse)
-def secrets(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
-    """Secrets page for the app.
+@router.get("/settings", response_class=HTMLResponse)
+def settings(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
+    """Settings page for the app.
 
     Returns:
-        The secrets page as HTML.
+        The settings page as HTML.
     """
-    return templates.TemplateResponse(request, "secrets.html", {"user": user})
+    return templates.TemplateResponse(request, "settings.html", _settings_page_context(request, user))
 
 
 @planner_router.post("/generate", response_class=HTMLResponse)
