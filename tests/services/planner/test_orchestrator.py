@@ -1,18 +1,16 @@
-"""Unit tests for the planner service."""
+"""Tests for the planner orchestration service."""
 
 import uuid
 from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, select
 
 from app.models.plan import (
     LongTermPlanArtifact,
     LongTermPlanBlock,
     LongTermPlanStructuredData,
-    SQLModel,
     TrainingPhase,
     TrainingPlan,
 )
@@ -25,24 +23,6 @@ from app.services.planner import (
     save_training_plan,
     update_training_plan,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
-
-    from sqlalchemy.engine import Engine
-
-
-@pytest.fixture
-def session() -> Generator[Session]:
-    """Provides a clean in-memory database session.
-
-    Yields:
-        The database session.
-    """
-    engine: Engine = create_engine("sqlite://")
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
 
 
 def test_get_or_create_active_phase(session: Session) -> None:
@@ -63,31 +43,6 @@ def test_get_or_create_active_phase(session: Session) -> None:
 
     # THEN: It should return the same phase.
     assert phase2.id == phase.id
-
-
-def test_save_training_plan_overwrite(session: Session) -> None:
-    """Test save_training_plan overwrites existing plan for the week."""
-    # GIVEN: An active phase and a week start date.
-    user_id = uuid.uuid4()
-    phase = get_or_create_active_phase(session, user_id)
-    week_start = date(2026, 4, 20)
-
-    # WHEN: Saving an initial plan.
-    data = PlanData(raw_content="Old Content", workout_data=[], prompt_history=[])
-    save_training_plan(session, phase.id, week_start, data)
-
-    # THEN: It should be stored in the database.
-    statement = select(TrainingPlan).where(TrainingPlan.phase_id == phase.id)
-    plan = session.exec(statement).one()
-    assert plan.raw_content == "Old Content"
-
-    # WHEN: Saving a new plan for the same week.
-    data = PlanData(raw_content="New Content", workout_data=[], prompt_history=[])
-    save_training_plan(session, phase.id, week_start, data)
-
-    # THEN: It should overwrite the existing plan.
-    plan = session.exec(statement).one()
-    assert plan.raw_content == "New Content"
 
 
 @patch("app.services.planner.orchestrator.IntervalsClient")

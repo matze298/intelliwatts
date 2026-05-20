@@ -60,7 +60,6 @@ This is the recommended sequence if the goal is to keep the repo technically dur
 | --- | --- | --- | --- | --- |
 | P0 | Tighten typed contracts | Mid | High | The analysis/provider boundary needs stronger guarantees before more features land on top of it. |
 | P0 | Add boundary validation | Mid | High | Defensive checks reduce the chance that bad upstream data or malformed model output cascades into planning. |
-| P0 | Create shared test fixtures | Easy | Medium | This lowers the cost of every future refactor and makes the rest of the roadmap safer. |
 
 ### Next
 | Priority | Area | Effort | Impact | Why next |
