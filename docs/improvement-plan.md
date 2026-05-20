@@ -17,6 +17,7 @@ Enhance the training plan generation by incorporating advanced physiological met
 ### 3. UX / Product Experience
 - [ ] **More trustworthy comparisons:** Present planned vs. completed, recovery vs. baseline, and week-over-week trend deltas in a format that is easy to scan and hard to misread.
 - [ ] **Debug view safety:** Keep developer-only information out of the normal user flow, and make sure the toggle does not affect the normal planner or dashboard experience when disabled.
+- [ ] **Reset prompt to default:** Add a one-click action in Settings to restore the global LLM prompt back to the app default after experimentation.
 
 ## Workflow & Feature Enhancements
 
