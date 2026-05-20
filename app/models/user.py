@@ -8,8 +8,6 @@ from fastapi import HTTPException
 from sqlmodel import Field, Session, SQLModel, select
 
 from app.db import engine
-from app.planning.coach_prompt import SYSTEM_PROMPT as DEFAULT_SYSTEM_PROMPT
-from app.planning.coach_prompt import USER_PROMPT as DEFAULT_USER_PROMPT
 from app.security.crypto import decrypt, encrypt
 
 
@@ -33,8 +31,6 @@ class User(SQLModel, table=True):
     weekly_hours: float = 8.0
     weekly_sessions: int = 4
     developer_mode_enabled: bool = False
-    system_prompt_override: str | None = None
-    user_prompt_override: str | None = None
 
     def create_secrets(
         self,
@@ -61,18 +57,6 @@ class User(SQLModel, table=True):
             openai_api_key=encrypt(openai_api_key) if openai_api_key else None,
             gemini_api_key=encrypt(gemini_api_key) if gemini_api_key else None,
         )
-
-    def effective_system_prompt(self) -> str:
-        """Return the system prompt for this user."""
-        if self.system_prompt_override:
-            return self.system_prompt_override
-        return DEFAULT_SYSTEM_PROMPT
-
-    def effective_user_prompt(self) -> str:
-        """Return the user prompt template for this user."""
-        if self.user_prompt_override:
-            return self.user_prompt_override
-        return DEFAULT_USER_PROMPT
 
 
 @dataclass

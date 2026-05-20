@@ -234,8 +234,6 @@ def _settings_page_context(request: Request, user: User) -> dict[str, object]:
         "user": user,
         "settings": request.app.state.settings,
         "developer_mode_enabled": user.developer_mode_enabled,
-        "system_prompt_override": user.system_prompt_override or "",
-        "user_prompt_override": user.user_prompt_override or "",
         "intervals_athlete_id": intervals_athlete_id,
     }
 

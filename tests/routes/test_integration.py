@@ -120,6 +120,8 @@ def _build_weekly_planner_route_context(*, email: str) -> WeeklyPlannerRouteCont
     settings.CACHE_INTERVALS_HOURS = 0
     settings.ANALYSIS_DAYS = 120
     settings.LANGUAGE_MODEL = "test-model"
+    settings.SYSTEM_PROMPT = "system default"
+    settings.USER_PROMPT = "user default"
     route_user = User(id=user_id, email=email, password_hash="hash")  # noqa: S106
     return WeeklyPlannerRouteContext(
         app=test_app,
@@ -970,8 +972,6 @@ def test_settings_preferences_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     resp = settings_routes.store(
         settings_routes.StoreSettingsRequest(
             developer_mode_enabled=True,
-            system_prompt_override="custom system",
-            user_prompt_override="custom user",
         ),
         route_user,
     )
@@ -981,8 +981,48 @@ def test_settings_preferences_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     with Session(test_engine) as session:
         stored_user = session.exec(select(User).where(User.id == user_id)).one()
     assert stored_user.developer_mode_enabled is True
-    assert stored_user.system_prompt_override == "custom system"
-    assert stored_user.user_prompt_override == "custom user"
+
+
+def test_settings_developer_prompt_flow(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests the developer prompt storage flow."""
+    # GIVEN an authenticated developer user and isolated app settings
+    test_engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    SQLModel.metadata.create_all(test_engine)
+    monkeypatch.setattr("app.routes.settings.engine", test_engine)
+
+    app_settings = SimpleNamespace(SYSTEM_PROMPT="system default", USER_PROMPT="user default")
+    monkeypatch.setattr("app.routes.settings.get_settings", lambda: app_settings)
+
+    user = User(
+        id=uuid.uuid4(),
+        email="settings_dev@example.com",
+        password_hash="hash",  # noqa: S106
+        developer_mode_enabled=True,
+    )
+    with Session(test_engine) as session:
+        session.add(user)
+        session.commit()
+        user_id = user.id
+
+    route_user = User(id=user_id, email="settings_dev@example.com", password_hash="hash")  # noqa: S106
+
+    # WHEN storing the developer prompt through the settings endpoint
+    resp = settings_routes.store(
+        settings_routes.StoreSettingsRequest(
+            form_type="developer_prompt",
+            system_prompt="custom system",
+            user_prompt="custom user",
+        ),
+        route_user,
+    )
+
+    # THEN it should update only the global in-memory prompt settings
+    assert resp == {"stored": True}
+    assert app_settings.SYSTEM_PROMPT == "custom system"
+    assert app_settings.USER_PROMPT == "custom user"
+    with Session(test_engine) as session:
+        stored_user = session.exec(select(User).where(User.id == user_id)).one()
+    assert stored_user.developer_mode_enabled is True
 
 
 def test_settings_secrets_flow(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -997,8 +1037,6 @@ def test_settings_secrets_flow(monkeypatch: pytest.MonkeyPatch) -> None:
         email="settings_secrets@example.com",
         password_hash="hash",  # noqa: S106
         developer_mode_enabled=True,
-        system_prompt_override="custom system",
-        user_prompt_override="custom user",
     )
     with Session(test_engine) as session:
         session.add(user)
@@ -1024,8 +1062,6 @@ def test_settings_secrets_flow(monkeypatch: pytest.MonkeyPatch) -> None:
         stored_user = session.exec(select(User).where(User.id == user_id)).one()
         stored_secrets = session.exec(select(UserSecrets).where(UserSecrets.user_id == user_id)).one()
     assert stored_user.developer_mode_enabled is True
-    assert stored_user.system_prompt_override == "custom system"
-    assert stored_user.user_prompt_override == "custom user"
     assert stored_secrets.intervals_athlete_id == "123"
 
 
@@ -1049,8 +1085,6 @@ def test_settings_page_renders_preferences_and_secrets(monkeypatch: pytest.Monke
         email="settings_page@example.com",
         password_hash="hash",  # noqa: S106
         developer_mode_enabled=True,
-        system_prompt_override="custom system",
-        user_prompt_override="custom user",
     )
     with Session(test_engine) as session:
         session.add(user)
@@ -1069,8 +1103,6 @@ def test_settings_page_renders_preferences_and_secrets(monkeypatch: pytest.Monke
         email="settings_page@example.com",
         password_hash="hash",  # noqa: S106
         developer_mode_enabled=True,
-        system_prompt_override="custom system",
-        user_prompt_override="custom user",
     )
 
     # WHEN the settings page is rendered
@@ -1081,9 +1113,9 @@ def test_settings_page_renders_preferences_and_secrets(monkeypatch: pytest.Monke
     body = bytes(resp.body).decode()
     assert "Settings & Account" in body
     assert "Enable developer mode" in body
-    assert "custom system" in body
-    assert "custom user" in body
-    assert "Current app defaults" in body
+    assert "Developer Prompt" in body
+    assert "system default" in body
+    assert "user default" in body
     assert "Store Secrets" in body
     assert 'value="athlete-123"' in body
     assert 'href="/settings#secrets"' not in body

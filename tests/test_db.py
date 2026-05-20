@@ -106,12 +106,10 @@ def test_init_db_upgrades_half_migrated_sqlite_schema(tmp_path, monkeypatch) -> 
     # WHEN init_db runs at startup
     init_db()
 
-    # THEN the missing settings columns should be added and the migration version should advance
+    # THEN the developer-mode column should be added and the migration version should advance
     with sqlite3.connect(db_path) as connection:
         columns = connection.execute("PRAGMA table_info(user)").fetchall()
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
 
     assert any(column[1] == "developer_mode_enabled" for column in columns)
-    assert any(column[1] == "system_prompt_override" for column in columns)
-    assert any(column[1] == "user_prompt_override" for column in columns)
     assert version == ("20260520_01",)

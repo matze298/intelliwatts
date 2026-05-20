@@ -33,14 +33,8 @@ def upgrade() -> None:
             "user",
             sa.Column("developer_mode_enabled", sa.Boolean(), nullable=False, server_default=sa.text("0")),
         )
-    if "system_prompt_override" not in user_columns:
-        op.add_column("user", sa.Column("system_prompt_override", sa.Text(), nullable=True))
-    if "user_prompt_override" not in user_columns:
-        op.add_column("user", sa.Column("user_prompt_override", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_column("user", "user_prompt_override")
-    op.drop_column("user", "system_prompt_override")
     op.drop_column("user", "developer_mode_enabled")

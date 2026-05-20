@@ -59,6 +59,7 @@ class PromptSummaryContext:
     weekly_brief: str
     coach_text: str
     specialist_text: str
+    task_prompt: str
 
 
 def _build_prompt_summary(context: PromptSummaryContext) -> str:
@@ -77,7 +78,7 @@ def _build_prompt_summary(context: PromptSummaryContext) -> str:
         weekly_brief=context.weekly_brief,
         coach_context=context.coach_text,
         specialist_context=context.specialist_text,
-        task_prompt=context.user.effective_user_prompt(),
+        task_prompt=context.task_prompt,
     )
 
 
@@ -270,12 +271,13 @@ async def generate_weekly_plan(
                 weekly_brief=weekly_brief,
                 coach_text=coach_context.render(),
                 specialist_text=specialist_text,
+                task_prompt=settings.USER_PROMPT,
             )
         )
 
     llm_response = generate_plan(
         messages=[
-            {"role": LLMRole.SYSTEM, "content": user.effective_system_prompt()},
+            {"role": LLMRole.SYSTEM, "content": settings.SYSTEM_PROMPT},
             {"role": LLMRole.USER, "content": full_summary},
         ],
         language_model=settings.LANGUAGE_MODEL,

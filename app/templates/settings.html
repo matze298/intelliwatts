@@ -26,46 +26,48 @@
         <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-800 mb-2">⚙️ Settings & Account</h1>
             <p class="text-slate-600">
-                Prompt overrides affect new plans only. Leave them blank to keep using the app default prompts.
+                Enable developer mode to edit the process-wide prompt used for new plans. Secrets remain tied to your
+                account.
             </p>
         </div>
 
         {% call render_settings_section(
             "Account & Preferences",
-            description="Developer mode is stored per user and does nothing yet."
+            description="Developer mode is stored per user and unlocks the prompt editor below."
         ) %}
             {% call render_settings_form("settingsForm") %}
                 <input type="hidden" name="form_type" value="preferences">
                 {{ render_settings_checkbox("developer_mode_enabled", "Enable developer mode", developer_mode_enabled) }}
-                {{ render_settings_textarea(
-                    "system_prompt_override",
-                    "System prompt override",
-                    system_prompt_override,
-                    placeholder="Leave empty to use the app default system prompt"
-                ) }}
-                {{ render_settings_textarea(
-                    "user_prompt_override",
-                    "User prompt override",
-                    user_prompt_override,
-                    placeholder="Leave empty to use the app default user prompt"
-                ) }}
                 {{ render_action_button("Save Preferences", tone="primary", extra_classes="px-4 py-2 text-sm") }}
             {% endcall %}
             <p id="settingsMessage" class="mt-4 text-sm font-medium"></p>
-            <details class="control-disclosure mt-6">
-                <summary class="control-disclosure-summary">Current app defaults</summary>
-                <div class="mt-4 space-y-6">
-                    <div>
-                        <h3 class="text-base font-semibold text-slate-900">System prompt</h3>
-                        <pre class="mt-2 whitespace-pre-wrap rounded-lg bg-slate-950 p-4 text-sm text-slate-50">{{ settings.settings.SYSTEM_PROMPT }}</pre>
-                    </div>
-                    <div>
-                        <h3 class="text-base font-semibold text-slate-900">User prompt</h3>
-                        <pre class="mt-2 whitespace-pre-wrap rounded-lg bg-slate-950 p-4 text-sm text-slate-50">{{ settings.settings.USER_PROMPT }}</pre>
-                    </div>
-                </div>
-            </details>
         {% endcall %}
+
+        {% if developer_mode_enabled %}
+        {% call render_settings_section(
+            "Developer Prompt",
+            description="Global prompt text for the current process. Changes affect new plans only."
+        ) %}
+            {% call render_settings_form("developerPromptForm") %}
+                <input type="hidden" name="form_type" value="developer_prompt">
+                {{ render_settings_textarea(
+                    "system_prompt",
+                    "System prompt",
+                    settings.settings.SYSTEM_PROMPT
+                ) }}
+                {{ render_settings_textarea(
+                    "user_prompt",
+                    "User prompt",
+                    settings.settings.USER_PROMPT
+                ) }}
+                <p class="text-sm text-slate-600">
+                    Leave these unchanged if you want to keep the current app-level prompt for future plans.
+                </p>
+                {{ render_action_button("Save Global Prompt", tone="primary", extra_classes="px-4 py-2 text-sm") }}
+            {% endcall %}
+            <p id="developerPromptMessage" class="mt-4 text-sm font-medium"></p>
+        {% endcall %}
+        {% endif %}
 
         {% call render_settings_section(
             "Secrets",
@@ -88,6 +90,8 @@
         document.addEventListener("DOMContentLoaded", () => {
             const settingsForm = document.getElementById("settingsForm");
             const settingsMessage = document.getElementById("settingsMessage");
+            const developerPromptForm = document.getElementById("developerPromptForm");
+            const developerPromptMessage = document.getElementById("developerPromptMessage");
             const secretsForm = document.getElementById("secretsForm");
             const secretsMessage = document.getElementById("secretsMessage");
 
@@ -118,6 +122,35 @@
                     settingsMessage.className = "mt-4 text-sm font-medium text-red-600";
                 }
             });
+
+            if (developerPromptForm && developerPromptMessage) {
+                developerPromptForm.addEventListener("submit", async (event) => {
+                    event.preventDefault();
+                    const formData = new FormData(developerPromptForm);
+                    const payload = Object.fromEntries(formData.entries());
+
+                    try {
+                        const response = await fetch("/api/settings", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify(payload),
+                        });
+
+                        if (response.ok) {
+                            developerPromptMessage.textContent = "Global prompt stored successfully.";
+                            developerPromptMessage.className = "mt-4 text-sm font-medium text-green-600";
+                        } else {
+                            developerPromptMessage.textContent = "Failed to store the global prompt.";
+                            developerPromptMessage.className = "mt-4 text-sm font-medium text-red-600";
+                        }
+                    } catch (error) {
+                        developerPromptMessage.textContent = "An error occurred while storing the global prompt.";
+                        developerPromptMessage.className = "mt-4 text-sm font-medium text-red-600";
+                    }
+                });
+            }
 
             secretsForm.addEventListener("submit", async (event) => {
                 event.preventDefault();

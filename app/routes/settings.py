@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.auth.auth import get_current_user_from_token
+from app.config import get_settings
 from app.db import engine
 from app.models.user import User, UserSecrets
 
@@ -18,8 +19,8 @@ class StoreSettingsRequest(BaseModel):
 
     form_type: str = "preferences"
     developer_mode_enabled: bool = False
-    system_prompt_override: str | None = None
-    user_prompt_override: str | None = None
+    system_prompt: str | None = None
+    user_prompt: str | None = None
     athlete_id: str | None = None
     intervals_api_key: str | None = None
     openai_api_key: str | None = None
@@ -60,8 +61,17 @@ def store(
 
         if request.form_type == "preferences":
             db_user.developer_mode_enabled = request.developer_mode_enabled
-            db_user.system_prompt_override = _normalize_prompt(request.system_prompt_override)
-            db_user.user_prompt_override = _normalize_prompt(request.user_prompt_override)
+        elif request.form_type == "developer_prompt":
+            if not db_user.developer_mode_enabled:
+                raise HTTPException(status_code=403, detail="Developer mode is required")
+
+            settings = get_settings()
+            system_prompt = _normalize_prompt(request.system_prompt)
+            user_prompt = _normalize_prompt(request.user_prompt)
+            if system_prompt:
+                settings.SYSTEM_PROMPT = system_prompt
+            if user_prompt:
+                settings.USER_PROMPT = user_prompt
         elif request.form_type == "secrets":
             athlete_id = _normalize_prompt(request.athlete_id)
             intervals_api_key = _normalize_prompt(request.intervals_api_key)

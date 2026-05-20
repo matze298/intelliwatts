@@ -119,8 +119,6 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
         password_hash="hashed_password",  # noqa: S106
         weekly_hours=10.0,
         weekly_sessions=5,
-        system_prompt_override="custom system prompt",
-        user_prompt_override="custom user prompt",
     )
 
     mock_settings = MagicMock()
@@ -131,6 +129,8 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_settings.weekly_sessions = 5
     mock_settings.weekly_hours = 10
     mock_settings.LANGUAGE_MODEL = "test_model"
+    mock_settings.SYSTEM_PROMPT = "custom system prompt"
+    mock_settings.USER_PROMPT = "custom user prompt"
 
     mock_coach_context = MagicMock()
     mock_coach_context.render.return_value = "Coach Context:\n- 42-day weekly summaries"
