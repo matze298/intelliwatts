@@ -1,18 +1,16 @@
-"""Unit tests for the planner service."""
+"""Tests for the planner orchestration service."""
 
 import uuid
 from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, select
 
 from app.models.plan import (
     LongTermPlanArtifact,
     LongTermPlanBlock,
     LongTermPlanStructuredData,
-    SQLModel,
     TrainingPhase,
     TrainingPlan,
 )
@@ -22,27 +20,10 @@ from app.services.planner import (
     PlanData,
     generate_weekly_plan,
     get_or_create_active_phase,
+    save_and_stage_weekly_plan,
     save_training_plan,
     update_training_plan,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
-
-    from sqlalchemy.engine import Engine
-
-
-@pytest.fixture
-def session() -> Generator[Session]:
-    """Provides a clean in-memory database session.
-
-    Yields:
-        The database session.
-    """
-    engine: Engine = create_engine("sqlite://")
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
 
 
 def test_get_or_create_active_phase(session: Session) -> None:
@@ -65,40 +46,15 @@ def test_get_or_create_active_phase(session: Session) -> None:
     assert phase2.id == phase.id
 
 
-def test_save_training_plan_overwrite(session: Session) -> None:
-    """Test save_training_plan overwrites existing plan for the week."""
-    # GIVEN: An active phase and a week start date.
-    user_id = uuid.uuid4()
-    phase = get_or_create_active_phase(session, user_id)
-    week_start = date(2026, 4, 20)
-
-    # WHEN: Saving an initial plan.
-    data = PlanData(raw_content="Old Content", workout_data=[], prompt_history=[])
-    save_training_plan(session, phase.id, week_start, data)
-
-    # THEN: It should be stored in the database.
-    statement = select(TrainingPlan).where(TrainingPlan.phase_id == phase.id)
-    plan = session.exec(statement).one()
-    assert plan.raw_content == "Old Content"
-
-    # WHEN: Saving a new plan for the same week.
-    data = PlanData(raw_content="New Content", workout_data=[], prompt_history=[])
-    save_training_plan(session, phase.id, week_start, data)
-
-    # THEN: It should overwrite the existing plan.
-    plan = session.exec(statement).one()
-    assert plan.raw_content == "New Content"
-
-
-@patch("app.services.planner.IntervalsClient")
-@patch("app.services.planner.stage_workout_delivery")
-@patch("app.services.planner.registry")
-@patch("app.services.planner.build_coach_context")
-@patch("app.services.planner.generate_plan")
-@patch("app.services.planner.derive_weekly_brief")
-@patch("app.services.planner.get_current_long_term_plan_artifact")
-@patch("app.services.planner.get_or_create_active_phase")
-@patch("app.services.planner.user_prompt")
+@patch("app.services.planner.orchestrator.IntervalsClient")
+@patch("app.services.planner.persistence.stage_workout_delivery")
+@patch("app.services.planner.orchestrator.registry")
+@patch("app.services.planner.orchestrator.build_coach_context")
+@patch("app.services.planner.orchestrator.generate_plan")
+@patch("app.services.planner.orchestrator.derive_weekly_brief")
+@patch("app.services.planner.orchestrator.get_current_long_term_plan_artifact")
+@patch("app.services.planner.orchestrator.get_or_create_active_phase")
+@patch("app.services.planner.prompt.user_prompt")
 @pytest.mark.asyncio
 async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_user_prompt: MagicMock,
@@ -170,8 +126,8 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_analysis.provider_results = {"activity": {}}
     mock_analysis.daily_records = []
     with (
-        patch("app.services.planner.Session"),
-        patch("app.services.planner._get_analysis", return_value=mock_analysis),
+        patch("app.services.planner.orchestrator.Session"),
+        patch("app.services.planner.orchestrator._get_analysis", return_value=mock_analysis),
     ):
         result = await generate_weekly_plan(mock_user, mock_settings, week_start=target_week_start)
 
@@ -199,8 +155,101 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_stage_workout_delivery.assert_called_once()
 
 
-@patch("app.services.planner.generate_plan")
-@patch("app.services.planner.stage_workout_delivery")
+@patch("app.services.planner.orchestrator.IntervalsClient")
+@patch("app.services.planner.persistence.stage_workout_delivery")
+@patch("app.services.planner.orchestrator.registry")
+@patch("app.services.planner.orchestrator.build_coach_context")
+@patch("app.services.planner.orchestrator.generate_plan")
+@patch("app.services.planner.orchestrator.derive_weekly_brief")
+@patch("app.services.planner.orchestrator.get_current_long_term_plan_artifact")
+@patch("app.services.planner.orchestrator.get_or_create_active_phase")
+@patch("app.services.planner.prompt.user_prompt")
+@pytest.mark.asyncio
+async def test_generate_weekly_plan_uses_loaded_settings(  # noqa: PLR0913, PLR0917
+    mock_user_prompt: MagicMock,
+    mock_get_active_phase: MagicMock,
+    mock_get_current_artifact: MagicMock,
+    mock_derive_weekly_brief: MagicMock,
+    mock_generate_plan: MagicMock,
+    mock_build_coach_context: MagicMock,
+    mock_registry: MagicMock,
+    mock_stage_workout_delivery: MagicMock,
+    mock_intervals_client: MagicMock,
+) -> None:
+    """The orchestrator should load settings when none are passed in."""
+    # GIVEN: A user and the default settings loader.
+    mock_user = User(
+        id=uuid.uuid4(),
+        email="settings@example.com",
+        password_hash="hashed_password",  # noqa: S106
+        weekly_hours=10.0,
+        weekly_sessions=5,
+    )
+
+    mock_settings = MagicMock()
+    mock_settings.INTERVALS_API_KEY = "test_api_key"
+    mock_settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
+    mock_settings.CACHE_INTERVALS_HOURS = 0
+    mock_settings.ANALYSIS_DAYS = 120
+    mock_settings.weekly_sessions = 5
+    mock_settings.weekly_hours = 10
+    mock_settings.LANGUAGE_MODEL = "test_model"
+    mock_settings.SYSTEM_PROMPT = "custom system prompt"
+    mock_settings.USER_PROMPT = "custom user prompt"
+
+    mock_coach_context = MagicMock()
+    mock_coach_context.render.return_value = "Coach Context:\n- 42-day weekly summaries"
+    mock_coach_context.brief_context = "Recent training is steady."
+    mock_build_coach_context.return_value = mock_coach_context
+    mock_registry.get_specialist_context = AsyncMock(return_value="FTP Trajectory:\n- Starting FTP: 250.0W")
+    mock_user_prompt.return_value = "Formatted prompt"
+    mock_generate_plan.return_value = LLMResponse(plan="test plan", prompt=[{"role": "user", "content": "test prompt"}])
+    mock_derive_weekly_brief.return_value = "Weekly Brief:\n- Goal: Peak for hill climb\n- Current Block: Build"
+    mock_phase = TrainingPhase(
+        user_id=mock_user.id,
+        primary_goal="Peak for hill climb",
+        start_date=date(2026, 5, 5),
+        end_date=date(2026, 8, 1),
+        target_date=date(2026, 8, 1),
+        status="active",
+    )
+    mock_get_active_phase.return_value = mock_phase
+    blocks: list[LongTermPlanBlock] = [{"name": "Build", "focus": "Goal-specific workload", "weeks": 4}]
+    structured_data: LongTermPlanStructuredData = {
+        "goal": "Peak for hill climb",
+        "start_date": "2026-05-05",
+        "target_date": "2026-08-01",
+        "duration_weeks": 4,
+        "blocks": blocks,
+    }
+    mock_get_current_artifact.return_value = LongTermPlanArtifact(
+        phase_id=mock_phase.id,
+        structured_data=structured_data,
+        summary_markdown="# Long-term plan",
+        prompt_history=[],
+    )
+
+    # WHEN: Generating the weekly plan without passing settings explicitly.
+    target_week_start = date(2026, 6, 1)
+    mock_analysis = MagicMock()
+    mock_analysis.provider_results = {"activity": {}}
+    mock_analysis.daily_records = []
+    with (
+        patch("app.services.planner.orchestrator.get_settings", return_value=mock_settings),
+        patch("app.services.planner.orchestrator.Session"),
+        patch("app.services.planner.orchestrator._get_analysis", return_value=mock_analysis),
+    ):
+        result = await generate_weekly_plan(mock_user, None, week_start=target_week_start)
+
+    # THEN: The loaded settings should flow through the planner pipeline.
+    mock_intervals_client.assert_called_once_with("test_api_key", "test_athlete_id", session=ANY)
+    assert result["plan"] == "test plan"
+    assert result["summary"] == "Formatted prompt"
+    mock_stage_workout_delivery.assert_called_once()
+
+
+@patch("app.services.planner.orchestrator.generate_plan")
+@patch("app.services.planner.persistence.stage_workout_delivery")
 @pytest.mark.asyncio
 async def test_update_training_plan_uses_history(
     mock_stage_workout_delivery: MagicMock,
@@ -254,9 +303,9 @@ async def test_update_training_plan_uses_history(
 
     # WHEN: Updating the training plan with feedback.
     with (
-        patch("app.services.planner.Session", return_value=session),
-        patch("app.services.planner.get_monday", return_value=monday),
-        patch("app.services.planner.datetime") as mock_datetime,
+        patch("app.services.planner.orchestrator.Session", return_value=session),
+        patch("app.services.planner.orchestrator.get_monday", return_value=monday),
+        patch("app.services.planner.orchestrator.datetime") as mock_datetime,
     ):
         mock_datetime.now.return_value = datetime(2026, 4, 21, tzinfo=UTC)
         await update_training_plan(user, "make it harder")
@@ -278,6 +327,32 @@ async def test_update_training_plan_uses_history(
     mock_stage_workout_delivery.assert_called_once()
 
 
+@patch("app.services.planner.persistence.stage_workout_delivery")
+def test_save_and_stage_weekly_plan_falls_back_on_invalid_json(
+    mock_stage_workout_delivery: MagicMock,
+    session: Session,
+) -> None:
+    """Invalid plan JSON should persist an empty workout payload."""
+    # GIVEN: A training phase and a malformed LLM plan payload.
+    user = User(id=uuid.uuid4(), email="json@example.com", password_hash="hash")  # noqa: S106
+    phase = get_or_create_active_phase(session, user.id)
+    mock_llm_response = LLMResponse(plan="invalid json", prompt=[{"role": "user", "content": "prompt"}])
+
+    # WHEN: Persisting and staging the malformed plan.
+    saved_plan_id = save_and_stage_weekly_plan(
+        session=session,
+        phase_id=phase.id,
+        week_start=date(2026, 6, 1),
+        llm_response=mock_llm_response,
+    )
+
+    # THEN: The plan should still be saved with an empty workout list.
+    plan = session.exec(select(TrainingPlan)).one()
+    assert plan.id == saved_plan_id
+    assert plan.workout_data == []
+    mock_stage_workout_delivery.assert_called_once()
+
+
 @pytest.mark.asyncio
 async def test_update_training_plan_fallback_uses_selected_week(session: Session) -> None:
     """Updating a missing selected week should generate that same week."""
@@ -289,8 +364,10 @@ async def test_update_training_plan_fallback_uses_selected_week(session: Session
 
     # WHEN updating the selected week without an existing plan
     with (
-        patch("app.services.planner.Session", return_value=session),
-        patch("app.services.planner.generate_weekly_plan", new_callable=AsyncMock) as mock_generate_weekly_plan,
+        patch("app.services.planner.orchestrator.Session", return_value=session),
+        patch(
+            "app.services.planner.orchestrator.generate_weekly_plan", new_callable=AsyncMock
+        ) as mock_generate_weekly_plan,
     ):
         mock_generate_weekly_plan.return_value = {"plan": "generated", "week_start": selected_week}
         result = await update_training_plan(user, "make it easier", week_start=selected_week)
