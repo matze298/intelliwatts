@@ -851,8 +851,8 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
     assert body.index("Goal & planning horizon") < body.index("Current plan status")
     assert "No weekly plan yet" in body
     assert "Generate a plan to see the week here." in body
-    assert "control-disclosure" in body
-    assert "Advanced settings" in body
+    assert "Large Language model" in body
+    assert "Include Readiness & Recovery (Wellness) Data" in body
     assert "control-button" in body
     assert "control-theme-switcher" in body
 
@@ -883,8 +883,8 @@ def test_home_page_renders_selected_week_plan(selected_week_route_context: Selec
     )
     assert body.index("Current plan status") < body.index("Planning week") < body.index("Generate Plan")
     assert body.index("Generate Plan") < body.index("Publish Workout") < body.index("Update Plan")
-    assert "control-disclosure" in body
-    assert "Advanced settings" in body
+    assert "Large Language model" in body
+    assert "Include Readiness & Recovery (Wellness) Data" in body
     assert "control-button" in body
     assert "control-button-warning" in body
     assert "control-select" in body
