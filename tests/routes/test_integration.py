@@ -141,9 +141,9 @@ def _configure_isolated_planner_dependencies(
     """Point planner dependencies at the isolated engine and mocked services."""
     monkeypatch.setattr("app.routes.web.engine", test_engine)
     monkeypatch.setattr("app.services.plan_loader.engine", test_engine)
-    monkeypatch.setattr("app.services.planner.engine", test_engine)
+    monkeypatch.setattr("app.services.planner.orchestrator.engine", test_engine)
     monkeypatch.setattr("app.services.long_term_planner.engine", test_engine)
-    monkeypatch.setattr("app.services.planner.IntervalsClient", MagicMock())
+    monkeypatch.setattr("app.services.planner.orchestrator.IntervalsClient", MagicMock())
     generate_plan_mock.return_value = LLMResponse(
         plan="## Weekly Plan\n\n- Monday: Easy Run",
         prompt=[{"role": "user", "content": "test"}],
@@ -151,7 +151,10 @@ def _configure_isolated_planner_dependencies(
     mock_analysis = MagicMock()
     mock_analysis.provider_results = {}
     mock_analysis.daily_records = []
-    monkeypatch.setattr("app.services.planner._get_analysis", lambda *_args, **_kwargs: mock_analysis)
+    monkeypatch.setattr(
+        "app.services.planner.orchestrator._get_analysis",
+        lambda *_args, **_kwargs: mock_analysis,
+    )
 
 
 def _seed_long_term_phase(
@@ -563,7 +566,7 @@ async def test_long_term_goal_flow(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
-@patch("app.services.planner.generate_plan")
+@patch("app.services.planner.orchestrator.generate_plan")
 async def test_weekly_generation_uses_saved_long_term_goal(
     mock_generate_plan: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
@@ -606,7 +609,7 @@ async def test_weekly_generation_uses_saved_long_term_goal(
 
 
 @pytest.mark.asyncio
-@patch("app.services.planner.generate_plan")
+@patch("app.services.planner.orchestrator.generate_plan")
 async def test_weekly_generation_rejects_invalid_selected_week(
     mock_generate_plan: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
@@ -682,7 +685,7 @@ async def test_planner_exception_handler_renders_dedicated_page() -> None:
 
 
 @pytest.mark.asyncio
-@patch("app.services.planner.generate_plan")
+@patch("app.services.planner.orchestrator.generate_plan")
 async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
     mock_generate_plan: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
@@ -803,7 +806,7 @@ async def test_long_term_plan_api_creates_default_phase_for_fresh_user(monkeypat
         session.refresh(user)
 
     monkeypatch.setattr("app.services.long_term_planner.engine", test_engine)
-    monkeypatch.setattr("app.services.planner.engine", test_engine)
+    monkeypatch.setattr("app.services.planner.orchestrator.engine", test_engine)
 
     # WHEN the long-term API is called directly
     response = await api_routes.create_long_term_plan_api(user)

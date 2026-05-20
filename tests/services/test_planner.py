@@ -90,15 +90,15 @@ def test_save_training_plan_overwrite(session: Session) -> None:
     assert plan.raw_content == "New Content"
 
 
-@patch("app.services.planner.IntervalsClient")
-@patch("app.services.planner.stage_workout_delivery")
-@patch("app.services.planner.registry")
-@patch("app.services.planner.build_coach_context")
-@patch("app.services.planner.generate_plan")
-@patch("app.services.planner.derive_weekly_brief")
-@patch("app.services.planner.get_current_long_term_plan_artifact")
-@patch("app.services.planner.get_or_create_active_phase")
-@patch("app.services.planner.user_prompt")
+@patch("app.services.planner.orchestrator.IntervalsClient")
+@patch("app.services.planner.persistence.stage_workout_delivery")
+@patch("app.services.planner.orchestrator.registry")
+@patch("app.services.planner.orchestrator.build_coach_context")
+@patch("app.services.planner.orchestrator.generate_plan")
+@patch("app.services.planner.orchestrator.derive_weekly_brief")
+@patch("app.services.planner.orchestrator.get_current_long_term_plan_artifact")
+@patch("app.services.planner.orchestrator.get_or_create_active_phase")
+@patch("app.services.planner.prompt.user_prompt")
 @pytest.mark.asyncio
 async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_user_prompt: MagicMock,
@@ -170,8 +170,8 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_analysis.provider_results = {"activity": {}}
     mock_analysis.daily_records = []
     with (
-        patch("app.services.planner.Session"),
-        patch("app.services.planner._get_analysis", return_value=mock_analysis),
+        patch("app.services.planner.orchestrator.Session"),
+        patch("app.services.planner.orchestrator._get_analysis", return_value=mock_analysis),
     ):
         result = await generate_weekly_plan(mock_user, mock_settings, week_start=target_week_start)
 
@@ -199,8 +199,8 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_stage_workout_delivery.assert_called_once()
 
 
-@patch("app.services.planner.generate_plan")
-@patch("app.services.planner.stage_workout_delivery")
+@patch("app.services.planner.orchestrator.generate_plan")
+@patch("app.services.planner.persistence.stage_workout_delivery")
 @pytest.mark.asyncio
 async def test_update_training_plan_uses_history(
     mock_stage_workout_delivery: MagicMock,
@@ -254,9 +254,9 @@ async def test_update_training_plan_uses_history(
 
     # WHEN: Updating the training plan with feedback.
     with (
-        patch("app.services.planner.Session", return_value=session),
-        patch("app.services.planner.get_monday", return_value=monday),
-        patch("app.services.planner.datetime") as mock_datetime,
+        patch("app.services.planner.orchestrator.Session", return_value=session),
+        patch("app.services.planner.orchestrator.get_monday", return_value=monday),
+        patch("app.services.planner.orchestrator.datetime") as mock_datetime,
     ):
         mock_datetime.now.return_value = datetime(2026, 4, 21, tzinfo=UTC)
         await update_training_plan(user, "make it harder")
@@ -289,8 +289,10 @@ async def test_update_training_plan_fallback_uses_selected_week(session: Session
 
     # WHEN updating the selected week without an existing plan
     with (
-        patch("app.services.planner.Session", return_value=session),
-        patch("app.services.planner.generate_weekly_plan", new_callable=AsyncMock) as mock_generate_weekly_plan,
+        patch("app.services.planner.orchestrator.Session", return_value=session),
+        patch(
+            "app.services.planner.orchestrator.generate_weekly_plan", new_callable=AsyncMock
+        ) as mock_generate_weekly_plan,
     ):
         mock_generate_weekly_plan.return_value = {"plan": "generated", "week_start": selected_week}
         result = await update_training_plan(user, "make it easier", week_start=selected_week)

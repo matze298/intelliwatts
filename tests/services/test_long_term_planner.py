@@ -375,7 +375,7 @@ def test_generate_long_term_plan_for_user_creates_default_phase(monkeypatch: pyt
         session.refresh(user)
 
     monkeypatch.setattr("app.services.long_term_planner.engine", test_engine)
-    monkeypatch.setattr("app.services.planner.engine", test_engine)
+    monkeypatch.setattr("app.services.planner.orchestrator.engine", test_engine)
 
     # WHEN generating the long-term plan
     result = generate_long_term_plan_for_user(user)

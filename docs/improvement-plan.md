@@ -45,7 +45,6 @@ These are the engineering hygiene tasks that will keep the repo resilient as pla
 
 | Effort | Impact | Refactoring effort | Why it matters |
 | --- | --- | --- | --- |
-| Hard | High | Split `app/services/planner.py` into smaller orchestration modules for prompt assembly, analysis loading, plan persistence, and workout delivery. | This file currently coordinates too many responsibilities, which makes planner changes risky and difficult to test in isolation. |
 | Mid | High | Introduce stricter typed result objects for analysis and provider output instead of relying on broad `dict[str, Any]` hand-offs. | Stronger contracts reduce silent breakage when providers evolve and make downstream prompt/context code easier to reason about. |
 | Mid | High | Break `app/services/coach_context.py` into separate normalization, summarization, and rendering units. | The module is doing data shaping and string formatting together, which makes context changes harder to extend cleanly. |
 | Mid | Medium | Replace the hand-maintained provider registration list in `app/planning/providers/registry.py` with a more declarative discovery mechanism or explicit provider grouping. | Provider ordering and registration will become easier to maintain as new metric sources are added. |
@@ -59,7 +58,6 @@ This is the recommended sequence if the goal is to keep the repo technically dur
 ### Now
 | Priority | Area | Effort | Impact | Why now |
 | --- | --- | --- | --- | --- |
-| P0 | Split planner orchestration | Hard | High | `app/services/planner.py` is already the main concentration point for change risk. |
 | P0 | Tighten typed contracts | Mid | High | The analysis/provider boundary needs stronger guarantees before more features land on top of it. |
 | P0 | Add boundary validation | Mid | High | Defensive checks reduce the chance that bad upstream data or malformed model output cascades into planning. |
 | P0 | Create shared test fixtures | Easy | Medium | This lowers the cost of every future refactor and makes the rest of the roadmap safer. |
