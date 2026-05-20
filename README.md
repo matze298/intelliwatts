@@ -31,14 +31,14 @@ https://intelliwatts.onrender.com/health
 
 # Initial SetUp
 API Tokens are used to authenticate with the respective APIs (Intervals.icu, OpenAI, Google Gemini). For local development, they are stored in the `.env` file which **must not be shared publicly**. For all required keys, checkout the `env.example` file.
-End users can manage their API keys via the Secrets page after login.
+End users can manage their API keys and prompt settings via the Settings page after login.
 
 ## Intervals.icu
 Authentication to intervals.icu is required to parse past workouts.
 Go to https://intervals.icu/settings `Settings -> Dev --> API-Key` and set `INTERVALS_API_KEY` and `INTERVALS_ATHLETE_ID` in `./env`.
 
 ## Language Model
-The API key for the language model selected must be set correctly either via  `.env` or via the Secrets page after login. The default model is Gemini Flash which provides free usage.
+The API key for the language model selected must be set correctly either via `.env` or via the Settings page after login. The default model is Gemini Flash which provides free usage.
 
 ### OpenAI (optional)
 1. Open https://platform.openai.com/api-keys
@@ -95,8 +95,8 @@ Before merging an npm upgrade, the StepSecurity `NPM Package Cooldown` check sho
 # Settings
 The settings for the app are defined in `app/config.py`. There are three types of settings:
 
-1. Settings that can be updated via the App interface (e.g., `SYSTEM_PROMPT`, `USER_PROMPT`, `weekly_hours`, `weekly_sessions`).
-2. Settings that are managed via `.env`, Env variables or the Secrets page (e.g., `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
+1. Settings that can be updated via the App interface (e.g., `developer_mode_enabled`, prompt overrides, `weekly_hours`, `weekly_sessions`).
+2. Settings that are managed via `.env`, Env variables or the Settings page (e.g., `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
 3. Settings that are hardcoded and cannot be changed (e.g., `CACHE_INTERVALS_HOURS`).
 
 
@@ -112,6 +112,8 @@ Alembic provides:
 3.  **Consistency**: Ensures that all environments (Local Dev, CI/CD, Production) are running exactly the same database structure.
 4.  **Auto-generation**: Alembic can automatically detect changes in our `SQLModel` classes and generate the necessary migration code for us.
 
+In practice, we treat `--autogenerate` as a starting point. Review the draft migration, then hand-edit it as needed for conditional upgrades, backfills, or other repo-specific schema history.
+
 ## Running Migrations
 When you pull new changes, you should always sync your local database with the latest schema:
 ```bash
@@ -121,7 +123,7 @@ uv run alembic upgrade head
 For developers creating new models or modifying existing ones:
 1.  Update your `SQLModel` in `app/models/`.
 2.  Generate a new migration script: `uv run alembic revision --autogenerate -m "describe_your_change"`.
-3.  Review the generated script in `migrations/versions/`.
+3.  Review and adjust the generated script in `migrations/versions/` before committing it.
 4.  Apply the change: `uv run alembic upgrade head`.
 
 # Web Page Style & Themes
@@ -134,4 +136,3 @@ Currently available themes are:
 
 The themes are defined in `app/static/style-<theme>.css`.
 Switching themes is managed entirely on the client-side via a dropdown menu.
-
