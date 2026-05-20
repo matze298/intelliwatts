@@ -1,3 +1,5 @@
+{% from "macros/controls.html" import render_action_button %}
+{% from "macros/settings.html" import render_settings_checkbox, render_settings_form, render_settings_input, render_settings_section, render_settings_textarea %}
 {% from "macros/theme.html" import render_theme_switcher %}
 <!DOCTYPE html>
 <html lang="en">
@@ -28,51 +30,27 @@
             </p>
         </div>
 
-        <section class="planner-card mb-6 rounded-xl p-6">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <h2 class="text-xl font-semibold text-slate-900">Account & Preferences</h2>
-                    <p class="mt-1 text-sm text-slate-600">Developer mode is stored per user and does nothing yet.</p>
-                </div>
-            </div>
-            <form id="settingsForm" class="mt-4 space-y-4">
+        {% call render_settings_section(
+            "Account & Preferences",
+            description="Developer mode is stored per user and does nothing yet."
+        ) %}
+            {% call render_settings_form("settingsForm") %}
                 <input type="hidden" name="form_type" value="preferences">
-                <div class="flex items-center gap-3">
-                    <input
-                        type="checkbox"
-                        id="developer_mode_enabled"
-                        name="developer_mode_enabled"
-                        {% if developer_mode_enabled %}checked{% endif %}
-                        class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    >
-                    <label for="developer_mode_enabled" class="block text-sm text-gray-700">
-                        Enable developer mode
-                    </label>
-                </div>
-                <div>
-                    <label for="system_prompt_override" class="block text-sm font-medium text-gray-700">System prompt override</label>
-                    <textarea
-                        id="system_prompt_override"
-                        name="system_prompt_override"
-                        rows="8"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
-                        placeholder="Leave empty to use the app default system prompt"
-                    >{{- system_prompt_override -}}</textarea>
-                </div>
-                <div>
-                    <label for="user_prompt_override" class="block text-sm font-medium text-gray-700">User prompt override</label>
-                    <textarea
-                        id="user_prompt_override"
-                        name="user_prompt_override"
-                        rows="8"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
-                        placeholder="Leave empty to use the app default user prompt"
-                    >{{- user_prompt_override -}}</textarea>
-                </div>
-                <button type="submit" class="control-button control-button-primary inline-flex items-center justify-center px-4 py-2 text-sm">
-                    Save Preferences
-                </button>
-            </form>
+                {{ render_settings_checkbox("developer_mode_enabled", "Enable developer mode", developer_mode_enabled) }}
+                {{ render_settings_textarea(
+                    "system_prompt_override",
+                    "System prompt override",
+                    system_prompt_override,
+                    placeholder="Leave empty to use the app default system prompt"
+                ) }}
+                {{ render_settings_textarea(
+                    "user_prompt_override",
+                    "User prompt override",
+                    user_prompt_override,
+                    placeholder="Leave empty to use the app default user prompt"
+                ) }}
+                {{ render_action_button("Save Preferences", tone="primary", extra_classes="px-4 py-2 text-sm") }}
+            {% endcall %}
             <p id="settingsMessage" class="mt-4 text-sm font-medium"></p>
             <details class="control-disclosure mt-6">
                 <summary class="control-disclosure-summary">Current app defaults</summary>
@@ -87,62 +65,23 @@
                     </div>
                 </div>
             </details>
-        </section>
+        {% endcall %}
 
-        <section id="secrets" class="planner-card rounded-xl p-6">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <h2 class="text-xl font-semibold text-slate-900">Secrets</h2>
-                    <p class="mt-1 text-sm text-slate-600">Store the intervals.icu and LLM API keys for this account.</p>
-                </div>
-            </div>
-            <form id="secretsForm" class="mt-4 space-y-4">
+        {% call render_settings_section(
+            "Secrets",
+            description="Store the intervals.icu and LLM API keys for this account.",
+            section_id="secrets"
+        ) %}
+            {% call render_settings_form("secretsForm") %}
                 <input type="hidden" name="form_type" value="secrets">
-                <div>
-                    <label for="athlete_id" class="block text-sm font-medium text-gray-700">intervals.icu Athlete ID</label>
-                    <input
-                        type="text"
-                        id="athlete_id"
-                        name="athlete_id"
-                        required
-                        value="{{ intervals_athlete_id }}"
-                        class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                    >
-                </div>
-                <div>
-                    <label for="intervals_api_key" class="block text-sm font-medium text-gray-700">intervals.icu API Key</label>
-                    <input
-                        type="password"
-                        id="intervals_api_key"
-                        name="intervals_api_key"
-                        required
-                        class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                    >
-                </div>
-                <div>
-                    <label for="openai_api_key" class="block text-sm font-medium text-gray-700">OpenAI API Key</label>
-                    <input
-                        type="password"
-                        id="openai_api_key"
-                        name="openai_api_key"
-                        class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                    >
-                </div>
-                <div>
-                    <label for="gemini_api_key" class="block text-sm font-medium text-gray-700">Gemini API Key</label>
-                    <input
-                        type="password"
-                        id="gemini_api_key"
-                        name="gemini_api_key"
-                        class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                    >
-                </div>
-                <button type="submit" class="control-button control-button-secondary inline-flex items-center justify-center px-4 py-2 text-sm">
-                    Store Secrets
-                </button>
-            </form>
+                {{ render_settings_input("athlete_id", "intervals.icu Athlete ID", intervals_athlete_id, required=true) }}
+                {{ render_settings_input("intervals_api_key", "intervals.icu API Key", input_type="password", required=true) }}
+                {{ render_settings_input("openai_api_key", "OpenAI API Key", input_type="password") }}
+                {{ render_settings_input("gemini_api_key", "Gemini API Key", input_type="password") }}
+                {{ render_action_button("Store Secrets", tone="secondary", extra_classes="px-4 py-2 text-sm") }}
+            {% endcall %}
             <p id="secretsMessage" class="mt-4 text-sm font-medium"></p>
-        </section>
+        {% endcall %}
     </div>
 
     <script>
