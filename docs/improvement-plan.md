@@ -44,7 +44,6 @@ Enhance the training plan generation by incorporating advanced physiological met
 - [x] **Progressive disclosure:** Show the essentials first, then reveal deeper metrics and comparison details on demand. The dashboard now keeps summary widgets visible and hides richer charts behind a disclosure block, while the planner uses the same pattern for advanced, summary, and prompt sections.
 - [x] **Unified settings surface:** Moved developer mode, prompt overrides, and API secrets into a single authenticated settings page so the app has one place for account-level controls.
 - [ ] **More trustworthy comparisons:** Present planned vs. completed, recovery vs. baseline, and week-over-week trend deltas in a format that is easy to scan and hard to misread.
-- [ ] **Developer's view:** Add a settings-gated developer mode that is hidden by default and only enabled locally or by explicit opt-in. It should expose debugging details such as the exact LLM prompt, prompt sections, derived context packet, and analysis payloads.
 - [ ] **Debug view safety:** Keep developer-only information out of the normal user flow, and make sure the toggle does not affect the normal planner or dashboard experience when disabled.
 - [x] **User prompt customization:** The developer prompt editor now lives in [Settings](/settings) for developer-mode users, and it updates the app-level prompt only for the current process.
 
@@ -125,7 +124,6 @@ This is the recommended sequence if the goal is to keep the repo technically dur
 | Priority | Area | Effort | Impact | Why later |
 | --- | --- | --- | --- | --- |
 | P2 | Progressive disclosure and planner-first layout | Mid | High | This is the main UX productization step once the information architecture is stable. |
-| P2 | Developer mode / prompt inspection surface | Mid | Medium | Valuable for support and tuning, but not essential to core user success. |
 | P2 | Developer prompt customization in Settings | Mid | Medium | Useful for power users, but it should remain behind the [Settings](/settings) gate until the core experience is stable. |
 
 ### Design-System Pass
