@@ -41,3 +41,32 @@ def test_get_analysis_calls_interval_parsers(
         wellness_data=parsed_wellness,
         client=client,
     )
+
+
+@patch("app.services.planner.analysis.compute_analysis")
+@patch("app.services.planner.analysis.parse_activities")
+@patch("app.services.planner.analysis.parse_wellness_list")
+def test_get_analysis_honors_custom_minimum_lookback(
+    mock_parse_wellness_list: MagicMock,
+    mock_parse_activities: MagicMock,
+    mock_compute_analysis: MagicMock,
+) -> None:
+    """The analysis wrapper should allow a larger configurable minimum lookback."""
+    # GIVEN: An intervals client and a custom lookback floor.
+    client = MagicMock()
+    raw_activities = [{"id": "activity-1"}]
+    raw_wellness = [{"id": "wellness-1"}]
+    client.activities.return_value = raw_activities
+    client.wellness.return_value = raw_wellness
+    mock_parse_activities.return_value = ["parsed activities"]
+    mock_parse_wellness_list.return_value = ["parsed wellness"]
+    analysis_result = MagicMock()
+    mock_compute_analysis.return_value = analysis_result
+
+    # WHEN: Loading analysis with a custom minimum lookback larger than the request.
+    result = get_analysis(client, 30, minimum_lookback_days=60)
+
+    # THEN: The custom lookback should be used for both interval fetches.
+    assert result is analysis_result
+    client.activities.assert_called_once_with(days=60)
+    client.wellness.assert_called_once_with(days=60)
