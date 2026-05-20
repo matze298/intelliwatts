@@ -124,7 +124,6 @@ This is the recommended sequence if the goal is to keep the repo technically dur
 | Priority | Area | Effort | Impact | Why later |
 | --- | --- | --- | --- | --- |
 | P2 | Progressive disclosure and planner-first layout | Mid | High | This is the main UX productization step once the information architecture is stable. |
-| P2 | Developer prompt customization in Settings | Mid | Medium | Useful for power users, but it should remain behind the [Settings](/settings) gate until the core experience is stable. |
 
 ### Design-System Pass
 Concrete steps for the recommended frontend direction:
