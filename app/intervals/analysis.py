@@ -1,15 +1,20 @@
 """Calculate the sports science analysis."""
 
-from dataclasses import fields
 from datetime import UTC, date, datetime
-from functools import cache
 from logging import getLogger
-from types import UnionType
-from typing import TYPE_CHECKING, Union, get_args, get_origin
+from typing import TYPE_CHECKING
 
 import polars as pl
 
 from app.intervals.models import AnalysisResult, DailyRecordField, PMCResult, TrainingLoad
+from app.intervals.validation import (
+    is_iso_date,
+    is_number_list,
+    is_optional_number,
+    is_power_zone_times,
+    numeric_dataclass_field_names,
+    safe_record_date,
+)
 from app.planning.providers.registry import registry
 
 if TYPE_CHECKING:
@@ -152,7 +157,7 @@ def _filter_valid_activities(activities: list[ParsedActivity]) -> list[ParsedAct
             _LOGGER.warning(
                 "Skipping malformed activity record: index=%s date=%s reason=%s",
                 index,
-                _safe_record_date(activity),
+                safe_record_date(activity),
                 reason,
             )
             continue
@@ -169,7 +174,7 @@ def _filter_valid_wellness(wellness_data: list[ParsedWellness]) -> list[ParsedWe
             _LOGGER.warning(
                 "Skipping malformed wellness record: index=%s date=%s reason=%s",
                 index,
-                _safe_record_date(record),
+                safe_record_date(record),
                 reason,
             )
             continue
@@ -178,76 +183,29 @@ def _filter_valid_wellness(wellness_data: list[ParsedWellness]) -> list[ParsedWe
 
 
 def _get_activity_validation_error(activity: ParsedActivity) -> str | None:
-    if not _is_iso_date(activity.date):
+    if not is_iso_date(activity.date):
         return "invalid_date"
     if not isinstance(activity.type, str):
         return "invalid_type"
-    for field_name in _numeric_dataclass_field_names(type(activity)):
-        if not _is_optional_number(getattr(activity, field_name)):
+    for field_name in numeric_dataclass_field_names(type(activity)):
+        if not is_optional_number(getattr(activity, field_name)):
             return f"invalid_{field_name}"
-    if activity.hr_zone_times is not None and not _is_number_list(activity.hr_zone_times):
+    if activity.hr_zone_times is not None and not is_number_list(activity.hr_zone_times):
         return "invalid_hr_zone_times"
-    if activity.power_zone_times is not None and not _is_power_zone_times(activity.power_zone_times):
+    if activity.power_zone_times is not None and not is_power_zone_times(activity.power_zone_times):
         return "invalid_power_zone_times"
     return None
 
 
 def _get_wellness_validation_error(record: ParsedWellness) -> str | None:
-    if not _is_iso_date(record.date):
+    if not is_iso_date(record.date):
         return "invalid_date"
-    for field_name in _numeric_dataclass_field_names(type(record)):
-        if not _is_optional_number(getattr(record, field_name)):
+    for field_name in numeric_dataclass_field_names(type(record)):
+        if not is_optional_number(getattr(record, field_name)):
             return f"invalid_{field_name}"
     if record.comments is not None and not isinstance(record.comments, str):
         return "invalid_comments"
     return None
-
-
-def _is_iso_date(value: object) -> bool:
-    if not isinstance(value, str):
-        return False
-    try:
-        date.fromisoformat(value)
-    except ValueError:
-        return False
-    return True
-
-
-@cache
-def _numeric_dataclass_field_names(model_type: type[object]) -> tuple[str, ...]:
-    return tuple(field.name for field in fields(model_type) if _is_numeric_annotation(field.type))
-
-
-def _is_numeric_annotation(annotation: object) -> bool:
-    if annotation in {int, float}:
-        return True
-
-    origin = get_origin(annotation)
-    if origin not in {Union, UnionType}:
-        return False
-
-    args = [arg for arg in get_args(annotation) if arg is not type(None)]
-    return bool(args) and all(arg in {int, float} for arg in args)
-
-
-def _is_optional_number(value: object) -> bool:
-    return value is None or (isinstance(value, int | float) and not isinstance(value, bool))
-
-
-def _is_number_list(value: object) -> bool:
-    return isinstance(value, list) and all(_is_optional_number(item) and item is not None for item in value)
-
-
-def _is_power_zone_times(value: object) -> bool:
-    return isinstance(value, list) and all(
-        isinstance(item, dict) and _is_optional_number(item.get("secs")) and item.get("secs") is not None
-        for item in value
-    )
-
-
-def _safe_record_date(record: object) -> str:
-    record_date = getattr(record, "date", None)
-    return record_date if isinstance(record_date, str) else "<missing>"
 
 
 def _get_analysis_range(

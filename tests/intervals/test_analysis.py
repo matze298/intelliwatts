@@ -2,13 +2,11 @@
 
 import logging
 import math
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
 import pytest
 
-import app.intervals.analysis as intervals_analysis
 from app.intervals.analysis import calculate_watts_per_kg, compute_analysis, compute_load
 from app.intervals.models import AnalysisResult
 from app.intervals.parser.activity import ParsedActivity
@@ -394,32 +392,6 @@ def test_compute_analysis_skips_wellness_with_malformed_metrics(
     assert result.daily_records[0]["hrv"] == 70.0
     assert "Skipping malformed wellness record" in caplog.text
     assert "bad" not in caplog.text
-
-
-def test_validation_derives_numeric_fields_from_dataclass_annotations(
-    activities: list[ParsedActivity],
-) -> None:
-    """Numeric validation should follow dataclass annotations instead of hard-coded field lists."""
-
-    @dataclass
-    class ActivityWithNewMetric(ParsedActivity):
-        hydration_score: float | None = None
-
-    @dataclass
-    class WellnessWithNewMetric(ParsedWellness):
-        hydration_score: float | None = None
-
-    # GIVEN parsed payload classes with a new numeric field containing malformed data.
-    activity = ActivityWithNewMetric(**activities[0].__dict__, hydration_score=cast("float | None", "bad"))
-    wellness = WellnessWithNewMetric(date="2026-04-01", hydration_score=cast("float | None", "bad"))
-
-    # WHEN validating the parsed records.
-    activity_error = intervals_analysis._get_activity_validation_error(activity)
-    wellness_error = intervals_analysis._get_wellness_validation_error(wellness)
-
-    # THEN the annotation-derived numeric fields should be validated without manual field-list updates.
-    assert activity_error == "invalid_hydration_score"
-    assert wellness_error == "invalid_hydration_score"
 
 
 def test_compute_load_no_pmc() -> None:
