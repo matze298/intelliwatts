@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
@@ -72,10 +71,7 @@ def save_and_stage_weekly_plan(
     Returns:
         The saved training plan id.
     """
-    try:
-        workout_data = extract_workout_json(llm_response.plan)
-    except json.JSONDecodeError:
-        workout_data = []
+    workout_data = extract_workout_json(llm_response.plan)
     saved_plan = save_training_plan(
         session,
         phase_id,

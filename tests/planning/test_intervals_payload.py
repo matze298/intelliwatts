@@ -1,8 +1,13 @@
 """Unit tests for the intervals_payload module."""
 
 import json
+import logging
+from typing import TYPE_CHECKING
 
 from app.planning.intervals_payload import extract_workout_json, workout_json_to_icu_txt
+
+if TYPE_CHECKING:
+    from _pytest.logging import LogCaptureFixture
 
 
 def test_extract_workout_json_valid_payload() -> None:
@@ -34,6 +39,34 @@ def test_extract_workout_json_without_marker_returns_empty_list() -> None:
 
     # THEN no workouts should be returned
     assert result == []
+
+
+def test_extract_workout_json_rejects_non_list_payload(caplog: LogCaptureFixture) -> None:
+    """Return an empty workout list when the JSON payload is not a list."""
+    # GIVEN an AI response whose JSON payload is an object instead of a workout list.
+    ai_response = 'Plan text###JSON_START###{"workout_name": "Sweetspot"}###JSON_END###'
+
+    # WHEN the workout JSON is extracted.
+    with caplog.at_level(logging.WARNING):
+        result = extract_workout_json(ai_response)
+
+    # THEN no structured workouts should be returned and the invalid payload should be logged.
+    assert result == []
+    assert "Ignoring malformed workout JSON payload" in caplog.text
+
+
+def test_extract_workout_json_rejects_non_object_workouts(caplog: LogCaptureFixture) -> None:
+    """Return an empty workout list when the JSON list contains invalid items."""
+    # GIVEN an AI response whose JSON payload contains a non-object workout.
+    ai_response = 'Plan text###JSON_START###["bad-workout"]###JSON_END###'
+
+    # WHEN the workout JSON is extracted.
+    with caplog.at_level(logging.WARNING):
+        result = extract_workout_json(ai_response)
+
+    # THEN no structured workouts should be returned and the invalid payload should be logged.
+    assert result == []
+    assert "Ignoring malformed workout JSON payload" in caplog.text
 
 
 def test_workout_json_to_icu_txt_formats_workout_text() -> None:

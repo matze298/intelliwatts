@@ -1,7 +1,10 @@
 """Converts weekly plan JSON into structured Intervals.icu workout payloads."""
 
 import json
+import logging
 from typing import Any
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def extract_workout_json(ai_response: str) -> list[dict[str, Any]]:
@@ -18,7 +21,17 @@ def extract_workout_json(ai_response: str) -> list[dict[str, Any]]:
         return []
 
     json_part = parts[1].split("###JSON_END###")[0].strip()
-    return json.loads(json_part)
+    try:
+        payload = json.loads(json_part)
+    except json.JSONDecodeError:
+        _LOGGER.warning("Ignoring malformed workout JSON payload", exc_info=True)
+        return []
+
+    if not isinstance(payload, list) or not all(isinstance(workout, dict) for workout in payload):
+        _LOGGER.warning("Ignoring malformed workout JSON payload: %s", payload)
+        return []
+
+    return payload
 
 
 def workout_json_to_icu_txt(workout: dict[str, Any]) -> str:

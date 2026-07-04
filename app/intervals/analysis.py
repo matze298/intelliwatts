@@ -34,6 +34,9 @@ def compute_analysis(
     Returns:
         The analysis result including provider results and widgets.
     """
+    activities = _filter_valid_activities(activities)
+    wellness_data = _filter_valid_wellness(wellness_data or [])
+
     if not activities and not wellness_data:
         return AnalysisResult()
 
@@ -135,6 +138,32 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
         pl.col("ftp").alias("activity_ftp"),
     ])
     return df, daily
+
+
+def _filter_valid_activities(activities: list[ParsedActivity]) -> list[ParsedActivity]:
+    """Return activities that can safely enter DataFrame analysis."""
+    valid_activities: list[ParsedActivity] = []
+    for activity in activities:
+        try:
+            date.fromisoformat(activity.date)
+        except TypeError, ValueError:
+            _LOGGER.warning("Skipping malformed activity record: %s", activity)
+            continue
+        valid_activities.append(activity)
+    return valid_activities
+
+
+def _filter_valid_wellness(wellness_data: list[ParsedWellness]) -> list[ParsedWellness]:
+    """Return wellness records that can safely enter date-window analysis."""
+    valid_wellness: list[ParsedWellness] = []
+    for record in wellness_data:
+        try:
+            date.fromisoformat(record.date)
+        except TypeError, ValueError:
+            _LOGGER.warning("Skipping malformed wellness record: %s", record)
+            continue
+        valid_wellness.append(record)
+    return valid_wellness
 
 
 def _get_analysis_range(
