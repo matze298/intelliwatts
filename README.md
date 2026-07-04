@@ -92,6 +92,15 @@ This is the manual equivalent of a lockfile upgrade pass and is the command used
 
 Before merging an npm upgrade, the StepSecurity `NPM Package Cooldown` check should be configured to a 7-day window in the StepSecurity dashboard. That keeps newly published package versions in a cooldown period long enough to reduce supply-chain risk before the updated lockfile is accepted.
 
+## Running Tests
+Install the Python test extra and the Playwright browser before running the full test suite locally:
+
+```bash
+uv sync --extra dev --extra test
+uv run playwright install chromium
+uv run pytest tests/
+```
+
 # Settings
 The settings for the app are defined in `app/config.py`. There are three types of settings:
 

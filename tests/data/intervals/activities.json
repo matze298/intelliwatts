@@ -1,0 +1,32 @@
+[
+  {
+    "start_date_local": "2026-04-01T07:30:00",
+    "moving_time": 3600,
+    "icu_training_load": 72.0,
+    "icu_average_watts": 185.0,
+    "type": "Ride",
+    "calories": 720,
+    "average_heartrate": 136.0,
+    "max_heartrate": 168.0,
+    "icu_distance": 31500,
+    "total_elevation_gain": 420.0,
+    "icu_hr_zone_times": [120, 900, 1500, 900, 180, 0, 0],
+    "icu_zone_times": [{"secs": 300}, {"secs": 900}, {"secs": 1500}, {"secs": 700}, {"secs": 200}],
+    "icu_ftp": 255.0
+  },
+  {
+    "start_date_local": "2026-04-03T18:15:00",
+    "moving_time": 2700,
+    "icu_training_load": 46.0,
+    "icu_average_watts": 160.0,
+    "type": "Ride",
+    "calories": 510,
+    "average_heartrate": 128.0,
+    "max_heartrate": 154.0,
+    "icu_distance": 22600,
+    "total_elevation_gain": 190.0,
+    "icu_hr_zone_times": [240, 1100, 1000, 360, 0, 0, 0],
+    "icu_zone_times": [{"secs": 500}, {"secs": 1200}, {"secs": 700}, {"secs": 250}, {"secs": 50}],
+    "icu_ftp": 255.0
+  }
+]
