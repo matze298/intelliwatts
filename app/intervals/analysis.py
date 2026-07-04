@@ -1,8 +1,11 @@
 """Calculate the sports science analysis."""
 
+from dataclasses import fields
 from datetime import UTC, date, datetime
+from functools import cache
 from logging import getLogger
-from typing import TYPE_CHECKING
+from types import UnionType
+from typing import TYPE_CHECKING, Union, get_args, get_origin
 
 import polars as pl
 
@@ -15,27 +18,6 @@ if TYPE_CHECKING:
     from app.intervals.parser.wellness import ParsedWellness
 
 _LOGGER = getLogger(__name__)
-_ACTIVITY_NUMBER_FIELDS = (
-    "duration_h",
-    "training_stress",
-    "calories",
-    "avg_power",
-    "avg_hr",
-    "max_hr",
-    "distance_km",
-    "elevation_gain",
-    "ftp",
-)
-_WELLNESS_NUMBER_FIELDS = (
-    "hrv",
-    "resting_hr",
-    "sleep_score",
-    "sleep_quality",
-    "fatigue",
-    "soreness",
-    "stress",
-    "readiness",
-)
 
 
 def compute_analysis(
@@ -200,7 +182,7 @@ def _get_activity_validation_error(activity: ParsedActivity) -> str | None:
         return "invalid_date"
     if not isinstance(activity.type, str):
         return "invalid_type"
-    for field_name in _ACTIVITY_NUMBER_FIELDS:
+    for field_name in _numeric_dataclass_field_names(type(activity)):
         if not _is_optional_number(getattr(activity, field_name)):
             return f"invalid_{field_name}"
     if activity.hr_zone_times is not None and not _is_number_list(activity.hr_zone_times):
@@ -213,7 +195,7 @@ def _get_activity_validation_error(activity: ParsedActivity) -> str | None:
 def _get_wellness_validation_error(record: ParsedWellness) -> str | None:
     if not _is_iso_date(record.date):
         return "invalid_date"
-    for field_name in _WELLNESS_NUMBER_FIELDS:
+    for field_name in _numeric_dataclass_field_names(type(record)):
         if not _is_optional_number(getattr(record, field_name)):
             return f"invalid_{field_name}"
     if record.comments is not None and not isinstance(record.comments, str):
@@ -229,6 +211,23 @@ def _is_iso_date(value: object) -> bool:
     except ValueError:
         return False
     return True
+
+
+@cache
+def _numeric_dataclass_field_names(model_type: type[object]) -> tuple[str, ...]:
+    return tuple(field.name for field in fields(model_type) if _is_numeric_annotation(field.type))
+
+
+def _is_numeric_annotation(annotation: object) -> bool:
+    if annotation in {int, float}:
+        return True
+
+    origin = get_origin(annotation)
+    if origin not in {Union, UnionType}:
+        return False
+
+    args = [arg for arg in get_args(annotation) if arg is not type(None)]
+    return bool(args) and all(arg in {int, float} for arg in args)
 
 
 def _is_optional_number(value: object) -> bool:
