@@ -7,6 +7,14 @@ from typing import TYPE_CHECKING
 import polars as pl
 
 from app.intervals.models import AnalysisResult, DailyRecordField, PMCResult, TrainingLoad
+from app.intervals.validation import (
+    is_iso_date,
+    is_number_list,
+    is_optional_number,
+    is_power_zone_times,
+    numeric_dataclass_field_names,
+    safe_record_date,
+)
 from app.planning.providers.registry import registry
 
 if TYPE_CHECKING:
@@ -34,6 +42,9 @@ def compute_analysis(
     Returns:
         The analysis result including provider results and widgets.
     """
+    activities = _filter_valid_activities(activities)
+    wellness_data = _filter_valid_wellness(wellness_data or [])
+
     if not activities and not wellness_data:
         return AnalysisResult()
 
@@ -135,6 +146,66 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
         pl.col("ftp").alias("activity_ftp"),
     ])
     return df, daily
+
+
+def _filter_valid_activities(activities: list[ParsedActivity]) -> list[ParsedActivity]:
+    """Return activities that can safely enter DataFrame analysis."""
+    valid_activities: list[ParsedActivity] = []
+    for index, activity in enumerate(activities):
+        reason = _get_activity_validation_error(activity)
+        if reason is not None:
+            _LOGGER.warning(
+                "Skipping malformed activity record: index=%s date=%s reason=%s",
+                index,
+                safe_record_date(activity),
+                reason,
+            )
+            continue
+        valid_activities.append(activity)
+    return valid_activities
+
+
+def _filter_valid_wellness(wellness_data: list[ParsedWellness]) -> list[ParsedWellness]:
+    """Return wellness records that can safely enter date-window analysis."""
+    valid_wellness: list[ParsedWellness] = []
+    for index, record in enumerate(wellness_data):
+        reason = _get_wellness_validation_error(record)
+        if reason is not None:
+            _LOGGER.warning(
+                "Skipping malformed wellness record: index=%s date=%s reason=%s",
+                index,
+                safe_record_date(record),
+                reason,
+            )
+            continue
+        valid_wellness.append(record)
+    return valid_wellness
+
+
+def _get_activity_validation_error(activity: ParsedActivity) -> str | None:
+    if not is_iso_date(activity.date):
+        return "invalid_date"
+    if not isinstance(activity.type, str):
+        return "invalid_type"
+    for field_name in numeric_dataclass_field_names(type(activity)):
+        if not is_optional_number(getattr(activity, field_name)):
+            return f"invalid_{field_name}"
+    if activity.hr_zone_times is not None and not is_number_list(activity.hr_zone_times):
+        return "invalid_hr_zone_times"
+    if activity.power_zone_times is not None and not is_power_zone_times(activity.power_zone_times):
+        return "invalid_power_zone_times"
+    return None
+
+
+def _get_wellness_validation_error(record: ParsedWellness) -> str | None:
+    if not is_iso_date(record.date):
+        return "invalid_date"
+    for field_name in numeric_dataclass_field_names(type(record)):
+        if not is_optional_number(getattr(record, field_name)):
+            return f"invalid_{field_name}"
+    if record.comments is not None and not isinstance(record.comments, str):
+        return "invalid_comments"
+    return None
 
 
 def _get_analysis_range(

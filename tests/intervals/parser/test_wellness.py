@@ -1,6 +1,12 @@
 """Tests for the wellness parser."""
 
-from app.intervals.parser.wellness import ParsedWellness, parse_wellness
+import logging
+from typing import TYPE_CHECKING
+
+from app.intervals.parser.wellness import ParsedWellness, parse_wellness, parse_wellness_list
+
+if TYPE_CHECKING:
+    from _pytest.logging import LogCaptureFixture
 
 
 def test_parse_wellness() -> None:
@@ -48,3 +54,20 @@ def test_parse_wellness_minimal() -> None:
     # THEN the parsed data has None for missing fields
     assert parsed.date == "2026-04-20"
     assert parsed.hrv is None
+
+
+def test_parse_wellness_list_skips_malformed_records(caplog: LogCaptureFixture) -> None:
+    """Malformed wellness payloads should be skipped and logged."""
+    # GIVEN a valid wellness payload and a malformed payload with no id.
+    wellness_list = [
+        {"id": "2026-04-01", "hrv": 60.0},
+        {"hrv": 70.0},
+    ]
+
+    # WHEN parsing the payload list.
+    with caplog.at_level(logging.WARNING):
+        parsed = parse_wellness_list(wellness_list)
+
+    # THEN only the valid record should be returned and the malformed record should be logged.
+    assert parsed == [ParsedWellness(date="2026-04-01", hrv=60.0)]
+    assert "Unable to parse wellness record" in caplog.text
