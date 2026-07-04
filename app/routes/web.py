@@ -140,12 +140,14 @@ def _parse_weekly_limits(raw_hours: object, raw_sessions: object) -> tuple[float
     Returns:
         The parsed hours, parsed sessions, and an error message if parsing failed.
     """
+    weekly_hours: float | None = None
+    weekly_sessions: int | None = None
     try:
-        weekly_hours: float | None = None
         if isinstance(raw_hours, str) and raw_hours:
             weekly_hours = float(raw_hours)
-
-        weekly_sessions: int | None = None
+    except ValueError:
+        return None, None, "Weekly planning limits must be numbers."
+    try:
         if isinstance(raw_sessions, str) and raw_sessions:
             weekly_sessions = int(raw_sessions)
     except ValueError:
@@ -498,6 +500,22 @@ def register(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "register.html", {"user": None})
 
 
+def _create_registered_user(email: str, password: str) -> None:
+    """Create a registered user or raise if the email already exists.
+
+    Raises:
+        HTTPException: If the user already exists.
+    """
+    with Session(engine) as session:
+        existing = session.exec(select(User).where(User.email == email)).first()
+        if existing:
+            raise HTTPException(400, "User exists")
+
+        user = User(email=email, password_hash=hash_password(password))
+        session.add(user)
+        session.commit()
+
+
 # TODO(mr): Extract common code between web.py and auth.py #noqa: TD003
 @router.post("/register", response_class=Response)
 async def register_post(request: Request) -> Response:
@@ -508,9 +526,6 @@ async def register_post(request: Request) -> Response:
 
     Returns:
         The response after registration.
-
-    Raises:
-        HTTPException: If the user already exists.
     """
     form = await request.form()
     email = form.get("email")
@@ -521,15 +536,7 @@ async def register_post(request: Request) -> Response:
         return templates.TemplateResponse(request, "register.html", {"user": None, "error": msg})
 
     try:
-        with Session(engine) as session:
-            existing = session.exec(select(User).where(User.email == email)).first()
-            if existing:
-                raise HTTPException(400, "User exists")
-
-            user = User(email=email, password_hash=hash_password(password))
-            session.add(user)
-            session.commit()
-
+        _create_registered_user(email, password)
     except Exception as e:  # noqa: BLE001
         return templates.TemplateResponse(request, "register.html", {"user": None, "error": str(e)})
 

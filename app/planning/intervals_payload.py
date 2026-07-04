@@ -1,9 +1,10 @@
 """Converts weekly plan JSON into structured Intervals.icu workout payloads."""
 
 import json
+from typing import Any
 
 
-def extract_workout_json(ai_response: str) -> list[dict]:
+def extract_workout_json(ai_response: str) -> list[dict[str, Any]]:
     """Parses the AI response and extracts the workout JSON part.
 
     Args:
@@ -20,7 +21,7 @@ def extract_workout_json(ai_response: str) -> list[dict]:
     return json.loads(json_part)
 
 
-def workout_json_to_icu_txt(workout: dict) -> str:
+def workout_json_to_icu_txt(workout: dict[str, Any]) -> str:
     """Render a single workout object as Intervals.icu workout text.
 
     Example:
