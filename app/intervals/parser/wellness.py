@@ -56,9 +56,10 @@ def parse_wellness_list(wellness_list: list[dict[str, Any]]) -> list[ParsedWelln
         The list of parsed wellness records.
     """
     parsed_wellness: list[ParsedWellness] = []
-    for record in wellness_list:
+    for index, record in enumerate(wellness_list):
         try:
             parsed_wellness.append(parse_wellness(record))
         except KeyError, TypeError:
-            _LOGGER.warning("Unable to parse wellness record: %s", record, exc_info=True)
+            record_id = record.get("id") if isinstance(record, dict) else None
+            _LOGGER.warning("Unable to parse wellness record: index=%s id=%s", index, record_id, exc_info=True)
     return parsed_wellness

@@ -69,6 +69,21 @@ def test_extract_workout_json_rejects_non_object_workouts(caplog: LogCaptureFixt
     assert "Ignoring malformed workout JSON payload" in caplog.text
 
 
+def test_extract_workout_json_rejects_incomplete_workouts(caplog: LogCaptureFixture) -> None:
+    """Return an empty workout list when a workout object is missing required fields."""
+    # GIVEN an AI response whose JSON payload contains an incomplete workout.
+    ai_response = 'Plan text###JSON_START###[{"description": "Missing name"}]###JSON_END###'
+
+    # WHEN the workout JSON is extracted.
+    with caplog.at_level(logging.WARNING):
+        result = extract_workout_json(ai_response)
+
+    # THEN no structured workouts should be returned and raw workout text should not be logged.
+    assert result == []
+    assert "Ignoring malformed workout JSON payload" in caplog.text
+    assert "Missing name" not in caplog.text
+
+
 def test_workout_json_to_icu_txt_formats_workout_text() -> None:
     """Render a workout as Intervals.icu text."""
     # GIVEN a structured workout payload

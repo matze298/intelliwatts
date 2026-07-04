@@ -15,6 +15,27 @@ if TYPE_CHECKING:
     from app.intervals.parser.wellness import ParsedWellness
 
 _LOGGER = getLogger(__name__)
+_ACTIVITY_NUMBER_FIELDS = (
+    "duration_h",
+    "training_stress",
+    "calories",
+    "avg_power",
+    "avg_hr",
+    "max_hr",
+    "distance_km",
+    "elevation_gain",
+    "ftp",
+)
+_WELLNESS_NUMBER_FIELDS = (
+    "hrv",
+    "resting_hr",
+    "sleep_score",
+    "sleep_quality",
+    "fatigue",
+    "soreness",
+    "stress",
+    "readiness",
+)
 
 
 def compute_analysis(
@@ -143,11 +164,15 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
 def _filter_valid_activities(activities: list[ParsedActivity]) -> list[ParsedActivity]:
     """Return activities that can safely enter DataFrame analysis."""
     valid_activities: list[ParsedActivity] = []
-    for activity in activities:
-        try:
-            date.fromisoformat(activity.date)
-        except TypeError, ValueError:
-            _LOGGER.warning("Skipping malformed activity record: %s", activity)
+    for index, activity in enumerate(activities):
+        reason = _get_activity_validation_error(activity)
+        if reason is not None:
+            _LOGGER.warning(
+                "Skipping malformed activity record: index=%s date=%s reason=%s",
+                index,
+                _safe_record_date(activity),
+                reason,
+            )
             continue
         valid_activities.append(activity)
     return valid_activities
@@ -156,14 +181,74 @@ def _filter_valid_activities(activities: list[ParsedActivity]) -> list[ParsedAct
 def _filter_valid_wellness(wellness_data: list[ParsedWellness]) -> list[ParsedWellness]:
     """Return wellness records that can safely enter date-window analysis."""
     valid_wellness: list[ParsedWellness] = []
-    for record in wellness_data:
-        try:
-            date.fromisoformat(record.date)
-        except TypeError, ValueError:
-            _LOGGER.warning("Skipping malformed wellness record: %s", record)
+    for index, record in enumerate(wellness_data):
+        reason = _get_wellness_validation_error(record)
+        if reason is not None:
+            _LOGGER.warning(
+                "Skipping malformed wellness record: index=%s date=%s reason=%s",
+                index,
+                _safe_record_date(record),
+                reason,
+            )
             continue
         valid_wellness.append(record)
     return valid_wellness
+
+
+def _get_activity_validation_error(activity: ParsedActivity) -> str | None:
+    if not _is_iso_date(activity.date):
+        return "invalid_date"
+    if not isinstance(activity.type, str):
+        return "invalid_type"
+    for field_name in _ACTIVITY_NUMBER_FIELDS:
+        if not _is_optional_number(getattr(activity, field_name)):
+            return f"invalid_{field_name}"
+    if activity.hr_zone_times is not None and not _is_number_list(activity.hr_zone_times):
+        return "invalid_hr_zone_times"
+    if activity.power_zone_times is not None and not _is_power_zone_times(activity.power_zone_times):
+        return "invalid_power_zone_times"
+    return None
+
+
+def _get_wellness_validation_error(record: ParsedWellness) -> str | None:
+    if not _is_iso_date(record.date):
+        return "invalid_date"
+    for field_name in _WELLNESS_NUMBER_FIELDS:
+        if not _is_optional_number(getattr(record, field_name)):
+            return f"invalid_{field_name}"
+    if record.comments is not None and not isinstance(record.comments, str):
+        return "invalid_comments"
+    return None
+
+
+def _is_iso_date(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _is_optional_number(value: object) -> bool:
+    return value is None or (isinstance(value, int | float) and not isinstance(value, bool))
+
+
+def _is_number_list(value: object) -> bool:
+    return isinstance(value, list) and all(_is_optional_number(item) and item is not None for item in value)
+
+
+def _is_power_zone_times(value: object) -> bool:
+    return isinstance(value, list) and all(
+        isinstance(item, dict) and _is_optional_number(item.get("secs")) and item.get("secs") is not None
+        for item in value
+    )
+
+
+def _safe_record_date(record: object) -> str:
+    record_date = getattr(record, "date", None)
+    return record_date if isinstance(record_date, str) else "<missing>"
 
 
 def _get_analysis_range(

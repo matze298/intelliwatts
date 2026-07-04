@@ -7,6 +7,49 @@ from typing import Any
 _LOGGER = logging.getLogger(__name__)
 
 
+def _is_non_empty_string(value: object) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _is_number(value: object) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+def _is_valid_workout_step(step: object) -> bool:
+    if not isinstance(step, dict):
+        return False
+    if not _is_number(step.get("duration_m")) or not _is_number(step.get("power_pct")):
+        return False
+    return step.get("rpm") is None or _is_number(step.get("rpm"))
+
+
+def _is_valid_workout_segment(segment: object) -> bool:
+    if not isinstance(segment, dict):
+        return False
+    steps = segment.get("steps")
+    repeats = segment.get("repeats")
+    return (
+        _is_non_empty_string(segment.get("title"))
+        and isinstance(repeats, int)
+        and not isinstance(repeats, bool)
+        and repeats >= 1
+        and isinstance(steps, list)
+        and all(_is_valid_workout_step(step) for step in steps)
+    )
+
+
+def _is_valid_workout(workout: object) -> bool:
+    if not isinstance(workout, dict):
+        return False
+    segments = workout.get("segments")
+    return (
+        _is_non_empty_string(workout.get("workout_name"))
+        and isinstance(workout.get("description"), str)
+        and isinstance(segments, list)
+        and all(_is_valid_workout_segment(segment) for segment in segments)
+    )
+
+
 def extract_workout_json(ai_response: str) -> list[dict[str, Any]]:
     """Parses the AI response and extracts the workout JSON part.
 
@@ -27,8 +70,9 @@ def extract_workout_json(ai_response: str) -> list[dict[str, Any]]:
         _LOGGER.warning("Ignoring malformed workout JSON payload", exc_info=True)
         return []
 
-    if not isinstance(payload, list) or not all(isinstance(workout, dict) for workout in payload):
-        _LOGGER.warning("Ignoring malformed workout JSON payload: %s", payload)
+    if not isinstance(payload, list) or not all(_is_valid_workout(workout) for workout in payload):
+        payload_type = type(payload).__name__
+        _LOGGER.warning("Ignoring malformed workout JSON payload: payload_type=%s", payload_type)
         return []
 
     return payload

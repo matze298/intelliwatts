@@ -2,7 +2,7 @@
 
 import logging
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -325,6 +325,37 @@ def test_compute_analysis_skips_invalid_activity_records(
     assert "Skipping malformed activity record" in caplog.text
 
 
+def test_compute_analysis_skips_activity_with_malformed_zone_times(
+    activities: list[ParsedActivity],
+    caplog: LogCaptureFixture,
+) -> None:
+    """Malformed zone payloads should be skipped before DataFrame normalization."""
+    # GIVEN a parsed activity whose power zone payload is not a list of zone dictionaries.
+    invalid_activity = ParsedActivity(
+        date="2026-04-02",
+        duration_h=1.0,
+        training_stress=80.0,
+        avg_power=200.0,
+        type="Ride",
+        calories=600,
+        avg_hr=130.0,
+        max_hr=160.0,
+        distance_km=25.0,
+        elevation_gain=200.0,
+        hr_zone_times=None,
+        power_zone_times=cast("list[dict[str, int]]", [1]),
+        ftp=250.0,
+    )
+
+    # WHEN computing analysis with mixed valid and invalid records.
+    with caplog.at_level(logging.WARNING):
+        result = compute_analysis([invalid_activity, *activities])
+
+    # THEN analysis should continue with only the valid activity and log the skipped record.
+    assert result.daily_records[0]["date"] == "2026-04-01"
+    assert "Skipping malformed activity record" in caplog.text
+
+
 def test_compute_analysis_skips_invalid_wellness_records(
     activities: list[ParsedActivity],
     caplog: LogCaptureFixture,
@@ -344,6 +375,27 @@ def test_compute_analysis_skips_invalid_wellness_records(
     assert isinstance(result, AnalysisResult)
     assert result.daily_records[0]["hrv"] == 70.0
     assert "Skipping malformed wellness record" in caplog.text
+
+
+def test_compute_analysis_skips_wellness_with_malformed_metrics(
+    activities: list[ParsedActivity],
+    caplog: LogCaptureFixture,
+) -> None:
+    """Malformed wellness metrics should be skipped before entering daily records."""
+    # GIVEN a valid activity and wellness data with a non-numeric hrv value.
+    wellness_data = [
+        ParsedWellness(date="2026-04-01", hrv=cast("float | None", "bad"), resting_hr=50),
+        ParsedWellness(date="2026-04-01", hrv=70.0, resting_hr=48),
+    ]
+
+    # WHEN computing analysis with mixed valid and invalid wellness records.
+    with caplog.at_level(logging.WARNING):
+        result = compute_analysis(activities, wellness_data=wellness_data)
+
+    # THEN only valid wellness metrics should enter the daily record.
+    assert result.daily_records[0]["hrv"] == 70.0
+    assert "Skipping malformed wellness record" in caplog.text
+    assert "bad" not in caplog.text
 
 
 def test_compute_load_no_pmc() -> None:
