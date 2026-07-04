@@ -1,6 +1,7 @@
 """Authentication functions."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status
@@ -41,7 +42,7 @@ def hash_password(password: str) -> str:
     return PWD_CONTEXT.hash(password)
 
 
-def create_access_token(data: dict, acess_token_expire_minutes: int = 60) -> str:
+def create_access_token(data: dict[str, Any], acess_token_expire_minutes: int = 60) -> str:
     """Create an access token.
 
     Returns:

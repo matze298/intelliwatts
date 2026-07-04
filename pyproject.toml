@@ -81,3 +81,7 @@ known-first-party = ["app"]
     "RUF069", # allow magic number comparison in tests
     "PLR2004" # allow magic number comparison in tests
     ] 
+
+[tool.ty.rules]
+missing-type-argument = "error"
+possibly-unresolved-reference = "warn"
