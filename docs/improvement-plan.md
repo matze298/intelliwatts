@@ -1,80 +1,26 @@
-# Planning Improvement Plan
+# Improvement Plan
 
-## Overview
-Enhance the training plan generation by incorporating advanced physiological metrics, historical context from Intervals.icu, and a long-term planning layer that drives weekly planning from a macro goal.
+Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja and Tailwind stack while improving reliability and the athlete experience.
 
-## Proposed Data Integration
-### 1. Athlete Context & Historical Trends
-- [ ] **Activity Notes:** Utilize unstructured text analysis of athlete-entered comments for qualitative context. The raw comment field is already parsed; semantic interpretation and coaching use are still open.
+## 1. Protect data and rendered content
 
-### 2. Long-term Contextual Goal Planning
-- [ ] **Dashboard Summary View:** Surface long-term plan summaries on the dashboard as a follow-up, not part of the first planner-page release.
-- [ ] **Automatic Macro Refresh Policies:** Explore context-drift or schedule-drift triggers that suggest regenerating the long-term plan automatically.
-- [ ] **Richer Macro Schema:** Consider future structured fields such as milestone checkpoints, per-block objectives, and workout emphasis.
-- [ ] **Weekly Brief Persistence/Inspection:** Add optional storage or debug visibility for derived weekly briefs if prompt tuning or support workflows need it.
-- [ ] **Feedback-As-Strategy Signal:** Consider treating repeated tactical feedback patterns as input to future long-term planning revisions.
+- [ ] **Persist training data:** Make the database URL configurable and choose persistent storage for deployment. Document backup and restore, and verify migrations against existing data. Render's free web service loses local SQLite data on restart, redeploy or spin-down.
+- [ ] **Sanitize rendered content:** Review every Markdown-to-HTML and `| safe` path for model output and user-derived data. Sanitize allowed HTML and cover unsafe input with regression tests.
 
-### 3. LLM Prompt Optimization After Coach Context Merge
-- [ ] **Planned vs. completed training:** Provide a compact comparison of intended workouts versus what was actually completed, so the coach can react to missed intensity, shortened sessions, or accidental overload.
-- [ ] **Subjective recovery detail:** Add explicit day-level labels for fatigue, soreness, stress, motivation, and illness instead of only raw scores where available.
-- [ ] **Recovery deltas, not just absolutes:** Surface changes versus athlete baseline and versus recent moving averages for sleep, HRV, and resting HR so the coach can see trend direction quickly.
-- [ ] **Workout role labels:** Classify sessions as key workout, support workout, recovery ride, long ride, taper ride, rest day, or unplanned stressor before prompt assembly.
-- [ ] **Confidence / missing-data flags:** Mark days or weeks where the data is sparse, late, or inconsistent so the coach can down-weight uncertain signals rather than overfit to gaps.
+## 2. Make planning reliable
 
-### 4. UX / Product Experience
-- [ ] **More trustworthy comparisons:** Present planned vs. completed, recovery vs. baseline, and week-over-week trend deltas in a format that is easy to scan and hard to misread.
-- [ ] **Debug view safety:** Keep developer-only information out of the normal user flow, and make sure the toggle does not affect the normal planner or dashboard experience when disabled.
-- [ ] **Reset prompt to default:** Add a one-click action in Settings to restore the global LLM prompt back to the app default after experimentation.
+- [ ] **Validate external data:** Use typed contracts and boundary validation for Intervals.icu responses and model-generated plans before persistence or workout publication. Handle missing, malformed and uncertain data explicitly.
+- [ ] **Keep generation responsive:** Move synchronous API and model calls out of async request handlers or use async clients. Provide clear progress, timeout and failure states; make retries and workout publication safe against accidental duplicates.
+- [ ] **Persist settings consistently:** Store prompt overrides that should survive restarts alongside other preferences. Before using multiple workers or instances, replace process-local login throttling with shared state or another suitable control.
 
-## Workflow & Feature Enhancements
+## 3. Improve the athlete experience
 
-### 1. Plan Persistence & Dynamic Updating
-- [ ] **Weekly Availability Toggles:** Replace the weekly max sessions input with per-day availability toggles so the planner can model real weekly capacity instead of a single session cap.
-- [ ] **Adaptive Re-planning:** Compare planned vs. actual training data daily/weekly; trigger automated LLM re-plan on deviations.
+- [ ] **Redesign the existing UI:** Create a modern, minimal visual style with clear hierarchy, restrained color, readable typography, generous spacing and consistent interactions. Use a shared page shell and semantic theme tokens for login, planner, dashboard and settings.
+- [ ] **Clarify the planner and dashboard:** Lead with the current goal, the selected week and its next action. Make plan status, publication, recovery trends, units and missing data easy to understand on desktop and mobile.
+- [ ] **Inspect and verify with Playwright:** Review the current app and capture desktop and mobile screenshots before designing. Implement the redesign in the existing templates and styles, then inspect screenshots and verify sign-in, planning, dashboard and settings flows, keyboard access, accessibility and responsive layouts.
 
----
+## 4. Make changes easier to maintain
 
-## 🛠️ Follow-up Architecture Tasks (Next Steps)
-1. **[Planner] Adaptive Re-planning:** Compare planned vs. actual training data and trigger automatic replanning when drift is large enough.
-2. **[Refactor] Logic De-duplication:** Move shared calculation logic (HRV averages, FTP trends) from `analysis.py` into a shared utility or allow providers to contribute data back to `AnalysisResult`.
-3. **[Context] Activity Notes:** Add qualitative text analysis of athlete-entered comments for richer planning context.
-4. **[UI] Theme Consistency:** Ensure the dashboard uses the same request-scoped settings and database preferences as the planner.
-
-## 🧱 Code Maintenance & Refactoring
-These are the engineering hygiene tasks that will keep the repo resilient as planning logic, provider coverage, and prompt assembly continue to grow.
-
-| Effort | Impact | Refactoring effort | Why it matters |
-| --- | --- | --- | --- |
-| Mid | High | Introduce stricter typed result objects for analysis and provider output instead of relying on broad `dict[str, Any]` hand-offs. | Stronger contracts reduce silent breakage when providers evolve and make downstream prompt/context code easier to reason about. |
-| Mid | High | Break `app/services/coach_context.py` into separate normalization, summarization, and rendering units. | The module is doing data shaping and string formatting together, which makes context changes harder to extend cleanly. |
-| Mid | Medium | Replace the hand-maintained provider registration list in `app/planning/providers/registry.py` with a more declarative discovery mechanism or explicit provider grouping. | Provider ordering and registration will become easier to maintain as new metric sources are added. |
-| Easy | Medium | Centralize shared date-window and lookback constants used by coach context, analysis, and weekly planning. | Today the same planning windows are encoded in multiple places, which invites drift and off-by-one inconsistencies. |
-| Easy | Medium | Add reusable test fixtures and factories for analysis, coach context, and planner payloads. | Better test inputs will make regression coverage faster to expand and reduce duplication across the test suite. |
-| Mid | High | Tighten validation at boundaries for Intervals.icu payloads and LLM outputs before they enter planning services. | Defensive boundary checks make the system more bullet-proof when upstream payloads change or model output degrades. |
-
-## 🗺️ Prioritized Architecture & UX Roadmap
-This is the recommended sequence if the goal is to keep the repo technically durable while making the UI feel meaningfully more polished.
-
-### Now
-| Priority | Area | Effort | Impact | Why now |
-| --- | --- | --- | --- | --- |
-| P0 | Tighten typed contracts | Mid | High | The analysis/provider boundary needs stronger guarantees before more features land on top of it. |
-| P0 | Add boundary validation | Mid | High | Defensive checks reduce the chance that bad upstream data or malformed model output cascades into planning. |
-
-### Next
-| Priority | Area | Effort | Impact | Why next |
-| --- | --- | --- | --- | --- |
-| P1 | Refine coach-context layering | Mid | High | `app/services/coach_context.py` is ready to be separated into reusable normalization and rendering pieces. |
-| P1 | Centralize lookback constants | Easy | Medium | This removes subtle drift between planner, analysis, and summary windows. |
-| P1 | Declarative provider registration | Mid | Medium | Better provider structure will help as more analysis sources are added. |
-| P1 | Design-system pass inside the current stack | Mid | High | The fastest UX gain comes from better hierarchy, spacing, and typography, not a framework switch. |
-
-### Design-System Pass
-Concrete steps for the recommended frontend direction:
-
-- [ ] Create a shared base layout for the common `<head>`, navigation, container, footer, and theme-switcher behavior.
-- [ ] Ensure planner, dashboard, auth, and settings pages inherit the same shell.
-- [ ] Define a small design token layer for spacing, radii, shadows, surface colors, accent colors, and typography.
-- [ ] Make `pro`, `retro`, and `minimal` theme files map to the same semantic tokens where possible.
-- [ ] Build reusable Jinja fragments for alert banners, form groups, and primary/secondary buttons.
-- [ ] Replace repeated ad hoc Tailwind class blocks with the shared fragments.
+- [ ] **Reproduce asset builds:** Pin the Tailwind CLI, install from the npm lockfile in CI, and fail CI if rebuilding changes committed CSS. Review CI action versions and dependency updates.
+- [ ] **Reduce concentrated responsibilities:** Split route handling, rendering and external-service setup in `app/routes/web.py` as those areas change. Separate coach-context normalization from presentation where that improves reuse and testing.
+- [ ] **Improve coaching context:** Prioritize planned-versus-completed training and recovery changes against an athlete's baseline, with clear missing-data indicators. Add richer signals only when their use in planning is defined.
