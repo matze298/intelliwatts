@@ -149,7 +149,7 @@ class IntensityProvider(MetricProvider[IntensityResult]):
                     pl
                     .col(col_name)
                     .list.slice(0, max_zones)  # Ensure all lists are consistent
-                    .list.to_struct(upper_bound=max_zones)
+                    .list.to_struct(fields=[f"field_{index}" for index in range(max_zones)])
                 )
                 .unnest(col_name)
                 .sum()

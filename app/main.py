@@ -19,13 +19,13 @@ from app.routes import settings as settings_routes
 from app.services.planner import generate_weekly_plan
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app_: FastAPI) -> AsyncIterator[None]:  # ruff: ignore[unused-function-argument]
+async def lifespan(app_: FastAPI) -> AsyncGenerator[None]:  # ruff: ignore[unused-function-argument]
     """Lifespan for the FastAPI app.
 
     Yields:
