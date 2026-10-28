@@ -15,6 +15,11 @@ Current supported LLMs:
 - OpenAI ChatGPT (requires subscription!)
 - Google Gemini (free tier available!)
 
+## Hosted app
+
+- [IntelliWatts](https://intelliwatts.onrender.com) (password required)
+- [Health check](https://intelliwatts.onrender.com/health)
+
 ## Build Status
 [![Gatekeeper](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml/badge.svg?branch=main)](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml)
 [![codecov](https://codecov.io/github/matze298/intelliwatts/graph/badge.svg?token=HC93HLOWOB)](https://codecov.io/github/matze298/intelliwatts)
