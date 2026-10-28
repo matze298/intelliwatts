@@ -1,3 +1,5 @@
+> **Note:** Render free-tier local storage is ephemeral. Plans and settings can disappear when the service restarts or redeploys.
+
 # IntelliWatts
 IntelliWatts is a personal cycling coach that parses your training data from intervals.icu and generates a weekly training plan for you using an LLM of your choice.
 
@@ -19,26 +21,21 @@ Current supported LLMs:
 
 
 
-## 🌐 Live Demo
-https://intelliwatts.onrender.com
-
-## 🩺 Health Check
-https://intelliwatts.onrender.com/health
 
 
 > [!IMPORTANT] 
 > The app is currently limited to personal usage as it uses the athlete ID and personal API-Token to parse intervals.icu.
 
 # Initial SetUp
-API Tokens are used to authenticate with the respective APIs (Intervals.icu, OpenAI, Google Gemini). For local development, they are stored in the `.env` file which **must not be shared publicly**. For all required keys, checkout the `env.example` file.
-End users can manage their API keys and prompt settings via the Settings page after login.
+API Tokens are used to authenticate with the respective APIs (Intervals.icu, OpenAI, Google Gemini). For local development, they are stored in the `.env` file which **must not be shared publicly**. For all required keys, check the `.env.example` file.
+Set API keys in environment variables or the local `.env` file.
 
 ## Intervals.icu
 Authentication to intervals.icu is required to parse past workouts.
-Go to https://intervals.icu/settings `Settings -> Dev --> API-Key` and set `INTERVALS_API_KEY` and `INTERVALS_ATHLETE_ID` in `./env`.
+Go to https://intervals.icu/settings `Settings -> Dev --> API-Key` and set `INTERVALS_API_KEY` and `INTERVALS_ATHLETE_ID` in `.env`.
 
 ## Language Model
-The API key for the language model selected must be set correctly either via `.env` or via the Settings page after login. The default model is Gemini Flash which provides free usage.
+The API key for the language model selected must be set correctly via `.env` or environment variables. The default model is Gemini Flash which provides free usage.
 
 ### OpenAI (optional)
 1. Open https://platform.openai.com/api-keys
@@ -52,8 +49,8 @@ The API key for the language model selected must be set correctly either via `.e
 
 
 # Usage
-## Via Deployed WebApp (Prod)
-1. Go to https://intelliwatts.onrender.com
+## Hosted deployments
+Set `APP_PASSWORD` to a strong unique password, `SESSION_SECRET` to a separate random value of at least 32 characters, and `APP_ORIGIN` to your exact HTTPS origin (for example `https://your-app.onrender.com`) in Render environment variables. `SESSION_COOKIE_SECURE` defaults to true. For local HTTP development only, set `APP_ORIGIN=http://localhost:8000` and `SESSION_COOKIE_SECURE=false`. Sessions last 12 hours; changing the password or session secret invalidates them. Login attempts are limited per process, so this guard is intended for a single-instance deployment.
 
 ## Via Local WebApp (Dev)
 
@@ -105,7 +102,7 @@ uv run pytest tests/
 The settings for the app are defined in `app/config.py`. There are three types of settings:
 
 1. Settings that can be updated via the App interface (e.g., `developer_mode_enabled`, prompt overrides, `weekly_hours`, `weekly_sessions`).
-2. Settings that are managed via `.env`, Env variables or the Settings page (e.g., `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
+2. Settings that are managed via `.env` or environment variables (e.g., `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
 3. Settings that are hardcoded and cannot be changed (e.g., `CACHE_INTERVALS_HOURS`).
 
 

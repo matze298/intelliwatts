@@ -4,12 +4,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlmodel import Session, select
+from sqlmodel import Session
 
-from app.auth.auth import get_current_user_from_token
 from app.config import get_settings
 from app.db import engine
-from app.models.user import User, UserSecrets
+from app.models.user import User
+from app.profile import get_profile
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -21,10 +21,6 @@ class StoreSettingsRequest(BaseModel):
     developer_mode_enabled: bool = False
     system_prompt: str | None = None
     user_prompt: str | None = None
-    athlete_id: str | None = None
-    intervals_api_key: str | None = None
-    openai_api_key: str | None = None
-    gemini_api_key: str | None = None
 
 
 def _normalize_prompt(value: str | None) -> str | None:
@@ -42,7 +38,7 @@ def _normalize_prompt(value: str | None) -> str | None:
 @router.post("")
 def store(
     request: StoreSettingsRequest,
-    user: Annotated[User, Depends(get_current_user_from_token)],
+    user: Annotated[User, Depends(get_profile)],
 ) -> dict[str, bool]:
     """Store the user settings.
 
@@ -50,7 +46,7 @@ def store(
         A dictionary with a key ``stored`` set to ``True``.
 
     Raises:
-        HTTPException: If the authenticated user cannot be found.
+        HTTPException: If the profile cannot be found.
     """
     with Session(engine) as session:
         db_user = session.get(User, user.id)
@@ -72,23 +68,6 @@ def store(
                 settings.SYSTEM_PROMPT = system_prompt
             if user_prompt:
                 settings.USER_PROMPT = user_prompt
-        elif request.form_type == "secrets":
-            athlete_id = _normalize_prompt(request.athlete_id)
-            intervals_api_key = _normalize_prompt(request.intervals_api_key)
-            if not athlete_id or not intervals_api_key:
-                raise HTTPException(status_code=400, detail="intervals.icu secrets are required")
-
-            existing_secrets = session.exec(select(UserSecrets).where(UserSecrets.user_id == user.id)).first()
-            if existing_secrets:
-                session.delete(existing_secrets)
-
-            new_secrets = db_user.create_secrets(
-                intervals_athlete_id=athlete_id,
-                intervals_api_key=intervals_api_key,
-                openai_api_key=_normalize_prompt(request.openai_api_key),
-                gemini_api_key=_normalize_prompt(request.gemini_api_key),
-            )
-            session.add(new_secrets)
         else:
             raise HTTPException(status_code=400, detail="Unknown settings form")
 

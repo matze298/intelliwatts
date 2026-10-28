@@ -1,18 +1,12 @@
-"""Defines the User and UserSecrets models."""
+"""Legacy database profile and secret table definitions."""
 
 import uuid
-from dataclasses import dataclass
-from typing import Self
 
-from fastapi import HTTPException
-from sqlmodel import Field, Session, SQLModel, select
-
-from app.db import engine
-from app.security.crypto import decrypt, encrypt
+from sqlmodel import Field, SQLModel
 
 
 class UserSecrets(SQLModel, table=True):
-    """Defines the secrets for a user."""
+    """Legacy table retained until the database migration."""
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id")
@@ -23,7 +17,7 @@ class UserSecrets(SQLModel, table=True):
 
 
 class User(SQLModel, table=True):
-    """Defines a user."""
+    """Internal profile, using existing columns until the database migration."""
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     email: str
@@ -31,78 +25,3 @@ class User(SQLModel, table=True):
     weekly_hours: float = 8.0
     weekly_sessions: int = 4
     developer_mode_enabled: bool = False
-
-    def create_secrets(
-        self,
-        intervals_athlete_id: str,
-        intervals_api_key: str,
-        openai_api_key: str | None,
-        gemini_api_key: str | None,
-    ) -> UserSecrets:
-        """Create empty secrets for the user.
-
-        Args:
-            intervals_athlete_id: The intervals.icu athlete id.
-            intervals_api_key: The intervals.icu api key.
-            openai_api_key: Optional openai api key.
-            gemini_api_key: Optional gemini api key.
-
-        Returns:
-            The created UserSecrets object.
-        """
-        return UserSecrets(
-            user_id=self.id,
-            intervals_athlete_id=intervals_athlete_id,
-            intervals_api_key=encrypt(intervals_api_key),
-            openai_api_key=encrypt(openai_api_key) if openai_api_key else None,
-            gemini_api_key=encrypt(gemini_api_key) if gemini_api_key else None,
-        )
-
-
-@dataclass
-class DecryptedUserSecrets:
-    """Decrypted user secrets."""
-
-    intervals_athlete_id: str
-    intervals_api_key: str
-    openai_api_key: str | None = None
-    gemini_api_key: str | None = None
-
-    @classmethod
-    def from_secrets(cls, secrets: UserSecrets) -> Self:
-        """Create a DecryptedUserSecrets instance from a UserSecrets object.
-
-        Args:
-            secrets: The UserSecrets object.
-
-        Returns:
-            The decrypted user secrets.
-        """
-        return cls(
-            intervals_athlete_id=secrets.intervals_athlete_id,
-            intervals_api_key=decrypt(secrets.intervals_api_key),
-            openai_api_key=decrypt(secrets.openai_api_key) if secrets.openai_api_key else None,
-            gemini_api_key=decrypt(secrets.gemini_api_key) if secrets.gemini_api_key else None,
-        )
-
-
-def load_user_secrets(user_id: uuid.UUID) -> DecryptedUserSecrets:
-    """Load and decrypt secrets for a user.
-
-    Args:
-        user_id: The ID of the user.
-
-    Returns:
-        The decrypted user secrets.
-
-    Raises:
-        HTTPException: If no secrets are found for the user.
-    """
-    with Session(engine) as session:
-        secrets = session.exec(select(UserSecrets).where(UserSecrets.user_id == user_id)).first()
-        if not secrets:
-            raise HTTPException(
-                status_code=404,
-                detail="No API secrets configured for this user",
-            )
-        return DecryptedUserSecrets.from_secrets(secrets)

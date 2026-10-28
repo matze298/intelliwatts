@@ -13,5 +13,11 @@ services:
       --bind 0.0.0.0:10000
     healthCheckPath: /health
     envVars:
+      - key: APP_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: APP_ORIGIN
+        sync: false
       - key: PYTHONUNBUFFERED
         value: "1"

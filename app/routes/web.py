@@ -14,12 +14,6 @@ from fastapi.templating import Jinja2Templates
 from requests_cache import CachedSession
 from sqlmodel import Session, select
 
-from app.auth.auth import (
-    create_access_token,
-    get_current_user_from_token,
-    hash_password,
-    verify_password,
-)
 from app.config import Settings, get_settings
 from app.db import engine
 from app.intervals.analysis import compute_analysis
@@ -27,7 +21,8 @@ from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPhase, TrainingPlan
-from app.models.user import User, UserSecrets
+from app.models.user import User
+from app.profile import get_profile
 from app.routes.planner_errors import PlannerErrorRoute
 from app.services.long_term_planner import (
     LongTermWeekOption,
@@ -92,15 +87,6 @@ def render_planner_error_response(request: Request) -> HTMLResponse:
         },
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
     )
-
-
-def get_optional_user(request: Request) -> User | None:
-    """Helper to get user without raising 401.
-
-    Returns:
-        The user if authenticated, else None.
-    """
-    return get_current_user_from_token(request, auto_error=False)
 
 
 def _get_active_phase(session: Session, user: User | None) -> TrainingPhase | None:
@@ -228,19 +214,14 @@ def _settings_page_context(request: Request, user: User) -> dict[str, object]:
     Returns:
         A template context dictionary for the unified settings page.
     """
-    with Session(engine) as session:
-        secrets = session.exec(select(UserSecrets).where(UserSecrets.user_id == user.id)).first()
-        intervals_athlete_id = secrets.intervals_athlete_id if secrets else ""
-
     return {
         "user": user,
         "settings": request.app.state.settings,
         "developer_mode_enabled": user.developer_mode_enabled,
-        "intervals_athlete_id": intervals_athlete_id,
     }
 
 
-def _render_plan_page(  # ruff: ignore[too-many-arguments]
+def _render_plan_page(  # noqa: PLR0913
     request: Request,
     *,
     user: User | None,
@@ -283,7 +264,7 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
 
 
 @planner_router.get("/", response_class=HTMLResponse)
-def home(request: Request, user: Annotated[User | None, Depends(get_optional_user)]) -> HTMLResponse:
+def home(request: Request, user: Annotated[User | None, Depends(get_profile)]) -> HTMLResponse:
     """Home page for the app.
 
     Returns:
@@ -334,7 +315,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_optional_use
 @planner_router.post("/long-term-plan", response_class=HTMLResponse)
 async def long_term_plan(
     request: Request,
-    user: Annotated[User, Depends(get_current_user_from_token)],
+    user: Annotated[User, Depends(get_profile)],
 ) -> Response:
     """Persist a long-term planning goal and render the planner page.
 
@@ -443,7 +424,7 @@ async def long_term_plan(
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(
     request: Request,
-    user: Annotated[User, Depends(get_current_user_from_token)],
+    user: Annotated[User, Depends(get_profile)],
     settings: Annotated[Settings, Depends(get_settings)],
     days: int | None = None,
 ) -> HTMLResponse:
@@ -490,121 +471,8 @@ def dashboard(
     )
 
 
-@router.get("/register", response_class=HTMLResponse)
-def register(request: Request) -> HTMLResponse:
-    """Register page for the app.
-
-    Returns:
-        The register page as HTML.
-    """
-    return templates.TemplateResponse(request, "register.html", {"user": None})
-
-
-def _create_registered_user(email: str, password: str) -> None:
-    """Create a registered user or raise if the email already exists.
-
-    Raises:
-        HTTPException: If the user already exists.
-    """
-    with Session(engine) as session:
-        existing = session.exec(select(User).where(User.email == email)).first()
-        if existing:
-            raise HTTPException(400, "User exists")
-
-        user = User(email=email, password_hash=hash_password(password))
-        session.add(user)
-        session.commit()
-
-
-# TODO(mr): Extract common code between web.py and auth.py # ruff: ignore[missing-todo-link]
-@router.post("/register", response_class=Response)
-async def register_post(request: Request) -> Response:
-    """Handle register form submission.
-
-    Args:
-        request: The FastAPI request object.
-
-    Returns:
-        The response after registration.
-    """
-    form = await request.form()
-    email = form.get("email")
-    password = form.get("password")
-
-    if not isinstance(email, str) or not isinstance(password, str):
-        msg = "Email and password must be strings."
-        return templates.TemplateResponse(request, "register.html", {"user": None, "error": msg})
-
-    try:
-        _create_registered_user(email, password)
-    except Exception as e:  # ruff: ignore[blind-except]
-        return templates.TemplateResponse(request, "register.html", {"user": None, "error": str(e)})
-
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-
-@router.get("/login", response_class=HTMLResponse)
-def login(request: Request) -> HTMLResponse:
-    """Login page for the app.
-
-    Returns:
-        The login page as HTML.
-    """
-    return templates.TemplateResponse(request, "login.html", {"user": None})
-
-
-# TODO(mr): Extract common code between web.py and auth.py # ruff: ignore[missing-todo-link]
-@router.post("/login", response_class=Response)
-async def login_post(request: Request) -> Response:
-    """Handle login form submission.
-
-    Args:
-        request: The FastAPI request object.
-
-    Returns:
-        The response after login.
-
-    Raises:
-        HTTPException: If the user does not exist or the password is incorrect.
-    """
-    form = await request.form()
-    email = form.get("email")
-    password = form.get("password")
-
-    if not isinstance(email, str) or not isinstance(password, str):
-        msg = "Email and password must be strings."
-        return templates.TemplateResponse(request, "login.html", {"user": None, "error": msg})
-
-    with Session(engine) as session:
-        user = session.exec(select(User).where(User.email == email)).first()
-        if not user or not verify_password(password, user.password_hash):
-            raise HTTPException(401, "Invalid credentials")
-
-    token = create_access_token({"sub": str(user.id)})
-    response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-    response.set_cookie(
-        key="access_token",
-        value=f"Bearer {token}",
-        httponly=True,
-        samesite="lax",
-    )
-    return response
-
-
-@router.get("/logout")
-def logout() -> RedirectResponse:
-    """Logout the user.
-
-    Returns:
-        The logout response.
-    """
-    response = RedirectResponse(url="/")
-    response.delete_cookie(key="access_token")
-    return response
-
-
 @router.get("/settings", response_class=HTMLResponse)
-def settings(request: Request, user: Annotated[User, Depends(get_current_user_from_token)]) -> HTMLResponse:
+def settings(request: Request, user: Annotated[User, Depends(get_profile)]) -> HTMLResponse:
     """Settings page for the app.
 
     Returns:
@@ -616,7 +484,7 @@ def settings(request: Request, user: Annotated[User, Depends(get_current_user_fr
 @planner_router.post("/generate", response_class=HTMLResponse)
 async def generate(
     request: Request,
-    user: Annotated[User, Depends(get_current_user_from_token)],
+    user: Annotated[User, Depends(get_profile)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
     """Generates the weekly plan for the athlete.
@@ -723,7 +591,7 @@ async def generate(
 @planner_router.post("/update", response_class=HTMLResponse)
 async def update(
     request: Request,
-    user: Annotated[User, Depends(get_current_user_from_token)],
+    user: Annotated[User, Depends(get_profile)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
     """Updates the weekly plan based on feedback.
@@ -787,7 +655,7 @@ async def update(
 @planner_router.post("/publish-workout", response_class=HTMLResponse)
 async def publish_workout(
     request: Request,
-    user: Annotated[User, Depends(get_current_user_from_token)],
+    user: Annotated[User, Depends(get_profile)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Response:
     """Publish the current week's staged workouts to Intervals.icu.

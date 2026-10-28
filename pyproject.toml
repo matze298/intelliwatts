@@ -7,7 +7,6 @@ name = "intelliwatts"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
-    "cryptography",
     "fastapi",
     "google-genai",
     "gunicorn",
@@ -15,10 +14,8 @@ dependencies = [
     "openai",
     "markdown",
     "polars",
-    "passlib[bcrypt]",
     "pydantic",
     "pydantic-settings",
-    "python-jose[cryptography]",
     "python-multipart",
     "requests",
     "requests-cache",
@@ -48,7 +45,6 @@ allow-direct-references = true
 # uv configuration (dependency locking handled via uv.lock)
 [tool.uv]
 managed = true
-constraint-dependencies = ["bcrypt==4.3.0"]
 
 # Ruff configuration
 [tool.ruff]
