@@ -56,7 +56,7 @@ class SelectedWeekRouteContext(NamedTuple):
     selected_week_start: date
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)  # ruff:ignore[pytest-fixture-autouse]
 def clear_db() -> None:
     """Clears the database before each test."""
     with Session(engine) as session:
