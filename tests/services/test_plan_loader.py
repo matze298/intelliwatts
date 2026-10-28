@@ -50,7 +50,7 @@ def phase_context(session: Session) -> PlanLoaderPhaseContext:
     Returns:
         The persisted user and phase.
     """
-    user = User(id=uuid.uuid4(), email="test@example.com", password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4(), email="test@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
     session.add(user)
 
     phase = TrainingPhase(
@@ -174,7 +174,7 @@ def test_load_user_plan_can_skip_weekly_plan(session: Session, phase_context: Pl
 def test_load_user_plan_none(session: Session) -> None:
     """Test loading a user plan when none exists."""
     # GIVEN a user with no plans
-    user = User(id=uuid.uuid4(), email="test@example.com", password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4(), email="test@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
     session.add(user)
     session.commit()
 

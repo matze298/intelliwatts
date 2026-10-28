@@ -108,7 +108,7 @@ def planner_user(planner_test_engine: Engine) -> User:
         A stored user instance.
     """
     with Session(planner_test_engine) as session:
-        user = User(email="planner@example.com", password_hash="hash")  # noqa: S106
+        user = User(email="planner@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -369,7 +369,7 @@ def test_generate_long_term_plan_for_user_creates_default_phase(monkeypatch: pyt
     SQLModel.metadata.create_all(test_engine)
 
     with Session(test_engine) as session:
-        user = User(email="longterm-default@example.com", password_hash="hash")  # noqa: S106
+        user = User(email="longterm-default@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -392,7 +392,7 @@ def test_generate_long_term_plan_for_user_creates_default_phase(monkeypatch: pyt
 
 
 def test_home_page_renders_long_term_goal_inputs_and_current_summary(
-    patch_planner_engines: None,  # noqa: ARG001
+    patch_planner_engines: None,  # ruff: ignore[unused-function-argument]
     monkeypatch: pytest.MonkeyPatch,
     planner_user: User,
     test_app: FastAPI,
@@ -429,7 +429,7 @@ def test_home_page_renders_long_term_goal_inputs_and_current_summary(
 
 @pytest.mark.asyncio
 async def test_long_term_plan_post_redirects_after_success(
-    patch_planner_engines: None,  # noqa: ARG001
+    patch_planner_engines: None,  # ruff: ignore[unused-function-argument]
     planner_test_engine: Engine,
     planner_user: User,
     test_app: FastAPI,
@@ -466,8 +466,8 @@ async def test_long_term_plan_post_redirects_after_success(
         (b"primary_goal=Peak+for+race&target_date=2026-05-15", "Target date must be after the start date."),
     ],
 )
-async def test_long_term_plan_post_validates_bad_input(  # noqa: PLR0913, PLR0917
-    patch_planner_engines: None,  # noqa: ARG001
+async def test_long_term_plan_post_validates_bad_input(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]
+    patch_planner_engines: None,  # ruff: ignore[unused-function-argument]
     monkeypatch: pytest.MonkeyPatch,
     planner_test_engine: Engine,
     planner_user: User,

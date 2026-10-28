@@ -56,7 +56,7 @@ def test_get_or_create_active_phase(session: Session) -> None:
 @patch("app.services.planner.orchestrator.get_or_create_active_phase")
 @patch("app.services.planner.prompt.user_prompt")
 @pytest.mark.asyncio
-async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
+async def test_generate_weekly_plan(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]
     mock_user_prompt: MagicMock,
     mock_get_active_phase: MagicMock,
     mock_get_current_artifact: MagicMock,
@@ -72,7 +72,7 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
     mock_user = User(
         id=uuid.uuid4(),
         email="test@example.com",
-        password_hash="hashed_password",  # noqa: S106
+        password_hash="hashed_password",  # ruff: ignore[hardcoded-password-func-arg]
         weekly_hours=10.0,
         weekly_sessions=5,
     )
@@ -165,7 +165,7 @@ async def test_generate_weekly_plan(  # noqa: PLR0913, PLR0917
 @patch("app.services.planner.orchestrator.get_or_create_active_phase")
 @patch("app.services.planner.prompt.user_prompt")
 @pytest.mark.asyncio
-async def test_generate_weekly_plan_uses_loaded_settings(  # noqa: PLR0913, PLR0917
+async def test_generate_weekly_plan_uses_loaded_settings(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]
     mock_user_prompt: MagicMock,
     mock_get_active_phase: MagicMock,
     mock_get_current_artifact: MagicMock,
@@ -181,7 +181,7 @@ async def test_generate_weekly_plan_uses_loaded_settings(  # noqa: PLR0913, PLR0
     mock_user = User(
         id=uuid.uuid4(),
         email="settings@example.com",
-        password_hash="hashed_password",  # noqa: S106
+        password_hash="hashed_password",  # ruff: ignore[hardcoded-password-func-arg]
         weekly_hours=10.0,
         weekly_sessions=5,
     )
@@ -258,7 +258,7 @@ async def test_update_training_plan_uses_history(
 ) -> None:
     """Test update_training_plan retrieves history and calls LLM with it."""
     # GIVEN: A user and an existing training plan with prompt history.
-    user = User(id=uuid.uuid4(), email="test@example.com", password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4(), email="test@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
     phase = TrainingPhase(
         user_id=user.id,
         primary_goal="Test",
@@ -334,7 +334,7 @@ def test_save_and_stage_weekly_plan_falls_back_on_invalid_json(
 ) -> None:
     """Invalid plan JSON should persist an empty workout payload."""
     # GIVEN: A training phase and a malformed LLM plan payload.
-    user = User(id=uuid.uuid4(), email="json@example.com", password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4(), email="json@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
     phase = get_or_create_active_phase(session, user.id)
     mock_llm_response = LLMResponse(plan="invalid json", prompt=[{"role": "user", "content": "prompt"}])
 
@@ -357,7 +357,7 @@ def test_save_and_stage_weekly_plan_falls_back_on_invalid_json(
 async def test_update_training_plan_fallback_uses_selected_week(session: Session) -> None:
     """Updating a missing selected week should generate that same week."""
     # GIVEN a user, active phase, and selected week without a saved plan
-    user = User(id=uuid.uuid4(), email="fallback@example.com", password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4(), email="fallback@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
     session.add(user)
     phase = get_or_create_active_phase(session, user.id)
     selected_week = date(2026, 6, 1)

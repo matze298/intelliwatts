@@ -240,7 +240,7 @@ def _settings_page_context(request: Request, user: User) -> dict[str, object]:
     }
 
 
-def _render_plan_page(  # noqa: PLR0913
+def _render_plan_page(  # ruff: ignore[too-many-arguments]
     request: Request,
     *,
     user: User | None,
@@ -516,7 +516,7 @@ def _create_registered_user(email: str, password: str) -> None:
         session.commit()
 
 
-# TODO(mr): Extract common code between web.py and auth.py #noqa: TD003
+# TODO(mr): Extract common code between web.py and auth.py # ruff: ignore[missing-todo-link]
 @router.post("/register", response_class=Response)
 async def register_post(request: Request) -> Response:
     """Handle register form submission.
@@ -537,7 +537,7 @@ async def register_post(request: Request) -> Response:
 
     try:
         _create_registered_user(email, password)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # ruff: ignore[blind-except]
         return templates.TemplateResponse(request, "register.html", {"user": None, "error": str(e)})
 
     return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
@@ -553,7 +553,7 @@ def login(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "login.html", {"user": None})
 
 
-# TODO(mr): Extract common code between web.py and auth.py #noqa: TD003
+# TODO(mr): Extract common code between web.py and auth.py # ruff: ignore[missing-todo-link]
 @router.post("/login", response_class=Response)
 async def login_post(request: Request) -> Response:
     """Handle login form submission.

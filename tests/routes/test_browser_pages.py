@@ -158,7 +158,7 @@ def test_core_pages_load_through_browser_transitions(browser_server: BrowserServ
     """Core pages should load in a browser across navigation and JS transitions."""
     # GIVEN a running app with isolated storage and fixture-backed external API responses.
     unique_email = f"browser-flow-{uuid.uuid4()}@example.com"
-    password = "correct horse battery staple"  # noqa: S105
+    password = "correct horse battery staple"  # ruff: ignore[hardcoded-password-string]
 
     # WHEN a browser moves through registration, login, planner, dashboard, and settings transitions.
     with sync_playwright() as playwright:
