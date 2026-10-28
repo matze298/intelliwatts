@@ -106,10 +106,16 @@ def test_init_db_upgrades_half_migrated_sqlite_schema(tmp_path, monkeypatch) -> 
     # WHEN init_db runs at startup
     init_db()
 
-    # THEN the developer-mode column should be added and the migration version should advance
+    # THEN the current schema should remove legacy credentials and retain planning data
     with sqlite3.connect(db_path) as connection:
         columns = connection.execute("PRAGMA table_info(user)").fetchall()
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        phase = connection.execute("SELECT user_id, primary_goal FROM trainingphase").fetchone()
 
-    assert any(column[1] == "developer_mode_enabled" for column in columns)
-    assert version == ("20260520_01",)
+    column_names = {column[1] for column in columns}
+    assert "developer_mode_enabled" in column_names
+    assert not {"email", "password_hash"} & column_names
+    assert "usersecrets" not in tables
+    assert phase == ("11111111111111111111111111111111", "Peak for gravel race")
+    assert version == ("20261028_01",)

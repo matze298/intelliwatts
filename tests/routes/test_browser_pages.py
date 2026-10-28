@@ -17,7 +17,7 @@ from playwright.sync_api import Page, expect, sync_playwright
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, create_engine
 
-from app import db
+from app import access, db
 from app import profile as profile_module
 from app.config import get_settings
 from app.main import app
@@ -120,6 +120,7 @@ def browser_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
     monkeypatch.setattr(web_routes, "_today", lambda: date(2026, 4, 1))
     app.dependency_overrides[get_settings] = lambda: settings
     app.state.settings = {"settings": settings, "models": ["test-model"]}
+    access._FAILURES.clear()
 
     port = _free_port()
     monkeypatch.setattr(get_settings(), "APP_ORIGIN", f"http://127.0.0.1:{port}")
@@ -151,6 +152,7 @@ def browser_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
         server.should_exit = True
         thread.join(timeout=10)
         app.dependency_overrides.clear()
+        access._FAILURES.clear()
 
 
 def test_core_pages_load_through_browser_transitions(browser_server: BrowserServer) -> None:
@@ -167,7 +169,7 @@ def test_core_pages_load_through_browser_transitions(browser_server: BrowserServ
         )
 
         page.goto(f"{browser_server.base_url}/", wait_until="domcontentloaded")
-        page.get_by_label("Password").fill("test-password")
+        page.get_by_label("Master password").fill(get_settings().APP_PASSWORD)
         page.get_by_role("button", name="Sign in").click()
         expect(page.get_by_role("heading", name="Goal & planning horizon")).to_be_visible()
         _save_long_term_goal(page, browser_server.base_url)
