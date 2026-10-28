@@ -1,5 +1,3 @@
-> **Note:** Render free-tier local storage is ephemeral. Plans and settings can disappear when the service restarts or redeploys.
-
 # IntelliWatts
 IntelliWatts is a personal cycling coach that parses your training data from intervals.icu and generates a weekly training plan for you using an LLM of your choice.
 
@@ -115,6 +113,8 @@ The settings for the app are defined in `app/config.py`. There are three types o
 
 # Database & Persistence
 This application uses **SQLModel** (built on **SQLAlchemy**) for database interactions. To manage the evolution of our database schema safely, we use **Alembic**.
+
+> **Note:** Render free-tier local storage is ephemeral. Plans and settings can disappear when the service restarts or redeploys.
 
 ## Why Alembic?
 As the application grows, we frequently add new features that require database changes (e.g., Task 6 added persistent user training preferences). Managing these changes manually is error-prone and can lead to data loss or inconsistent environments.
