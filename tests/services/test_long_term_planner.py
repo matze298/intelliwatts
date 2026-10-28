@@ -430,11 +430,14 @@ def test_home_page_renders_long_term_goal_inputs_and_current_summary(
 @pytest.mark.asyncio
 async def test_long_term_plan_post_redirects_after_success(
     patch_planner_engines: None,  # ruff: ignore[unused-function-argument]
+    monkeypatch: pytest.MonkeyPatch,
     planner_test_engine: Engine,
     planner_user: User,
     test_app: FastAPI,
 ) -> None:
     """Posting the long-term plan form should persist the phase and redirect to home."""
+    monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 15))
+
     # WHEN submitting a new long-term goal
     body = b"primary_goal=Peak+for+gravel+race&target_date=2026-09-20"
     response = await web.long_term_plan(
