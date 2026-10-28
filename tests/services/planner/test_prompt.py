@@ -16,7 +16,7 @@ def test_build_prompt_summary_uses_user_prompt(mock_user_prompt: MagicMock) -> N
     user = User(
         id=uuid.uuid4(),
         email="prompt@example.com",
-        password_hash="hash",  # noqa: S106
+        password_hash="hash",  # ruff: ignore[hardcoded-password-func-arg]
         weekly_hours=10.0,
         weekly_sessions=5,
     )

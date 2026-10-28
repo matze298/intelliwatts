@@ -8,7 +8,7 @@ import app.db
 from app.db import init_db
 
 
-def build_half_migrated_db(db_path) -> str:  # noqa: ANN001
+def build_half_migrated_db(db_path) -> str:  # ruff: ignore[missing-type-function-argument]
     """Create a sqlite database in the half-migrated state seen in production.
 
     Returns:
@@ -93,7 +93,7 @@ def test_init_db() -> None:
     # THEN the database tables should be created without errors
 
 
-def test_init_db_upgrades_half_migrated_sqlite_schema(tmp_path, monkeypatch) -> None:  # noqa: ANN001
+def test_init_db_upgrades_half_migrated_sqlite_schema(tmp_path, monkeypatch) -> None:  # ruff: ignore[missing-type-function-argument]
     """init_db should repair a sqlite database missing the latest user settings columns."""
     # GIVEN a sqlite database stuck between revisions
     db_path = tmp_path / "half_migrated.db"

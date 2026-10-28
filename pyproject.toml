@@ -29,7 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "playwright>=1.61.0",
+    "playwright>=1.62.0",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
@@ -63,13 +63,13 @@ preview = true
 select = ["ALL"]
 # Google-specific relaxations
 ignore = [
-    "CPY001", # No copyright added yet
-    "D203",   # One blank line before class (Google prefers no extra line)
-    "D213",   # Multi-line docstring summary on first line
-    "E501",   # Line length handled by formatter guidance
-    "FIX002", # Allow ToDo comments
-    "TRY301", # Allow to raise Exceptions within try blocks
-    "COM812", # Recommended ignore from ruff-format
+    "missing-copyright-notice", # No copyright added yet
+    "incorrect-blank-line-before-class",   # One blank line before class (Google prefers no extra line)
+    "multi-line-summary-second-line",   # Multi-line docstring summary on first line
+    "line-too-long",   # Line length handled by formatter guidance
+    "line-contains-todo", # Allow ToDo comments
+    "raise-within-try", # Allow to raise Exceptions within try blocks
+    "missing-trailing-comma", # Recommended ignore from ruff-format
 ]
 
 
@@ -82,10 +82,10 @@ known-first-party = ["app"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
-    "S101", # allow asserts in tests
-    "SLF001", # allow asserts in tests
-    "RUF069", # allow magic number comparison in tests
-    "PLR2004" # allow magic number comparison in tests
+    "assert", # allow asserts in tests
+    "private-member-access", # allow asserts in tests
+    "float-equality-comparison", # allow magic number comparison in tests
+    "magic-value-comparison" # allow magic number comparison in tests
     ] 
 
 [tool.ty.rules]

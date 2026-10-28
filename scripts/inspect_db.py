@@ -12,7 +12,7 @@ from app.models.plan import TrainingPhase, TrainingPlan
 from app.models.user import User, UserSecrets
 
 
-def json_serial(obj: Any) -> str:  # noqa: ANN401
+def json_serial(obj: Any) -> str:  # ruff: ignore[any-type]
     """JSON serializer for objects not serializable by default json code.
 
     Args:
@@ -43,12 +43,12 @@ def inspect_table(session: Session, model: type[SQLModel], name: str, limit: int
         name: The name of the table for display.
         limit: The maximum number of rows to show.
     """
-    print(f"\n--- Table: {name} (Top {limit}) ---")  # noqa: T201
+    print(f"\n--- Table: {name} (Top {limit}) ---")  # ruff: ignore[print]
     statement = select(model).limit(limit)
     results = session.exec(statement).all()
 
     if not results:
-        print("No data found.")  # noqa: T201
+        print("No data found.")  # ruff: ignore[print]
         return
 
     for row in results:
@@ -56,10 +56,10 @@ def inspect_table(session: Session, model: type[SQLModel], name: str, limit: int
         data = row.model_dump()
         # Clean up some fields for display if needed
         if "password_hash" in data:
-            data["password_hash"] = "[REDACTED]"  # noqa: S105
+            data["password_hash"] = "[REDACTED]"  # ruff: ignore[hardcoded-password-string]
 
         # Pretty print
-        print(json.dumps(data, indent=2, default=json_serial))  # noqa: T201
+        print(json.dumps(data, indent=2, default=json_serial))  # ruff: ignore[print]
 
 
 def main() -> None:

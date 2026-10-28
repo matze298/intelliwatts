@@ -6,7 +6,7 @@ from app.security.crypto import decrypt, encrypt
 def test_encrypt_decrypt() -> None:
     """Test encrypting and decrypting a secret."""
     # GIVEN a secret
-    dummy_secret = "dummy_secret"  # noqa: S105
+    dummy_secret = "dummy_secret"  # ruff: ignore[hardcoded-password-string]
     # WHEN encrypting and then decrypting the secret
     encrypted = encrypt(dummy_secret)
     decrypted = decrypt(encrypted)

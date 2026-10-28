@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
     from app.intervals.client import IntervalsClient
 
-T_co = TypeVar("T_co", covariant=True)
+T = TypeVar("T")
 
 
 class DashboardWidgetGroup(StrEnum):
@@ -33,7 +33,7 @@ class DashboardWidget:
     data: dict[str, Any] | None = None
 
 
-class MetricProvider(Protocol[T_co]):
+class MetricProvider(Protocol[T]):
     """Protocol for metric providers that contribute to the planning context."""
 
     def get_name(self) -> str:
@@ -50,7 +50,7 @@ class MetricProvider(Protocol[T_co]):
         client: IntervalsClient | None = None,
         provider_results: dict[str, Any] | None = None,
         display_days: int | None = None,
-    ) -> T_co:
+    ) -> T:
         """Perform calculations on raw data and return a structured result.
 
         Args:
@@ -64,7 +64,7 @@ class MetricProvider(Protocol[T_co]):
         """
         ...
 
-    async def provide_context(self, result: T_co) -> str:
+    async def provide_context(self, result: T) -> str:
         """Provides metric-specific context for the LLM.
 
         Args:
@@ -75,7 +75,7 @@ class MetricProvider(Protocol[T_co]):
         """
         ...
 
-    def get_dashboard_widget(self, result: T_co, display_days: int | None = None) -> DashboardWidget | None:
+    def get_dashboard_widget(self, result: T, display_days: int | None = None) -> DashboardWidget | None:
         """Format the calculation result for the dashboard.
 
         Args:
@@ -89,10 +89,10 @@ class MetricProvider(Protocol[T_co]):
 
 
 @runtime_checkable
-class CoachContextProvider(MetricProvider[T_co], Protocol[T_co]):
+class CoachContextProvider(MetricProvider[T], Protocol[T]):
     """Protocol for metric providers that also contribute specialist coaching context."""
 
-    async def provide_coach_context(self, result: T_co) -> str:
+    async def provide_coach_context(self, result: T) -> str:
         """Provide specialist context for the coach prompt.
 
         Returns:
