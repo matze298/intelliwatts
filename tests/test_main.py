@@ -37,3 +37,9 @@ def test_app_state() -> None:
     # THEN the app state contains the expected settings
     assert "settings" in app.state.settings
     assert "models" in app.state.settings
+
+
+def test_account_routes_are_removed() -> None:
+    """Account endpoints are absent from the app."""
+    paths = set(app.openapi()["paths"])
+    assert not paths.intersection({"/login", "/register", "/logout", "/auth/login", "/auth/register"})
