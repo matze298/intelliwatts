@@ -2,7 +2,7 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import requests
 from requests import Session
@@ -85,7 +85,7 @@ class IntervalsClient:
             f"{BASE_URL}/athlete/{self.athlete_id}/events/bulk",
             auth=("API_KEY", self.api_key),
             params={"upsert": "true"},
-            json=events,
+            json=cast("list[dict[str, str]]", events),
             timeout=10,
         )
         r.raise_for_status()
