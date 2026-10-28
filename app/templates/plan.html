@@ -18,13 +18,9 @@
                 <a href="/dashboard" class="control-nav-link mr-4">Dashboard</a>
             </div>
             <div>
-            {% if user %}
-            <a href="/settings" class="control-nav-link mr-4">Settings</a>
-            <a href="/logout" class="control-nav-link">Logout</a>
-            {% else %}
-            <a href="/login" class="control-nav-link mr-4">Login</a>
-            <a href="/register" class="control-nav-link">Register</a>
-            {% endif %}
+                <a href="/settings" class="control-nav-link mr-4">Settings</a>
+
+            <form method="post" action="/logout" style="display:inline"><button type="submit">Sign out</button></form>
             {{ render_theme_switcher() }}
             </div>
         </nav>

@@ -9,11 +9,11 @@ from pydantic import BaseModel
 from requests_cache import CachedSession
 from sqlmodel import Session, select
 
-from app.auth.auth import get_current_user_from_token
 from app.config import Settings, get_settings
 from app.db import engine
 from app.intervals.client import IntervalsClient
 from app.models.plan import TrainingPlan
+from app.profile import get_profile
 from app.services.long_term_planner import generate_long_term_plan_for_user
 from app.services.planner import generate_weekly_plan, get_or_create_active_phase, update_training_plan
 from app.services.workout_delivery import publish_workout_delivery
@@ -22,7 +22,7 @@ from app.utils.datetime import get_monday
 if TYPE_CHECKING:
     from app.models.user import User
 
-router = APIRouter(prefix="/api", tags=["api"], dependencies=[Depends(get_current_user_from_token)])
+router = APIRouter(prefix="/api", tags=["api"])
 
 
 class UpdatePlanRequest(BaseModel):
@@ -40,7 +40,7 @@ class WorkoutPublishResponse(TypedDict):
 
 
 @router.post("/generate-plan")
-async def generate_plan_api(user: Annotated[User, Depends(get_current_user_from_token)]) -> dict[str, Any]:
+async def generate_plan_api(user: Annotated[User, Depends(get_profile)]) -> dict[str, Any]:
     """Generates the weekly plan.
 
     Returns:
@@ -50,9 +50,7 @@ async def generate_plan_api(user: Annotated[User, Depends(get_current_user_from_
 
 
 @router.post("/update-plan")
-async def update_plan_api(
-    request: UpdatePlanRequest, user: Annotated[User, Depends(get_current_user_from_token)]
-) -> dict[str, Any]:
+async def update_plan_api(request: UpdatePlanRequest, user: Annotated[User, Depends(get_profile)]) -> dict[str, Any]:
     """Updates the training plan based on feedback.
 
     Returns:
@@ -62,7 +60,7 @@ async def update_plan_api(
 
 
 @router.post("/long-term-plan")
-async def create_long_term_plan_api(user: Annotated[User, Depends(get_current_user_from_token)]) -> dict[str, Any]:
+async def create_long_term_plan_api(user: Annotated[User, Depends(get_profile)]) -> dict[str, Any]:
     """Creates a long-term artifact for the user's active phase.
 
     Returns:
@@ -72,7 +70,7 @@ async def create_long_term_plan_api(user: Annotated[User, Depends(get_current_us
 
 
 @router.post("/long-term-plan/regenerate")
-async def regenerate_long_term_plan_api(user: Annotated[User, Depends(get_current_user_from_token)]) -> dict[str, Any]:
+async def regenerate_long_term_plan_api(user: Annotated[User, Depends(get_profile)]) -> dict[str, Any]:
     """Regenerates the long-term artifact for the user's active phase.
 
     Returns:
@@ -83,7 +81,7 @@ async def regenerate_long_term_plan_api(user: Annotated[User, Depends(get_curren
 
 @router.post("/publish-workout")
 async def publish_workout_api(
-    user: Annotated[User, Depends(get_current_user_from_token)],
+    user: Annotated[User, Depends(get_profile)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> WorkoutPublishResponse:
     """Publish the current weekly workout draft to Intervals.icu.

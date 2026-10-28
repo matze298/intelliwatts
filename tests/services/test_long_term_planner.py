@@ -108,7 +108,7 @@ def planner_user(planner_test_engine: Engine) -> User:
         A stored user instance.
     """
     with Session(planner_test_engine) as session:
-        user = User(email="planner@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
+        user = User()
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -369,7 +369,7 @@ def test_generate_long_term_plan_for_user_creates_default_phase(monkeypatch: pyt
     SQLModel.metadata.create_all(test_engine)
 
     with Session(test_engine) as session:
-        user = User(email="longterm-default@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
+        user = User()
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -437,7 +437,6 @@ async def test_long_term_plan_post_redirects_after_success(
 ) -> None:
     """Posting the long-term plan form should persist the phase and redirect to home."""
     monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 15))
-
     # WHEN submitting a new long-term goal
     body = b"primary_goal=Peak+for+gravel+race&target_date=2026-09-20"
     response = await web.long_term_plan(

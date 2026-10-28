@@ -17,17 +17,17 @@ def test_health_check() -> None:
     assert response == {"status": "ok"}
 
 
-@patch("app.main.bootstrap_dev_user")
+@patch("app.main.get_profile")
 @pytest.mark.asyncio
-async def test_lifespan(mock_bootstrap_dev_user: MagicMock) -> None:
+async def test_lifespan(mock_get_profile: MagicMock) -> None:
     """Tests the app lifespan."""
     # GIVEN a FastAPI app
     # WHEN the app is started
     async with lifespan(app):
         pass
 
-    # THEN the bootstrap_dev_user function is called
-    mock_bootstrap_dev_user.assert_called_once()
+    # THEN the get_profile function is called
+    mock_get_profile.assert_called_once()
 
 
 def test_app_state() -> None:
@@ -37,3 +37,9 @@ def test_app_state() -> None:
     # THEN the app state contains the expected settings
     assert "settings" in app.state.settings
     assert "models" in app.state.settings
+
+
+def test_account_routes_are_removed() -> None:
+    """Account endpoints are absent from the app."""
+    paths = set(app.openapi()["paths"])
+    assert not paths.intersection({"/login", "/register", "/logout", "/auth/login", "/auth/register"})

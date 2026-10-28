@@ -9,7 +9,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db import DATABASE_URL
 from app.models.plan import TrainingPhase, TrainingPlan
-from app.models.user import User, UserSecrets
+from app.models.user import User
 
 
 def json_serial(obj: Any) -> str:  # ruff: ignore[any-type]
@@ -55,9 +55,6 @@ def inspect_table(session: Session, model: type[SQLModel], name: str, limit: int
         # Convert to dict and handle UUIDs/dates
         data = row.model_dump()
         # Clean up some fields for display if needed
-        if "password_hash" in data:
-            data["password_hash"] = "[REDACTED]"  # ruff: ignore[hardcoded-password-string]
-
         # Pretty print
         print(json.dumps(data, indent=2, default=json_serial))  # ruff: ignore[print]
 
@@ -68,7 +65,6 @@ def main() -> None:
 
     with Session(engine) as session:
         inspect_table(session, User, "User")
-        inspect_table(session, UserSecrets, "UserSecrets")
         inspect_table(session, TrainingPhase, "TrainingPhase")
         inspect_table(session, TrainingPlan, "TrainingPlan")
 

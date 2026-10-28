@@ -14,14 +14,13 @@ from google.genai.types import (
 )
 from openai import OpenAI
 
-from app.models.user import load_user_secrets
+from app.config import get_settings
 from app.planning.coach_prompt import SYSTEM_PROMPT
 
 if TYPE_CHECKING:
     from openai.types.chat import ChatCompletionMessageParam
 
     from app.config import LanguageModel
-    from app.models.user import User
 
 
 class LLMRole(StrEnum):
@@ -50,25 +49,23 @@ class LLMResponse(NamedTuple):
 
 def generate_plan(
     language_model: LanguageModel,
-    user: User,
     messages: list[dict[str, str]],
 ) -> LLMResponse:
     """Generates the training plan based on the message history.
 
     Args:
         language_model: The language model to use.
-        user: The current user.
         messages: Full conversation history.
 
     Returns:
         The training plan.
     """
-    secrets = load_user_secrets(user.id)
+    secrets = get_settings()
     if "gpt" in language_model:
-        return call_gpt(messages, api_key=secrets.openai_api_key, model=language_model)
+        return call_gpt(messages, api_key=secrets.OPENAI_API_KEY, model=language_model)
 
     if "gemini" in language_model:
-        return call_gemini(messages, api_key=secrets.gemini_api_key, model=language_model)
+        return call_gemini(messages, api_key=secrets.GEMINI_API_KEY, model=language_model)
 
     msg = "Unknown model: " + language_model
     raise NotImplementedError(msg)

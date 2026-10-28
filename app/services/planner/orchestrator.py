@@ -60,7 +60,7 @@ async def update_training_plan(
         history = plan.prompt_history
         history.append({"role": LLMRole.USER, "content": feedback})
 
-        llm_response = generate_plan(messages=history, language_model=settings.LANGUAGE_MODEL, user=user)
+        llm_response = generate_plan(messages=history, language_model=settings.LANGUAGE_MODEL)
 
         saved_plan_id = save_and_stage_weekly_plan(
             session=session,
@@ -136,7 +136,6 @@ async def generate_weekly_plan(
             {"role": LLMRole.USER, "content": full_summary},
         ],
         language_model=settings.LANGUAGE_MODEL,
-        user=user,
     )
 
     with Session(engine) as db_session:

@@ -44,7 +44,7 @@ def training_plan(workout_session: Session) -> TrainingPlan:
     Returns:
         A persisted training plan row.
     """
-    user = User(id=uuid.uuid4(), email="athlete@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
+    user = User(id=uuid.uuid4())
     phase = TrainingPhase(
         user_id=user.id,
         primary_goal="Peak for race",

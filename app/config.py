@@ -3,8 +3,9 @@
 from enum import StrEnum
 from functools import lru_cache
 from typing import Any, cast
+from urllib.parse import urlsplit
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.planning.coach_prompt import SYSTEM_PROMPT as DEFAULT_SYSTEM_PROMPT
@@ -25,10 +26,6 @@ class Settings(BaseSettings):
     """Settings for the FastAPI app.
 
     Attributes:
-        DEV_USER: Developer email for auto-login/dev tools.
-        DEV_PASSWORD: Developer password for auto-login/dev tools.
-        JWT_SECRET_KEY: Secret key for signing JWT tokens.
-        APP_SECRET_KEY: Secret key for application-level encryption.
         INTERVALS_ATHLETE_ID: Default athlete ID for Intervals.icu.
         INTERVALS_API_KEY: API key for Intervals.icu.
         OPENAI_API_KEY: API key for OpenAI.
@@ -41,13 +38,33 @@ class Settings(BaseSettings):
         USER_PROMPT: The template for athlete-specific data.
     """
 
-    # Dev settings
-    DEV_USER: str | None = None
-    DEV_PASSWORD: str | None = None
+    APP_PASSWORD: str = Field(min_length=12)
+    SESSION_SECRET: str = Field(min_length=32)
+    APP_ORIGIN: str = Field(min_length=1)
+    SESSION_COOKIE_SECURE: bool = True
 
-    # Encryption keys
-    JWT_SECRET_KEY: str
-    APP_SECRET_KEY: str
+    @field_validator("APP_ORIGIN")
+    @classmethod
+    def validate_app_origin(cls, value: str) -> str:
+        """Require an origin with no path, credentials, query, or fragment.
+
+        Returns:
+            The normalized origin.
+
+        Raises:
+            ValueError: If the value is not an HTTP origin.
+        """
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.path not in {"", "/"}
+            or bool(parsed.query or parsed.fragment)
+        ):
+            msg = "APP_ORIGIN must be an HTTP(S) origin without a path"
+            raise ValueError(msg)
+        return value.rstrip("/")
 
     # User secrets
     INTERVALS_ATHLETE_ID: str
