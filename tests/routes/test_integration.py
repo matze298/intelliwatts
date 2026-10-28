@@ -514,6 +514,10 @@ async def test_long_term_goal_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     test_app.include_router(web_routes.router)
     test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
     user = User(id=uuid.uuid4())
+    with Session(engine) as session:
+        session.add(user)
+        session.commit()
+        session.refresh(user)
     monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 15))
 
     class FakeRequest:

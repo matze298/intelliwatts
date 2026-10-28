@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     SESSION_SECRET: str = Field(min_length=32)
     APP_ORIGIN: str = Field(min_length=1)
     SESSION_COOKIE_SECURE: bool = True
+    DATABASE_URL: str = Field(min_length=1, repr=False)
 
     @field_validator("APP_ORIGIN")
     @classmethod

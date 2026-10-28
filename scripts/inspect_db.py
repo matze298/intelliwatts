@@ -1,4 +1,4 @@
-"""Script to inspect the local SQLite database."""
+"""Script to inspect the configured PostgreSQL database."""
 
 import json
 import uuid
