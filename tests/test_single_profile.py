@@ -38,7 +38,7 @@ def test_profile_is_created_once_and_retains_preferences(monkeypatch: pytest.Mon
         session.add(stored)
         session.commit()
     second = profile_module.get_profile()
-    assert second.id == profile_module.PROFILE_ID
+    assert second.id == first.id
     assert second.weekly_hours == 5
 
 

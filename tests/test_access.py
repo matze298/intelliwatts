@@ -14,6 +14,26 @@ if TYPE_CHECKING:
 TEST_PASSWORD = access.get_settings().APP_PASSWORD
 
 
+def test_successful_logins_do_not_consume_failure_limit() -> None:
+    """Repeated successful sign-ins do not block subsequent sign-ins."""
+    # GIVEN a cleared login limiter
+    access._FAILURES.clear()
+    with TestClient(app, base_url="https://testserver") as client:
+        # WHEN signing in more often than the failure limit
+        responses = [
+            client.post(
+                "/login",
+                data={"password": TEST_PASSWORD},
+                headers={"origin": "https://testserver"},
+                follow_redirects=False,
+            )
+            for _ in range(access.MAX_LOGIN_ATTEMPTS + 1)
+        ]
+        # THEN every sign-in succeeds
+        assert all(response.status_code == 303 for response in responses)
+    access._FAILURES.clear()
+
+
 def test_access_requires_login_and_rejects_cross_origin() -> None:
     """Protected pages require login and changes require the configured origin."""
     with TestClient(app, base_url="https://testserver") as client:

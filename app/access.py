@@ -95,17 +95,19 @@ async def login(request: Request) -> Response:
     Returns:
         A redirect with a session cookie or an error.
     """
-    now = time.monotonic()
+    form = await request.form()
+    password = form.get("password", "")
+    settings = get_settings()
     with _LOCK:
+        now = time.monotonic()
         while _FAILURES and _FAILURES[0] <= now - 60:
             _FAILURES.popleft()
         if len(_FAILURES) >= MAX_LOGIN_ATTEMPTS:
             return _login_response(request, error="Too many attempts. Try again in a minute.", status_code=429)
-        _FAILURES.append(now)
-    form = await request.form()
-    password = form.get("password", "")
-    settings = get_settings()
-    if not isinstance(password, str) or not secrets.compare_digest(password.encode(), settings.APP_PASSWORD.encode()):
+        valid = isinstance(password, str) and secrets.compare_digest(password.encode(), settings.APP_PASSWORD.encode())
+        if not valid:
+            _FAILURES.append(now)
+    if not valid:
         return _login_response(request, error="Invalid password", status_code=401)
     timestamp = str(int(time.time()))
     response = RedirectResponse("/", status_code=303)
