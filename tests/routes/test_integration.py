@@ -21,13 +21,15 @@ from app.intervals.parser.power_curve import ParsedPowerCurve, PowerCurvePoint
 from app.intervals.parser.wellness import ParsedWellness
 from app.main import app
 from app.models.plan import LongTermPlanArtifact, TrainingPhase, TrainingPlan, WorkoutDelivery
-from app.models.user import User, UserSecrets
+from app.models.user import User
 from app.planning.llm import LLMResponse
 from app.routes import api as api_routes
 from app.routes import settings as settings_routes
 from app.routes import web as web_routes
 from app.routes.planner_errors import PlannerErrorRoute
 from app.services.long_term_planner import generate_long_term_plan_artifact
+
+pytestmark = pytest.mark.usefixtures("clear_db")
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
@@ -51,7 +53,7 @@ class SelectedWeekRouteContext(NamedTuple):
     selected_week_start: date
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def clear_db() -> None:
     """Clears the database before each test."""
     with Session(engine) as session:
@@ -91,7 +93,7 @@ def build_request(app_obj: FastAPI, *, method: str, path: str, body: bytes = b""
     return Request(scope, receive)
 
 
-def _build_weekly_planner_route_context(*, email: str) -> WeeklyPlannerRouteContext:
+def _build_weekly_planner_route_context() -> WeeklyPlannerRouteContext:
     """Build isolated route-test state for the planner workflow.
 
     Returns:
@@ -108,7 +110,7 @@ def _build_weekly_planner_route_context(*, email: str) -> WeeklyPlannerRouteCont
     SQLModel.metadata.create_all(test_engine)
 
     with Session(test_engine) as session:
-        user = User(email=email, password_hash="hash")  # noqa: S106
+        user = User()
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -122,7 +124,7 @@ def _build_weekly_planner_route_context(*, email: str) -> WeeklyPlannerRouteCont
     settings.LANGUAGE_MODEL = "test-model"
     settings.SYSTEM_PROMPT = "system default"
     settings.USER_PROMPT = "user default"
-    route_user = User(id=user_id, email=email, password_hash="hash")  # noqa: S106
+    route_user = User(id=user_id)
     return WeeklyPlannerRouteContext(
         app=test_app,
         engine=test_engine,
@@ -188,7 +190,7 @@ def selected_week_route_context(monkeypatch: pytest.MonkeyPatch) -> SelectedWeek
     Returns:
         The seeded planner route context and relevant week dates.
     """
-    context = _build_weekly_planner_route_context(email="selected_week_home@example.com")
+    context = _build_weekly_planner_route_context()
     current_week_start = date(2026, 5, 11)
     selected_week_start = date(2026, 5, 18)
     monkeypatch.setattr("app.routes.web.engine", context.engine)
@@ -300,11 +302,11 @@ def mock_llm_response() -> LLMResponse:
 @patch("app.routes.web.parse_activities")
 @patch("app.routes.web.parse_wellness_list")
 @patch("app.routes.web.compute_analysis")
-def test_dashboard_flow(  # noqa: PLR0913, PLR0917
+def test_dashboard_flow(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]
     mock_compute: MagicMock,
     mock_parse_w: MagicMock,
     mock_parse_a: MagicMock,
-    mock_client_class: MagicMock,  # noqa: ARG001
+    mock_client_class: MagicMock,  # ruff: ignore[unused-function-argument]
     mock_activities: list[ParsedActivity],
     mock_wellness: list[ParsedWellness],
 ) -> None:
@@ -319,7 +321,7 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
         mock_wellness: Mocked wellness data.
     """
     # GIVEN an authenticated user
-    user = User(id=uuid.uuid4(), email="dashboard_journey@example.com", password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4())
 
     mock_parse_a.return_value = mock_activities
     mock_parse_w.return_value = mock_wellness
@@ -466,17 +468,17 @@ def test_dashboard_flow(  # noqa: PLR0913, PLR0917
 @patch("app.routes.web.parse_activities")
 @patch("app.routes.web.parse_wellness_list")
 @patch("app.routes.web.compute_analysis")
-def test_dashboard_flow_passes_days_filter(  # noqa: PLR0913, PLR0917
+def test_dashboard_flow_passes_days_filter(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]
     mock_compute: MagicMock,
     mock_parse_w: MagicMock,
     mock_parse_a: MagicMock,
-    mock_client_class: MagicMock,  # noqa: ARG001
+    mock_client_class: MagicMock,  # ruff: ignore[unused-function-argument]
     mock_activities: list[ParsedActivity],
     mock_wellness: list[ParsedWellness],
 ) -> None:
     """Tests that the dashboard forwards the slider days window to analysis."""
     # GIVEN an authenticated user and mocked analysis inputs
-    user = User(id=uuid.uuid4(), email="dashboard_days@example.com", password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4())
 
     mock_parse_a.return_value = mock_activities
     mock_parse_w.return_value = mock_wellness
@@ -511,15 +513,14 @@ async def test_long_term_goal_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     test_app = FastAPI()
     test_app.include_router(web_routes.router)
     test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
-    email = "long_term_goal@example.com"
-    user = User(id=uuid.uuid4(), email=email, password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4())
     monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 15))
 
     class FakeRequest:
         def __init__(self, app: FastAPI) -> None:
             self.app = app
 
-        async def form(self) -> dict[str, str]:  # noqa: PLR6301
+        async def form(self) -> dict[str, str]:  # ruff: ignore[no-self-use]
             return {"primary_goal": "Peak for gravel race", "target_date": "2026-09-20"}
 
     # WHEN saving a long-term goal through the planner form
@@ -546,7 +547,7 @@ async def test_weekly_generation_uses_saved_long_term_goal(
 ) -> None:
     """The weekly planner route should inject the saved long-term goal into the LLM prompt."""
     # GIVEN an authenticated user with a saved long-term goal and isolated planner state
-    context = _build_weekly_planner_route_context(email="weekly_long_term@example.com")
+    context = _build_weekly_planner_route_context()
     _seed_long_term_phase(
         context.engine,
         user_id=context.user_id,
@@ -589,7 +590,7 @@ async def test_weekly_generation_rejects_invalid_selected_week(
 ) -> None:
     """The weekly planner route should reject a malformed selected planning week."""
     # GIVEN an authenticated user with a saved long-term goal and isolated planner state
-    context = _build_weekly_planner_route_context(email="weekly_invalid_week@example.com")
+    context = _build_weekly_planner_route_context()
     _seed_long_term_phase(
         context.engine,
         user_id=context.user_id,
@@ -665,7 +666,7 @@ async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
 ) -> None:
     """Creating a goal, generating a week, and updating it should not mutate macro state."""
     # GIVEN an isolated planner stack and authenticated route user
-    context = _build_weekly_planner_route_context(email="workflow_long_term@example.com")
+    context = _build_weekly_planner_route_context()
     user_id = context.user_id
     _configure_isolated_planner_dependencies(
         monkeypatch,
@@ -748,7 +749,7 @@ async def test_long_term_plan_api_flow(mock_generate_long_term: MagicMock) -> No
         {"artifact_id": "artifact-2", "summary": "# Long-term plan\n\nSecond version"},
     ]
 
-    user = User(id=uuid.uuid4(), email="longterm_api@example.com", password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4())
 
     # WHEN creating and then regenerating a long-term plan via the API handlers
     create_resp = await api_routes.create_long_term_plan_api(user)
@@ -773,7 +774,7 @@ async def test_long_term_plan_api_creates_default_phase_for_fresh_user(monkeypat
     SQLModel.metadata.create_all(test_engine)
 
     with Session(test_engine) as session:
-        user = User(email="longterm-fresh@example.com", password_hash="hash")  # noqa: S106
+        user = User()
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -800,7 +801,7 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
     test_app.include_router(web_routes.router)
     test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
 
-    user = User(id=uuid.uuid4(), email="planner_summary@example.com", password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4())
 
     monkeypatch.setattr("app.routes.web.engine", engine)
     monkeypatch.setattr("app.routes.web._get_active_phase", lambda *_args, **_kwargs: None)
@@ -875,7 +876,7 @@ def test_home_page_shows_publishing_state(monkeypatch: pytest.MonkeyPatch) -> No
     test_app.include_router(web_routes.router)
     test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
 
-    user = User(id=uuid.uuid4(), email="planner_publishing@example.com", password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4())
 
     monkeypatch.setattr("app.routes.web.engine", engine)
     monkeypatch.setattr("app.routes.web._get_active_phase", lambda *_args, **_kwargs: None)
@@ -936,13 +937,13 @@ def test_settings_preferences_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     SQLModel.metadata.create_all(test_engine)
     monkeypatch.setattr("app.routes.settings.engine", test_engine)
 
-    user = User(id=uuid.uuid4(), email="settings_journey@example.com", password_hash="hash")  # noqa: S106
+    user = User(id=uuid.uuid4())
     with Session(test_engine) as session:
         session.add(user)
         session.commit()
         user_id = user.id
 
-    route_user = User(id=user_id, email="settings_journey@example.com", password_hash="hash")  # noqa: S106
+    route_user = User(id=user_id)
 
     # WHEN storing user settings
     resp = settings_routes.store(
@@ -971,8 +972,6 @@ def test_settings_developer_prompt_flow(monkeypatch: pytest.MonkeyPatch) -> None
 
     user = User(
         id=uuid.uuid4(),
-        email="settings_dev@example.com",
-        password_hash="hash",  # noqa: S106
         developer_mode_enabled=True,
     )
     with Session(test_engine) as session:
@@ -980,7 +979,7 @@ def test_settings_developer_prompt_flow(monkeypatch: pytest.MonkeyPatch) -> None
         session.commit()
         user_id = user.id
 
-    route_user = User(id=user_id, email="settings_dev@example.com", password_hash="hash")  # noqa: S106
+    route_user = User(id=user_id)
 
     # WHEN storing the developer prompt through the settings endpoint
     resp = settings_routes.store(
@@ -1001,9 +1000,9 @@ def test_settings_developer_prompt_flow(monkeypatch: pytest.MonkeyPatch) -> None
     assert stored_user.developer_mode_enabled is True
 
 
-def test_settings_page_renders_preferences_and_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The settings page should unify preferences and secrets in one surface."""
-    # GIVEN an authenticated user with stored settings and secrets
+def test_settings_page_renders_preferences(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The settings page should render the profile's preferences."""
+    # GIVEN a profile with stored settings
     test_app = FastAPI()
     test_app.include_router(web_routes.router)
     test_app.state.settings = {
@@ -1018,33 +1017,22 @@ def test_settings_page_renders_preferences_and_secrets(monkeypatch: pytest.Monke
 
     user = User(
         id=uuid.uuid4(),
-        email="settings_page@example.com",
-        password_hash="hash",  # noqa: S106
         developer_mode_enabled=True,
     )
     with Session(test_engine) as session:
         session.add(user)
-        session.add(
-            UserSecrets(
-                user_id=user.id,
-                intervals_athlete_id="athlete-123",
-                intervals_api_key=b"api-key",
-            )
-        )
         session.commit()
         user_id = user.id
 
     route_user = User(
         id=user_id,
-        email="settings_page@example.com",
-        password_hash="hash",  # noqa: S106
         developer_mode_enabled=True,
     )
 
     # WHEN the settings page is rendered
     resp = web_routes.settings(build_request(test_app, method="GET", path="/settings"), route_user)
 
-    # THEN the page should expose the preferences and secrets sections
+    # THEN the page should expose the profile settings
     assert resp.status_code == 200
     body = bytes(resp.body).decode()
     assert "Settings" in body
@@ -1052,6 +1040,3 @@ def test_settings_page_renders_preferences_and_secrets(monkeypatch: pytest.Monke
     assert "LLM prompt" in body
     assert "system default" in body
     assert "user default" in body
-    assert "Store Secrets" not in body
-    assert 'value="athlete-123"' not in body
-    assert 'href="/settings#secrets"' not in body

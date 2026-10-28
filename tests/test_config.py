@@ -8,7 +8,7 @@ def test_settings_initialization() -> None:
     # GIVEN environment variables are set (conftest.py)
 
     # WHEN the Settings class is instantiated
-    settings = Settings()  # ty: ignore[missing-argument]
+    settings = Settings()
 
     # THEN the settings should have the expected values
     assert settings.INTERVALS_ATHLETE_ID == "test_athlete_id"

@@ -108,7 +108,7 @@ def planner_user(planner_test_engine: Engine) -> User:
         A stored user instance.
     """
     with Session(planner_test_engine) as session:
-        user = User(email="planner@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
+        user = User()
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -369,7 +369,7 @@ def test_generate_long_term_plan_for_user_creates_default_phase(monkeypatch: pyt
     SQLModel.metadata.create_all(test_engine)
 
     with Session(test_engine) as session:
-        user = User(email="longterm-default@example.com", password_hash="hash")  # ruff: ignore[hardcoded-password-func-arg]
+        user = User()
         session.add(user)
         session.commit()
         session.refresh(user)

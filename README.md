@@ -50,7 +50,9 @@ The API key for the language model selected must be set correctly via `.env` or 
 
 # Usage
 ## Hosted deployments
-Set `APP_PASSWORD` to a strong unique password, `SESSION_SECRET` to a separate random value of at least 32 characters, and `APP_ORIGIN` to your exact HTTPS origin (for example `https://your-app.onrender.com`) in Render environment variables. `SESSION_COOKIE_SECURE` defaults to true. For local HTTP development only, set `APP_ORIGIN=http://localhost:8000` and `SESSION_COOKIE_SECURE=false`. Sessions last 12 hours; changing the password or session secret invalidates them. Login attempts are limited per process, so this guard is intended for a single-instance deployment.
+Set `APP_PASSWORD` to a strong unique password, `SESSION_SECRET` to a generated random value, and `APP_ORIGIN` to your exact HTTPS origin (for example `https://your-app.onrender.com`) in Render environment variables. Generate the session secret with `python -c "import secrets; print(secrets.token_urlsafe(32))"`; keep it stable across restarts and store it as a secret. It signs the session cookie and is not a JWT key. `SESSION_COOKIE_SECURE` defaults to true. For local HTTP development only, set `APP_ORIGIN=http://localhost:8000` and `SESSION_COOKIE_SECURE=false`. Sessions last 12 hours; changing the password or session secret invalidates them. Login attempts are limited per process, so this guard is intended for a single-instance deployment.
+
+Back up the database before upgrading. The migration irreversibly removes the old email/password columns and encrypted API-key table, while keeping the existing profile row, preferences, and linked training plans. Move API credentials to environment variables first. If the database contains multiple account rows, consolidate them to one profile before upgrading.
 
 ## Via Local WebApp (Dev)
 

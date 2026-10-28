@@ -1,5 +1,6 @@
 """Single-password access protection."""
 
+import secrets
 from typing import TYPE_CHECKING
 
 from fastapi.testclient import TestClient
@@ -9,6 +10,8 @@ from app.main import app
 
 if TYPE_CHECKING:
     import pytest
+
+TEST_PASSWORD = access.get_settings().APP_PASSWORD
 
 
 def test_access_requires_login_and_rejects_cross_origin() -> None:
@@ -23,7 +26,7 @@ def test_access_requires_login_and_rejects_cross_origin() -> None:
         )
         response = client.post(
             "/login",
-            data={"password": "test-password"},
+            data={"password": TEST_PASSWORD},
             headers={"origin": "https://testserver"},
             follow_redirects=False,
         )
@@ -45,7 +48,7 @@ def test_login_rate_limit_and_cookie_tampering() -> None:
         for _ in range(5):
             response = client.post("/login", data={"password": "bad"}, headers={"origin": "https://testserver"})
             assert response.status_code == 401
-        response = client.post("/login", data={"password": "test-password"}, headers={"origin": "https://testserver"})
+        response = client.post("/login", data={"password": TEST_PASSWORD}, headers={"origin": "https://testserver"})
         assert response.status_code == 429
         client.cookies.set("intelliwatts_session", "123.invalid")
         assert client.get("/settings", follow_redirects=False).status_code == 303
@@ -57,13 +60,13 @@ def test_session_expires_and_password_rotation_revokes_it(monkeypatch: pytest.Mo
     settings = access.get_settings()
     access._FAILURES.clear()
     with TestClient(app, base_url="https://testserver") as client:
-        client.post("/login", data={"password": "test-password"}, headers={"origin": "https://testserver"})
+        client.post("/login", data={"password": TEST_PASSWORD}, headers={"origin": "https://testserver"})
         cookie = client.cookies.get("intelliwatts_session")
         assert cookie is not None
         timestamp = int(cookie.split(".")[0])
         monkeypatch.setattr(access.time, "time", lambda: timestamp + access.SESSION_SECONDS + 1)
         assert client.get("/", follow_redirects=False).status_code == 303
         monkeypatch.setattr(access.time, "time", lambda: timestamp)
-        monkeypatch.setattr(settings, "APP_PASSWORD", "new-password-123")
+        monkeypatch.setattr(settings, "APP_PASSWORD", secrets.token_urlsafe(32))
         assert client.get("/", follow_redirects=False).status_code == 303
     access._FAILURES.clear()

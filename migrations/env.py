@@ -6,7 +6,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
-from app.models.user import User, UserSecrets  # ruff: ignore[unused-import]
+from app.models.user import User  # ruff: ignore[unused-import]
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

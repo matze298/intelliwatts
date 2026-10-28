@@ -221,7 +221,7 @@ def _settings_page_context(request: Request, user: User) -> dict[str, object]:
     }
 
 
-def _render_plan_page(  # noqa: PLR0913
+def _render_plan_page(  # ruff: ignore[too-many-arguments]
     request: Request,
     *,
     user: User | None,

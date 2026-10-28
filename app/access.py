@@ -8,12 +8,14 @@ from collections import deque
 from threading import Lock
 
 import fastapi
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from app.config import get_settings
 
 Request = fastapi.Request
+templates = Jinja2Templates(directory="app/templates")
 COOKIE_NAME = "intelliwatts_session"
 SESSION_SECONDS = 12 * 60 * 60
 MAX_LOGIN_ATTEMPTS = 5
@@ -64,15 +66,27 @@ class AccessMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-def login_page() -> HTMLResponse:
+def _login_response(request: Request, *, error: str | None = None, status_code: int = 200) -> Response:
+    """Render the Tailwind sign-in page.
+
+    Returns:
+        The rendered sign-in page.
+    """
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        {"user": None, "error": error},
+        status_code=status_code,
+    )
+
+
+def login_page(request: Request) -> Response:
     """Render a password-only sign-in form.
 
     Returns:
         The sign-in page.
     """
-    return HTMLResponse(
-        """<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>IntelliWatts sign in</title></head><body><main><h1>IntelliWatts</h1><form method="post" action="/login"><label for="password">Password</label> <input id="password" name="password" type="password" autocomplete="current-password" required autofocus><button type="submit">Sign in</button></form></main></body></html>"""
-    )
+    return _login_response(request)
 
 
 async def login(request: Request) -> Response:
@@ -86,13 +100,13 @@ async def login(request: Request) -> Response:
         while _FAILURES and _FAILURES[0] <= now - 60:
             _FAILURES.popleft()
         if len(_FAILURES) >= MAX_LOGIN_ATTEMPTS:
-            return HTMLResponse("Too many attempts. Try again in a minute.", status_code=429)
+            return _login_response(request, error="Too many attempts. Try again in a minute.", status_code=429)
         _FAILURES.append(now)
     form = await request.form()
     password = form.get("password", "")
     settings = get_settings()
     if not isinstance(password, str) or not secrets.compare_digest(password.encode(), settings.APP_PASSWORD.encode()):
-        return HTMLResponse("Invalid password", status_code=401)
+        return _login_response(request, error="Invalid password", status_code=401)
     timestamp = str(int(time.time()))
     response = RedirectResponse("/", status_code=303)
     response.set_cookie(
