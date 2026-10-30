@@ -22,6 +22,6 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 ## 4. Make changes easier to maintain
 
 - [x] **Reproduce asset builds:** Pin the Tailwind CLI, install from the npm lockfile in CI, and fail CI if rebuilding changes committed CSS.
-- [ ] **Review CI dependencies:** Keep GitHub Actions and other build dependencies current.
+- [x] **Review CI dependencies:** Update workflow actions and add weekly Dependabot checks for GitHub Actions, alongside the existing npm and uv checks.
 - [ ] **Reduce concentrated responsibilities:** Split route handling, rendering and external-service setup in `app/routes/web.py` as those areas change. Separate coach-context normalization from presentation where that improves reuse and testing.
 - [ ] **Improve coaching context:** Prioritize planned-versus-completed training and recovery changes against an athlete's baseline, with clear missing-data indicators. Add richer signals only when their use in planning is defined.
