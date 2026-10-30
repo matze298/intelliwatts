@@ -98,12 +98,12 @@ This is the manual equivalent of a lockfile upgrade pass and is the command used
 Before merging an npm upgrade, the StepSecurity `NPM Package Cooldown` check should be configured to a 7-day window in the StepSecurity dashboard. That keeps newly published package versions in a cooldown period long enough to reduce supply-chain risk before the updated lockfile is accepted.
 
 ## Running Tests
-Install the Python test extra and Playwright browser, then run the suite against a disposable PostgreSQL database or Neon branch. Set `TEST_DATABASE_URL` to a dedicated test database; tests must not use production.
+Install the Python test extra and Playwright browser, then run the suite against a disposable PostgreSQL database or a separate Neon test branch. Set `TEST_DATABASE_URL` to its direct connection URL; never point tests at production or the development branch.
 
 ```bash
 uv sync --extra dev --extra test
 uv run playwright install chromium
-uv run pytest tests/
+TEST_DATABASE_URL="postgresql://user:password@host/database?sslmode=require" uv run pytest tests/
 ```
 
 # Settings
