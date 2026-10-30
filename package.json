@@ -19,5 +19,9 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@neon/config": "^1.9.6",
+    "@neon/env": "^1.6.6"
+  }
 }

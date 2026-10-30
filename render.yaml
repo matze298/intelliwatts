@@ -21,5 +21,15 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: INTERVALS_ATHLETE_ID
+        sync: false
+      - key: INTERVALS_API_KEY
+        sync: false
+      - key: LANGUAGE_MODEL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
       - key: PYTHONUNBUFFERED
         value: "1"

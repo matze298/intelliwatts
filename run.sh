@@ -13,9 +13,6 @@ else
   exit 1
 fi
 
-echo "Starting PostgreSQL..."
-docker compose up -d --wait postgres
-
 echo "Starting Uvicorn server..."
 # Run the application using uvicorn
 # Assuming the app instance is in app/main.py
