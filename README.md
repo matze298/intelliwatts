@@ -59,10 +59,11 @@ Set `DATABASE_URL` to the connection URL for a persistent PostgreSQL database, s
 
 ## Via Local WebApp (Dev)
 
-1. **Start PostgreSQL:** Run `docker compose up -d postgres`. The local database and separate test database use the development-only credentials in `docker-compose.yml`.
-2. **Configure the app:** Copy `.env.example` to `.env`, set the required password, generated session secret and API credentials, and keep the example `DATABASE_URL` for the local database.
-3. **Set up the environment:** Run `./setup.sh` to install dependencies and build static assets.
-4. **Start the app:** Run `uv run uvicorn app.main:app --reload`, then open `http://localhost:8000/`.
+1. **Configure the app:** Copy `.env.example` to `.env`, set the required password, generated session secret and API credentials, and keep the example `DATABASE_URL` for the local database.
+2. **Set up the environment:** Run `./setup.sh` to install dependencies.
+3. **Start the app:** Run `./run.sh`, then open `http://localhost:8000/`. This starts the PostgreSQL Docker container, waits until it is healthy, and starts the app. The local database and separate test database use the development-only credentials in `docker-compose.yml`.
+
+To use an existing PostgreSQL server instead, set its `DATABASE_URL` in `.env` and start the app with `uv run uvicorn app.main:app --reload`. For tests, set `TEST_DATABASE_URL` to a separate test database.
 
 ## Via FastAPI (Dev)
 1. Run `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` to start the FastAPI server.
