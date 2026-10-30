@@ -31,47 +31,17 @@ You are an evidence-based cycling coach.
   - If a specific peak is significantly lower than expected for the athlete's FTP, prioritize work in that specific duration.
 
 **Output Structure:**
-Your response must consist of two distinct parts separated by a delimiter.
-
-**PART 1: The Training Plan (Human Readable)**
-Provide a structured 7-day plan including:
+Write `plan_markdown` as a structured 7-day plan including:
 - Daily Goal & Rationale
 - Duration & Intensity
 - Specific Nutrition Tips (pre/during/post)
 
-**PART 2: The JSON Data (Machine Readable)**
-After the human-readable plan, output the separator `###JSON_START###` followed immediately by a valid JSON object containing the data needed to generate workout files.
-
-**JSON Schema:**
-The JSON must be a list of workout objects (exclude Rest Days). Use this exact structure:
-```json
-[
-  {
-    "day": "Monday",
-    "workout_name": "String",
-    "description": "String",
-    "segments": [
-      {
-        "title": "String (e.g. Warmup, Main Set)",
-        "repeats": Integer,
-        "steps": [
-          {
-            "duration_m": Integer (minutes),
-            "power_pct": "String (e.g., '50-60' for steady, or 'Ramp 50-60' for intervals)",
-            "rpm": "String (optional, e.g. 85-95)"
-          }
-        ]
-      }
-    ]
-  }
-]
+The structured `workouts` field contains one object per training day (exclude rest days), with interval durations in minutes, power target ranges as strings (for example `85-95` or `Ramp 50-60`), and optional cadence ranges.
 """
 
 USER_PROMPT = """
 TASK:
-1. Generate the 7-day cycling plan (Text format) with nutrition tips and rationale.
-2. Output the `###JSON_START###` separator.
-3. Generate the JSON array representing the workouts for file creation.
+Generate the 7-day cycling plan with nutrition tips and rationale, and provide structured workout data for each non-rest training day.
 """
 
 
@@ -83,10 +53,10 @@ def user_prompt(
     specialist_context: str,
     task_prompt: str | None = None,
 ) -> str:
-    """Generate the structured prompt for the LLM.
+    """Generate the coach prompt payload from the collected planning context.
 
     Returns:
-        A single formatted prompt string with explicit sections.
+        The final prompt string.
     """
     sections = [
         "Training Constraints:\n" + constraints.strip(),

@@ -1,18 +1,13 @@
 """Tests for planner persistence helpers."""
 
-import logging
 import uuid
 from datetime import date
-from typing import TYPE_CHECKING
 
 from sqlmodel import Session, select
 
 from app.models.plan import TrainingPlan
 from app.planning.llm import LLMResponse
 from app.services.planner import PlanData, get_or_create_active_phase, save_and_stage_weekly_plan, save_training_plan
-
-if TYPE_CHECKING:
-    from _pytest.logging import LogCaptureFixture
 
 
 def test_save_training_plan_overwrite(session: Session) -> None:
@@ -40,30 +35,40 @@ def test_save_training_plan_overwrite(session: Session) -> None:
     assert plan.raw_content == "New Content"
 
 
-def test_save_and_stage_weekly_plan_logs_malformed_workout_json(
-    session: Session,
-    caplog: LogCaptureFixture,
-) -> None:
-    """Malformed structured LLM output should persist the plan with empty workout data."""
-    # GIVEN: A phase and an LLM response with malformed structured workout JSON.
+def test_save_and_stage_weekly_plan_persists_structured_output(session: Session) -> None:
+    """Persist the narrative and structured workouts as separate plan fields."""
+    # GIVEN: A phase and a typed LLM response containing both output fields.
     user_id = uuid.uuid4()
     phase = get_or_create_active_phase(session, user_id)
+    workouts: list[dict[str, object]] = [
+        {
+            "day": "Tuesday",
+            "workout_name": "Tempo",
+            "description": "Steady intervals.",
+            "segments": [
+                {
+                    "title": "Main set",
+                    "repeats": 1,
+                    "steps": [{"duration_m": 20, "power_pct": "85-90", "rpm": None}],
+                },
+            ],
+        },
+    ]
     response = LLMResponse(
-        plan='Readable plan###JSON_START###{"workout_name": "not-a-list"}###JSON_END###',
+        plan="# Readable plan",
         prompt=[{"role": "user", "content": "prompt"}],
+        workouts=workouts,
     )
 
     # WHEN: Saving and staging the generated plan.
-    with caplog.at_level(logging.WARNING):
-        saved_plan_id = save_and_stage_weekly_plan(
-            session=session,
-            phase_id=phase.id,
-            week_start=date(2026, 6, 1),
-            llm_response=response,
-        )
+    saved_plan_id = save_and_stage_weekly_plan(
+        session=session,
+        phase_id=phase.id,
+        week_start=date(2026, 6, 1),
+        llm_response=response,
+    )
 
-    # THEN: The readable plan is preserved and structured workouts fall back to empty.
+    # THEN: The readable plan and structured workouts are persisted independently.
     plan = session.exec(select(TrainingPlan).where(TrainingPlan.id == saved_plan_id)).one()
-    assert plan.raw_content.startswith("Readable plan")
-    assert plan.workout_data == []
-    assert "Ignoring malformed workout JSON payload" in caplog.text
+    assert plan.raw_content == "# Readable plan"
+    assert plan.workout_data == workouts

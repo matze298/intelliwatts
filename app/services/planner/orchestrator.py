@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -57,7 +58,16 @@ async def update_training_plan(
         if not plan:
             return await generate_weekly_plan(user, settings, week_start=monday)
 
-        history = plan.prompt_history
+        history = [
+            *plan.prompt_history,
+            {
+                "role": LLMRole.ASSISTANT,
+                "content": json.dumps(
+                    {"plan_markdown": plan.raw_content, "workouts": plan.workout_data},
+                    ensure_ascii=False,
+                ),
+            },
+        ]
         history.append({"role": LLMRole.USER, "content": feedback})
 
         llm_response = generate_plan(messages=history, language_model=settings.LANGUAGE_MODEL)

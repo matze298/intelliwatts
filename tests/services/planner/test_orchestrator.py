@@ -289,7 +289,8 @@ async def test_update_training_plan_uses_history(
 
     # GIVEN: A mocked LLM response for the update.
     mock_llm_response = MagicMock()
-    mock_llm_response.plan = "Updated Plan ###JSON_START### [] ###JSON_END###"
+    mock_llm_response.plan = "Updated Plan"
+    mock_llm_response.workouts = []
     mock_llm_response.prompt = [
         *initial_history,
         {"role": "user", "content": "make it harder"},
@@ -309,8 +310,10 @@ async def test_update_training_plan_uses_history(
     # THEN: Generate_plan should be called with the extended message history.
     mock_generate_plan.assert_called_once()
     passed_messages = mock_generate_plan.call_args.kwargs["messages"]
-    assert len(passed_messages) == 3
-    assert passed_messages[2]["content"] == "make it harder"
+    assert len(passed_messages) == 4
+    assert passed_messages[2]["role"] == "assistant"
+    assert "Initial Plan" in passed_messages[2]["content"]
+    assert passed_messages[3]["content"] == "make it harder"
 
     # THEN: The plan and its history should be updated in the database.
     plan = session.exec(select(TrainingPlan)).one()
@@ -324,17 +327,17 @@ async def test_update_training_plan_uses_history(
 
 
 @patch("app.services.planner.persistence.stage_workout_delivery")
-def test_save_and_stage_weekly_plan_falls_back_on_invalid_json(
+def test_save_and_stage_weekly_plan_persists_empty_workouts(
     mock_stage_workout_delivery: MagicMock,
     session: Session,
 ) -> None:
-    """Invalid plan JSON should persist an empty workout payload."""
-    # GIVEN: A training phase and a malformed LLM plan payload.
+    """A response with no structured workouts should persist an empty workout payload."""
+    # GIVEN: A training phase and a valid narrative response with no workouts.
     user = User(id=uuid.uuid4())
     phase = get_or_create_active_phase(session, user.id)
     mock_llm_response = LLMResponse(plan="invalid json", prompt=[{"role": "user", "content": "prompt"}])
 
-    # WHEN: Persisting and staging the malformed plan.
+    # WHEN: Persisting and staging the plan.
     saved_plan_id = save_and_stage_weekly_plan(
         session=session,
         phase_id=phase.id,
@@ -342,7 +345,7 @@ def test_save_and_stage_weekly_plan_falls_back_on_invalid_json(
         llm_response=mock_llm_response,
     )
 
-    # THEN: The plan should still be saved with an empty workout list.
+    # THEN: The plan should be saved with an empty workout list.
     plan = session.exec(select(TrainingPlan)).one()
     assert plan.id == saved_plan_id
     assert plan.workout_data == []
