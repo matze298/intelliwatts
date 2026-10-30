@@ -4,7 +4,7 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 
 ## 1. Protect data and rendered content
 
-- [ ] **Protect training data:** Configure a persistent hosted PostgreSQL database and verify independent backup and restore. The app uses `DATABASE_URL` for both local and hosted PostgreSQL; the migration history starts from a fresh baseline.
+- [x] **Persist training data:** Use Neon PostgreSQL for local and hosted app data, with Alembic applying the fresh baseline. Neon Free provides a six-hour point-in-time recovery window; longer retention and independent backups are deferred until recovery needs justify them.
 - [ ] **Sanitize rendered content:** Review every Markdown-to-HTML and `| safe` path for model output and user-derived data. Sanitize allowed HTML and cover unsafe input with regression tests.
 
 ## 2. Make planning reliable
@@ -21,6 +21,7 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 
 ## 4. Make changes easier to maintain
 
-- [ ] **Reproduce asset builds:** Pin the Tailwind CLI, install from the npm lockfile in CI, and fail CI if rebuilding changes committed CSS. Review CI action versions and dependency updates.
+- [x] **Reproduce asset builds:** Pin the Tailwind CLI, install from the npm lockfile in CI, and fail CI if rebuilding changes committed CSS.
+- [x] **Review CI dependencies:** Update workflow actions and add weekly Dependabot checks for GitHub Actions, alongside the existing npm and uv checks.
 - [ ] **Reduce concentrated responsibilities:** Split route handling, rendering and external-service setup in `app/routes/web.py` as those areas change. Separate coach-context normalization from presentation where that improves reuse and testing.
 - [ ] **Improve coaching context:** Prioritize planned-versus-completed training and recovery changes against an athlete's baseline, with clear missing-data indicators. Add richer signals only when their use in planning is defined.

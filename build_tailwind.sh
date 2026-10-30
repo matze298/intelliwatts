@@ -20,13 +20,13 @@ if ! command -v npm >/dev/null 2>&1; then
   fi
 fi
 
-echo "Building initial Tailwind CSS for Retro theme..."
+echo "Building Tailwind CSS themes..."
 # Iterate over all available styles in ./app/static
 for style_file in ./app/static/style-*.css; do
   # Extract the theme name (e.g., 'retro' from 'style-retro.css')
   theme_name=$(basename "$style_file" .css | sed 's/style-//')
   echo "Building Tailwind CSS for $theme_name theme..."
-  npx @tailwindcss/cli -i "$style_file" -o "./app/static/tailwind-$theme_name.css"
+  ./node_modules/.bin/tailwindcss -i "$style_file" -o "./app/static/tailwind-$theme_name.css"
 done
 
 echo "CSS themes built successfully ✔"

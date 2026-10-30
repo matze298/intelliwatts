@@ -10,10 +10,10 @@ jobs:
   githooks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
 
@@ -43,10 +43,10 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
 
@@ -63,7 +63,7 @@ jobs:
         run: uv run pytest tests/ --cov=app --cov-branch --cov-report=xml
       
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7.1.1
         with:
           files: ./coverage.xml
           fail_ci_if_error: true
@@ -72,18 +72,21 @@ jobs:
   css_build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       
-      - name: Install npm
-        uses: actions/setup-node@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
       
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Check build_tailwind.sh
-        run: ./build_tailwind.sh
+      - name: Build CSS
+        run: npm run build:css
+
+      - name: Check generated CSS is up to date
+        run: git diff --exit-code -- app/static/tailwind-*.css
 
   gatekeeper:
     needs: [githooks, unittests, css_build]
