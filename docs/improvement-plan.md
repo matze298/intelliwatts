@@ -4,7 +4,7 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 
 ## 1. Protect data and rendered content
 
-- [ ] **Protect training data:** Configure a persistent hosted PostgreSQL database and verify independent backup and restore. The app uses `DATABASE_URL` for both local and hosted PostgreSQL; the migration history starts from a fresh baseline.
+- [x] **Persist training data:** Use Neon PostgreSQL for local and hosted app data, with Alembic applying the fresh baseline. Neon Free provides a six-hour point-in-time recovery window; longer retention and independent backups are deferred until recovery needs justify them.
 - [ ] **Sanitize rendered content:** Review every Markdown-to-HTML and `| safe` path for model output and user-derived data. Sanitize allowed HTML and cover unsafe input with regression tests.
 
 ## 2. Make planning reliable
