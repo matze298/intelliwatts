@@ -28,7 +28,7 @@ def test_plan_prompt_is_rendered_as_escaped_text() -> None:
         prompt=[{"role": "user", "content": 'Coach text <script>alert("prompt")</script>'}],
     )
 
-    # THEN the prompt remains visible as escaped text, not an executable script
+    # THEN the prompt remains readable as escaped text, not an executable script
     assert b"<h1>Generated plan</h1>" in response.body
     assert b"Coach text" in response.body
     assert b"&lt;script&gt;" in response.body
