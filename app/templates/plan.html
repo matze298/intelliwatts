@@ -135,7 +135,7 @@
         {% if long_term_summary_html %}
         {% call render_disclosure("Long-term plan", details_class="planner-card mb-6 rounded-xl p-6") %}
             <div class="prose max-w-none mt-4">
-                {{ long_term_summary_html | safe }}
+                {{ long_term_summary_html }}
             </div>
         {% endcall %}
         {% endif %}
@@ -149,7 +149,7 @@
                 </div>
             </div>
             <div class="prose max-w-none mt-4">
-                {{ plan_html | safe }}
+                {{ plan_html }}
             </div>
         </section>
 
@@ -198,15 +198,20 @@
         {% if summary %}
         {% call render_disclosure("Weekly Summary", details_class="mt-8") %}
             <div class="prose max-w-none mt-4">
-                {{ summary | safe }}
+                {{ summary }}
             </div>
         {% endcall %}
         {% endif %}
 
         {% if prompt %}
         {% call render_disclosure("LLM Prompt", details_class="mt-8") %}
-            <div class="prose max-w-none mt-4">
-                {{ prompt | safe }}
+            <div class="mt-4 space-y-3">
+                {% for message in prompt %}
+                <article class="rounded-xl bg-slate-50 p-4">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ message.role }}</p>
+                    <pre class="mt-2 whitespace-pre-wrap font-sans text-sm text-slate-700">{{ message.content }}</pre>
+                </article>
+                {% endfor %}
             </div>
         {% endcall %}
         {% endif %}

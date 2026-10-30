@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 from sqlmodel import Session, select
 
 from app.models.plan import TrainingPlan
-from app.planning.intervals_payload import extract_workout_json
 from app.services.workout_delivery import stage_workout_delivery
 
 if TYPE_CHECKING:
@@ -71,14 +70,13 @@ def save_and_stage_weekly_plan(
     Returns:
         The saved training plan id.
     """
-    workout_data = extract_workout_json(llm_response.plan)
     saved_plan = save_training_plan(
         session,
         phase_id,
         week_start,
         PlanData(
             raw_content=llm_response.plan,
-            workout_data=workout_data,
+            workout_data=llm_response.workouts,
             prompt_history=llm_response.prompt,
         ),
     )

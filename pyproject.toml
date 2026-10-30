@@ -13,6 +13,7 @@ dependencies = [
     "jinja2",
     "openai",
     "markdown",
+    "nh3>=0.3.7",
     "polars",
     "pydantic",
     "pydantic-settings",
@@ -73,6 +74,10 @@ ignore = [
 # Docstring conventions: Google style
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.flake8-bandit]
+# Only HTML returned from this allowlist sanitizer may be marked as trusted markup.
+allowed-markup-calls = ["app.utils.markdown._sanitize_html"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

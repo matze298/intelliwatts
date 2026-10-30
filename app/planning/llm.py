@@ -1,9 +1,9 @@
 """Generates the training plan based on the summary by using an LLM."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from functools import lru_cache
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import TYPE_CHECKING, cast
 
 from google import genai
 from google.genai.types import (
@@ -16,6 +16,7 @@ from openai import OpenAI
 
 from app.config import get_settings
 from app.planning.coach_prompt import SYSTEM_PROMPT
+from app.planning.schemas import WeeklyPlanOutput
 
 if TYPE_CHECKING:
     from openai.types.chat import ChatCompletionMessageParam
@@ -40,11 +41,13 @@ class LLMMessage:
     content: str
 
 
-class LLMResponse(NamedTuple):
+@dataclass(frozen=True)
+class LLMResponse:
     """Response from the LLM."""
 
     plan: str
     prompt: list[dict[str, str]]
+    workouts: list[dict[str, object]] = field(default_factory=list)
 
 
 def generate_plan(
@@ -97,16 +100,22 @@ def _call_gpt_cached(messages_tuple: tuple[LLMMessage, ...], api_key: str | None
 
     messages = [{"role": m.role, "content": m.content} for m in messages_tuple]
     client = OpenAI(api_key=api_key)
-    response = client.chat.completions.create(
+    response = client.chat.completions.parse(
         model=model,
         messages=cast("list[ChatCompletionMessageParam]", messages),
         temperature=0.2,
+        response_format=WeeklyPlanOutput,
     )
-    if not response.choices[0].message.content:
-        msg = "GPT returned no text output"
+    output = response.choices[0].message.parsed
+    if output is None:
+        msg = "GPT returned no structured plan output"
         raise RuntimeError(msg)
 
-    return LLMResponse(plan=response.choices[0].message.content, prompt=messages)
+    return LLMResponse(
+        plan=output.plan_markdown,
+        prompt=messages,
+        workouts=[workout.model_dump(mode="json") for workout in output.workouts],
+    )
 
 
 def call_gemini(
@@ -166,6 +175,8 @@ def _call_gemini_cached(
             system_instruction=system_instruction,
             temperature=temperature,
             max_output_tokens=max_output_tokens,
+            response_mime_type="application/json",
+            response_schema=WeeklyPlanOutput,
             safety_settings=[
                 SafetySetting(
                     category=HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -180,7 +191,12 @@ def _call_gemini_cached(
     )
 
     if not response.text:
-        msg = "Gemini returned no text output"
+        msg = "Gemini returned no structured plan output"
         raise RuntimeError(msg)
 
-    return LLMResponse(plan=response.text, prompt=messages)
+    output = WeeklyPlanOutput.model_validate_json(response.text)
+    return LLMResponse(
+        plan=output.plan_markdown,
+        prompt=messages,
+        workouts=[workout.model_dump(mode="json") for workout in output.workouts],
+    )

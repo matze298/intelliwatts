@@ -5,11 +5,12 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 ## 1. Protect data and rendered content
 
 - [x] **Persist training data:** Use Neon PostgreSQL for local and hosted app data, with Alembic applying the fresh baseline. Neon Free provides a six-hour point-in-time recovery window; longer retention and independent backups are deferred until recovery needs justify them.
-- [ ] **Sanitize rendered content:** Review every Markdown-to-HTML and `| safe` path for model output and user-derived data. Sanitize allowed HTML and cover unsafe input with regression tests.
+- [x] **Sanitize rendered content:** Route model-generated and stored Markdown through an HTML allowlist sanitizer; render saved prompt history as autoescaped text. Cover unsafe input with regression tests.
 
 ## 2. Make planning reliable
 
-- [ ] **Validate external data:** Use typed contracts and boundary validation for Intervals.icu responses and model-generated plans before persistence or workout publication. Handle missing, malformed and uncertain data explicitly.
+- [x] **Validate model output:** Request provider-native structured output and validate it with a shared Pydantic contract. Persist readable Markdown separately from typed workouts, and include the current plan in follow-up context.
+- [ ] **Validate external data:** Add typed contracts and boundary validation for Intervals.icu responses before they enter analysis or publication. Handle missing, malformed and uncertain data explicitly.
 - [ ] **Keep generation responsive:** Move synchronous API and model calls out of async request handlers or use async clients. Provide clear progress, timeout and failure states; make retries and workout publication safe against accidental duplicates.
 - [ ] **Persist settings consistently:** Store prompt overrides that should survive restarts alongside other preferences. Before using multiple workers or instances, replace process-local login throttling with shared state or another suitable control.
 

@@ -2,7 +2,6 @@
 
 from typing import TYPE_CHECKING, NamedTuple, cast
 
-import markdown
 from sqlalchemy import desc
 from sqlmodel import Session, select
 
@@ -10,6 +9,7 @@ from app.db import engine
 from app.models.plan import LongTermPlanArtifact, TrainingPlan, WorkoutDelivery
 from app.services.long_term_planner import get_active_phase
 from app.utils.datetime import get_monday, get_utc_now
+from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
     from datetime import date, datetime
@@ -59,20 +59,14 @@ def load_user_plan(user: User, *, week_start: date | None = None, include_weekly
         )
         artifact = session.exec(artifact_statement).first()
         if artifact:
-            long_term_summary_html = markdown.markdown(
-                artifact.summary_markdown,
-                extensions=["tables", "fenced_code"],
-            )
+            long_term_summary_html = render_markdown(artifact.summary_markdown)
 
         if include_weekly_plan:
             monday = week_start or get_monday(get_utc_now().date())
             statement = select(TrainingPlan).where(TrainingPlan.week_start == monday, TrainingPlan.phase_id == phase.id)
             plan = session.exec(statement).first()
             if plan:
-                plan_html = markdown.markdown(
-                    plan.raw_content,
-                    extensions=["tables", "fenced_code"],
-                )
+                plan_html = render_markdown(plan.raw_content)
                 prompt = plan.prompt_history
                 delivery_statement = select(WorkoutDelivery).where(WorkoutDelivery.training_plan_id == plan.id)
                 delivery = session.exec(delivery_statement).first()
