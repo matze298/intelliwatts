@@ -6,7 +6,6 @@ import logging
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, NamedTuple
 
-import markdown
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -40,6 +39,7 @@ from app.services.planner import (
 )
 from app.services.workout_delivery import publish_workout_delivery
 from app.utils.datetime import get_monday
+from app.utils.markdown import render_markdown
 
 router = APIRouter(tags=["web"])
 
@@ -558,17 +558,10 @@ async def generate(
         week_start=week_selection.selected_week_start,
     )
 
-    plan_html = markdown.markdown(
-        result["plan"],
-        extensions=["tables", "fenced_code"],
-    )
+    plan_html = render_markdown(result["plan"])
     loaded = load_user_plan(user, week_start=result["week_start"])
 
-    summary_html = markdown.markdown(
-        # Pretty print the dict
-        f"""{result["summary"]}""",
-        extensions=["tables", "fenced_code"],
-    )
+    summary_html = render_markdown(str(result["summary"]))
     with Session(engine) as session:
         week_selection = _resolve_week_selection(session, user, result["week_start"].isoformat())
 
@@ -625,10 +618,7 @@ async def update(
 
     result = await update_training_plan(user=user, feedback=feedback, settings=settings, week_start=week_start)
 
-    plan_html = markdown.markdown(
-        result["plan"],
-        extensions=["tables", "fenced_code"],
-    )
+    plan_html = render_markdown(result["plan"])
     loaded = load_user_plan(user, week_start=result["week_start"])
     primary_goal, target_date = ("", "")
     with Session(engine) as session:

@@ -113,6 +113,39 @@ def test_load_user_plan(session: Session, phase_context: PlanLoaderPhaseContext)
     assert loaded.delivery_last_error is None
 
 
+def test_load_user_plan_sanitizes_persisted_markdown(session: Session, phase_context: PlanLoaderPhaseContext) -> None:
+    """Stored weekly plans and long-term summaries should not render active HTML."""
+    # GIVEN a saved plan and artifact containing untrusted HTML
+    artifact = session.exec(
+        select(LongTermPlanArtifact).where(LongTermPlanArtifact.phase_id == phase_context.phase.id)
+    ).one()
+    artifact.summary_markdown = "# Long-term plan\n\n<script>alert('stored script')</script>"
+    session.add(artifact)
+    session.add(
+        TrainingPlan(
+            phase_id=phase_context.phase.id,
+            week_start=date(2026, 4, 20),
+            raw_content='# Weekly plan\n\n<img src="x" onerror="alert(1)">',
+            prompt_history=[],
+        )
+    )
+    session.commit()
+
+    # WHEN loading the saved plan
+    with patch("app.services.plan_loader.Session", return_value=session):
+        loaded = load_user_plan(phase_context.user, week_start=date(2026, 4, 20))
+
+    # THEN valid headings remain, but active content is removed
+    assert loaded.plan_html is not None
+    assert "<h1>Weekly plan</h1>" in loaded.plan_html
+    assert "<img" not in loaded.plan_html
+    assert "onerror" not in loaded.plan_html
+    assert loaded.long_term_summary_html is not None
+    assert "<h1>Long-term plan</h1>" in loaded.long_term_summary_html
+    assert "<script" not in loaded.long_term_summary_html
+    assert "alert(" not in loaded.long_term_summary_html
+
+
 def test_load_user_plan_for_selected_week(session: Session, phase_context: PlanLoaderPhaseContext) -> None:
     """Test loading a user plan for an explicitly selected week."""
     # GIVEN a user and an active phase with plans for two different weeks
