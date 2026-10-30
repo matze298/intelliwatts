@@ -1,7 +1,10 @@
 """Parse power curve data from intervals.icu."""
 
+import logging
 from dataclasses import dataclass
 from typing import Any
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -76,17 +79,40 @@ def parse_power_curve(data: dict[str, Any]) -> ParsedPowerCurve:
 
     Returns:
         The parsed power curve.
+
+    Raises:
+        TypeError: if the response fields have unexpected types.
+        ValueError: if the curve samples are incomplete or unusable.
     """
-    # Intervals.icu uses parallel arrays 'secs' and 'watts'
-    secs_list = data.get("secs", [])
-    watts_list = data.get("watts", [])
-
+    curve_id = data.get("id")
+    seconds = data.get("secs")
+    watts = data.get("watts")
+    if not isinstance(curve_id, str) or not isinstance(seconds, list) or not isinstance(watts, list):
+        msg = "Power curve must include an id and seconds/watts lists"
+        raise TypeError(msg)
+    if len(seconds) != len(watts):
+        msg = "Power curve seconds and watts must have equal lengths"
+        raise ValueError(msg)
     points = []
-    # Zip them together to create PowerCurvePoint objects
-    for s, w in zip(secs_list, watts_list, strict=False):
-        points.append(PowerCurvePoint(secs=int(s), watts=int(w)))
-
-    return ParsedPowerCurve(id=data.get("id", "unknown"), points=points)
+    seen_durations: set[int] = set()
+    for secs, power in zip(seconds, watts, strict=True):
+        if isinstance(secs, bool) or isinstance(power, bool):
+            msg = "Power curve samples must be numeric"
+            raise TypeError(msg)
+        try:
+            duration_seconds, watts_value = int(secs), int(power)
+        except (TypeError, ValueError, OverflowError) as exc:
+            msg = "Power curve samples must be numeric"
+            raise ValueError(msg) from exc
+        if duration_seconds <= 0 or watts_value < 0:
+            msg = "Power curve durations must be positive and watts non-negative"
+            raise ValueError(msg)
+        if duration_seconds in seen_durations:
+            msg = "Power curve durations must be unique"
+            raise ValueError(msg)
+        seen_durations.add(duration_seconds)
+        points.append(PowerCurvePoint(secs=duration_seconds, watts=watts_value))
+    return ParsedPowerCurve(id=curve_id, points=points)
 
 
 def parse_power_curves(data: dict[str, Any]) -> list[ParsedPowerCurve]:
@@ -97,5 +123,23 @@ def parse_power_curves(data: dict[str, Any]) -> list[ParsedPowerCurve]:
 
     Returns:
         The list of parsed power curves.
+
+    Raises:
+        TypeError: if the response envelope has an unexpected type.
     """
-    return [parse_power_curve(c) for c in data.get("list", [])]
+    raw_curves = data.get("list")
+    if not isinstance(raw_curves, list):
+        msg = "Intervals.icu power curves response must contain a list"
+        raise TypeError(msg)
+
+    curves: list[ParsedPowerCurve] = []
+    for index, curve_data in enumerate(raw_curves):
+        if not isinstance(curve_data, dict):
+            _LOGGER.warning("Skipping malformed power curve: index=%s expected=object", index)
+            continue
+        try:
+            curves.append(parse_power_curve(curve_data))
+        except TypeError, ValueError:
+            _LOGGER.warning("Skipping malformed power curve: index=%s", index)
+            continue
+    return curves
