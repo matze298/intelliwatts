@@ -21,8 +21,6 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
-      - key: DATABASE_URL_UNPOOLED
-        sync: false
       - key: INTERVALS_ATHLETE_ID
         sync: false
       - key: INTERVALS_API_KEY

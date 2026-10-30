@@ -50,7 +50,6 @@ def test_init_db_creates_schema_and_persists_data(monkeypatch: pytest.MonkeyPatc
     database_url = url.render_as_string(hide_password=False)
     engine = create_engine(database_url)
     monkeypatch.setattr(app.db, "DATABASE_URL", database_url)
-    monkeypatch.setattr(app.db, "MIGRATION_DATABASE_URL", database_url)
     monkeypatch.setattr(app.db, "engine", engine)
 
     try:

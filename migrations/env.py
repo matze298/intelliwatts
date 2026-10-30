@@ -6,7 +6,7 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 from sqlmodel import SQLModel
 
-from app.db import MIGRATION_DATABASE_URL
+from app.db import DATABASE_URL
 from app.models import LongTermPlanArtifact, TrainingPhase, TrainingPlan, User, WorkoutDelivery  # ruff: ignore[unused-import]
 
 # this is the Alembic Config object, which provides
@@ -33,7 +33,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.attributes.get("database_url", MIGRATION_DATABASE_URL)
+    url = config.attributes.get("database_url", DATABASE_URL)
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -52,7 +52,7 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    url = config.attributes.get("database_url", MIGRATION_DATABASE_URL)
+    url = config.attributes.get("database_url", DATABASE_URL)
     connectable = create_engine(url, poolclass=pool.NullPool)
 
     with connectable.connect() as connection:

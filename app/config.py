@@ -43,7 +43,6 @@ class Settings(BaseSettings):
     APP_ORIGIN: str = Field(min_length=1)
     SESSION_COOKIE_SECURE: bool = True
     DATABASE_URL: str = Field(min_length=1, repr=False)
-    DATABASE_URL_UNPOOLED: str | None = Field(default=None, repr=False)
 
     @field_validator("APP_ORIGIN")
     @classmethod

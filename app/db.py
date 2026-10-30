@@ -29,7 +29,6 @@ def normalize_database_url(url: str) -> str:
 
 
 DATABASE_URL = normalize_database_url(get_settings().DATABASE_URL)
-MIGRATION_DATABASE_URL = normalize_database_url(get_settings().DATABASE_URL_UNPOOLED or get_settings().DATABASE_URL)
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 
@@ -40,7 +39,7 @@ def _build_alembic_config() -> Config:
         An Alembic config targeting the current application database.
     """
     config = Config(str(Path(__file__).resolve().parent.parent / "alembic.ini"))
-    config.attributes["database_url"] = MIGRATION_DATABASE_URL
+    config.attributes["database_url"] = DATABASE_URL
     return config
 
 

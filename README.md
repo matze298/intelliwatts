@@ -61,11 +61,11 @@ Set `DATABASE_URL` to the connection URL for a persistent PostgreSQL database, s
 
 1. **Configure app settings:** Copy `.env.example` to `.env`, then set the required password, generated session secret and API credentials.
 2. **Link the Neon project:** Run `neon link --project-id flat-credit-25097795` and select the `development` branch.
-3. **Pull development credentials:** Run `neon env pull`. This writes the pooled `DATABASE_URL` and direct `DATABASE_URL_UNPOOLED` into `.env`; keep both private.
+3. **Set the development database URL:** Run `neon connection-string development` and put its direct connection URL in `.env` as `DATABASE_URL`. Keep it private. (Neon's `env pull` provides both pooled and direct variables; this app uses the direct URL for both queries and migrations.)
 4. **Set up the environment:** Run `./setup.sh` to install dependencies.
-5. **Start the app:** Run `./run.sh`, then open `http://localhost:8000/`. App queries use the pooled URL; Alembic migrations use the direct URL.
+5. **Start the app:** Run `./run.sh`, then open `http://localhost:8000/`. The direct URL is used for app queries and Alembic migrations.
 
-For tests, use a separate disposable PostgreSQL database or Neon branch through `TEST_DATABASE_URL`; do not run tests against production. In Render, set `DATABASE_URL` to the Neon pooled URL and `DATABASE_URL_UNPOOLED` to its direct URL; also provide `INTERVALS_ATHLETE_ID`, `INTERVALS_API_KEY`, and `LANGUAGE_MODEL`. Add the API key for the selected model (`OPENAI_API_KEY` or `GEMINI_API_KEY`).
+For tests, use a separate disposable PostgreSQL database or Neon branch through `TEST_DATABASE_URL`; do not run tests against production. In Render, set `DATABASE_URL` to the Neon direct URL; also provide `INTERVALS_ATHLETE_ID`, `INTERVALS_API_KEY`, and `LANGUAGE_MODEL`. Add the API key for the selected model (`OPENAI_API_KEY` or `GEMINI_API_KEY`).
 
 ## Via FastAPI (Dev)
 1. Run `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` to start the FastAPI server.
