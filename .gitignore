@@ -23,3 +23,5 @@ docs/superpowers/
 
 # Local cache
 intervals_cache.sqlite
+# Neon CLI project link
+.neon

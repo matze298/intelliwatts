@@ -59,11 +59,13 @@ Set `DATABASE_URL` to the connection URL for a persistent PostgreSQL database, s
 
 ## Via Local WebApp (Dev)
 
-1. **Configure the app:** Copy `.env.example` to `.env`, set the required password, generated session secret and API credentials, and keep the example `DATABASE_URL` for the local database.
-2. **Set up the environment:** Run `./setup.sh` to install dependencies.
-3. **Start the app:** Run `./run.sh`, then open `http://localhost:8000/`. This starts the PostgreSQL Docker container, waits until it is healthy, and starts the app. The local database and separate test database use the development-only credentials in `docker-compose.yml`.
+1. **Configure app settings:** Copy `.env.example` to `.env`, then set the required password, generated session secret and API credentials.
+2. **Link the Neon project:** Run `neon link --project-id flat-credit-25097795` and select the `development` branch.
+3. **Pull development credentials:** Run `neon env pull`. This writes the pooled `DATABASE_URL` and direct `DATABASE_URL_UNPOOLED` into `.env`; keep both private.
+4. **Set up the environment:** Run `./setup.sh` to install dependencies.
+5. **Start the app:** Run `./run.sh`, then open `http://localhost:8000/`. App queries use the pooled URL; Alembic migrations use the direct URL.
 
-To use an existing PostgreSQL server instead, set its `DATABASE_URL` in `.env` and start the app with `uv run uvicorn app.main:app --reload`. For tests, set `TEST_DATABASE_URL` to a separate test database.
+For tests, use a separate disposable PostgreSQL database or Neon branch through `TEST_DATABASE_URL`; do not run tests against production. In Render, set `DATABASE_URL` to the Neon pooled URL and `DATABASE_URL_UNPOOLED` to its direct URL; also provide `INTERVALS_ATHLETE_ID`, `INTERVALS_API_KEY`, and `LANGUAGE_MODEL`. Add the API key for the selected model (`OPENAI_API_KEY` or `GEMINI_API_KEY`).
 
 ## Via FastAPI (Dev)
 1. Run `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` to start the FastAPI server.
@@ -96,10 +98,9 @@ This is the manual equivalent of a lockfile upgrade pass and is the command used
 Before merging an npm upgrade, the StepSecurity `NPM Package Cooldown` check should be configured to a 7-day window in the StepSecurity dashboard. That keeps newly published package versions in a cooldown period long enough to reduce supply-chain risk before the updated lockfile is accepted.
 
 ## Running Tests
-Start the local PostgreSQL container, then install the Python test extra and Playwright browser before running the full test suite. Tests use the separate `intelliwatts_test` database by default; set `TEST_DATABASE_URL` to use another dedicated test database.
+Install the Python test extra and Playwright browser, then run the suite against a disposable PostgreSQL database or Neon branch. Set `TEST_DATABASE_URL` to a dedicated test database; tests must not use production.
 
 ```bash
-docker compose up -d postgres
 uv sync --extra dev --extra test
 uv run playwright install chromium
 uv run pytest tests/
