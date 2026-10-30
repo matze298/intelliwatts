@@ -4,7 +4,7 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 
 ## 1. Protect data and rendered content
 
-- [ ] **Persist training data:** Make the database URL configurable and choose persistent storage for deployment. Document backup and restore, and verify migrations against existing data. Render's free web service loses local SQLite data on restart, redeploy or spin-down.
+- [ ] **Protect training data:** Configure a persistent hosted PostgreSQL database and verify independent backup and restore. The app uses `DATABASE_URL` for both local and hosted PostgreSQL; the migration history starts from a fresh baseline.
 - [ ] **Sanitize rendered content:** Review every Markdown-to-HTML and `| safe` path for model output and user-derived data. Sanitize allowed HTML and cover unsafe input with regression tests.
 
 ## 2. Make planning reliable

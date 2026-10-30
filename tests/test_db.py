@@ -1,121 +1,97 @@
-"""Tests for the db module."""
+"""Database configuration and schema initialization tests."""
 
-import sqlite3
+from datetime import date
+from uuid import uuid4
 
-from sqlmodel import create_engine
+import pytest
+from alembic import command
+from sqlalchemy import inspect, text
+from sqlalchemy.engine import make_url
+from sqlmodel import Session, create_engine
 
 import app.db
-from app.db import init_db
+from app.models import TrainingPhase, TrainingPlan, User
 
 
-def build_half_migrated_db(db_path) -> str:  # ruff: ignore[missing-type-function-argument]
-    """Create a sqlite database in the half-migrated state seen in production.
-
-    Returns:
-        The SQLAlchemy database URL for the created sqlite file.
-    """
-    database_url = f"sqlite:///{db_path}"
-    with sqlite3.connect(db_path) as connection:
-        connection.executescript(
-            """
-            CREATE TABLE user (
-                id CHAR(32) PRIMARY KEY NOT NULL,
-                email VARCHAR NOT NULL,
-                password_hash VARCHAR NOT NULL,
-                weekly_hours FLOAT NOT NULL DEFAULT 8.0,
-                weekly_sessions INTEGER NOT NULL DEFAULT 4
-            );
-            CREATE TABLE usersecrets (
-                id CHAR(32) PRIMARY KEY NOT NULL,
-                user_id CHAR(32) NOT NULL,
-                intervals_athlete_id VARCHAR NOT NULL,
-                intervals_api_key BLOB NOT NULL,
-                openai_api_key BLOB,
-                gemini_api_key BLOB,
-                FOREIGN KEY(user_id) REFERENCES user(id)
-            );
-            CREATE TABLE trainingphase (
-                id CHAR(32) PRIMARY KEY NOT NULL,
-                user_id CHAR(32) NOT NULL,
-                primary_goal VARCHAR NOT NULL,
-                start_date DATE NOT NULL,
-                end_date DATE NOT NULL,
-                status VARCHAR NOT NULL,
-                FOREIGN KEY(user_id) REFERENCES user(id)
-            );
-            CREATE TABLE trainingplan (
-                id CHAR(32) PRIMARY KEY NOT NULL,
-                phase_id CHAR(32) NOT NULL,
-                week_start DATE NOT NULL,
-                raw_content VARCHAR NOT NULL,
-                workout_data JSON NOT NULL,
-                prompt_history JSON NOT NULL,
-                created_at DATETIME NOT NULL,
-                updated_at DATETIME NOT NULL,
-                FOREIGN KEY(phase_id) REFERENCES trainingphase(id)
-            );
-            CREATE TABLE longtermplanartifact (
-                id CHAR(32) PRIMARY KEY NOT NULL,
-                phase_id CHAR(32) NOT NULL,
-                structured_data JSON NOT NULL,
-                summary_markdown VARCHAR NOT NULL,
-                prompt_history JSON NOT NULL,
-                created_at DATETIME NOT NULL,
-                updated_at DATETIME NOT NULL,
-                FOREIGN KEY(phase_id) REFERENCES trainingphase(id)
-            );
-            CREATE TABLE alembic_version (
-                version_num VARCHAR(32) NOT NULL
-            );
-            INSERT INTO alembic_version(version_num) VALUES ('7543c1e4540b');
-            INSERT INTO user(id, email, password_hash, weekly_hours, weekly_sessions)
-            VALUES ('11111111111111111111111111111111', 'user@example.com', 'hash', 8.0, 4);
-            INSERT INTO trainingphase(id, user_id, primary_goal, start_date, end_date, status)
-            VALUES (
-                '22222222222222222222222222222222',
-                '11111111111111111111111111111111',
-                'Peak for gravel race',
-                '2026-05-15',
-                '2026-09-20',
-                'active'
-            );
-            """
-        )
-        connection.commit()
-    return database_url
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("postgres://user:pass@localhost/db", "postgresql+psycopg://user:pass@localhost/db"),
+        ("postgresql://user:pass@localhost/db", "postgresql+psycopg://user:pass@localhost/db"),
+        ("postgresql+psycopg://user:pass@localhost/db", "postgresql+psycopg://user:pass@localhost/db"),
+    ],
+)
+def test_normalize_database_url(url: str, expected: str) -> None:
+    """Use psycopg for standard Postgres URLs."""
+    # GIVEN a configured database URL
+    # WHEN the URL is normalized
+    result = app.db.normalize_database_url(url)
+    # THEN SQLAlchemy uses the appropriate driver
+    assert result == expected
 
 
-def test_init_db() -> None:
-    """Tests the init_db function."""
-    # GIVEN a fresh database
-    # WHEN the init_db function is called
-    init_db()
-    # THEN the database tables should be created without errors
+def test_reject_non_postgres_database_url() -> None:
+    """A local SQLite URL cannot silently disable persistence."""
+    # GIVEN a non-Postgres URL
+    # WHEN selecting a database
+    # THEN the configuration is rejected
+    with pytest.raises(ValueError, match="PostgreSQL"):
+        app.db.normalize_database_url("sqlite:///./intervals.db")
 
 
-def test_init_db_upgrades_half_migrated_sqlite_schema(tmp_path, monkeypatch) -> None:  # ruff: ignore[missing-type-function-argument]
-    """init_db should repair a sqlite database missing the latest user settings columns."""
-    # GIVEN a sqlite database stuck between revisions
-    db_path = tmp_path / "half_migrated.db"
-    database_url = build_half_migrated_db(db_path)
+def test_init_db_creates_schema_and_persists_data(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Apply the baseline and preserve a profile and plan across connections."""
+    # GIVEN an isolated schema in the test Postgres database
+    admin = create_engine(app.db.DATABASE_URL)
+    schema = f"test_{uuid4().hex}"
+    with admin.begin() as connection:
+        connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+    url = make_url(app.db.DATABASE_URL).update_query_dict({"options": f"-csearch_path={schema}"})
+    database_url = url.render_as_string(hide_password=False)
     engine = create_engine(database_url)
-
     monkeypatch.setattr(app.db, "DATABASE_URL", database_url)
     monkeypatch.setattr(app.db, "engine", engine)
 
-    # WHEN init_db runs at startup
-    init_db()
+    try:
+        # WHEN startup applies the migrations twice and saves a profile and plan
+        app.db.init_db()
+        app.db.init_db()
+        with Session(engine) as session:
+            user = User(weekly_hours=9)
+            session.add(user)
+            session.flush()
+            phase = TrainingPhase(
+                user_id=user.id, primary_goal="Race", start_date=date(2026, 1, 1), end_date=date(2026, 2, 1)
+            )
+            session.add(phase)
+            session.flush()
+            plan = TrainingPlan(
+                phase_id=phase.id, week_start=date(2026, 1, 5), raw_content="Ride", workout_data=[{"name": "Endurance"}]
+            )
+            session.add(plan)
+            session.commit()
+            user_id, plan_id = user.id, plan.id
+        engine.dispose()
 
-    # THEN the current schema should remove legacy credentials and retain planning data
-    with sqlite3.connect(db_path) as connection:
-        columns = connection.execute("PRAGMA table_info(user)").fetchall()
-        version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
-        phase = connection.execute("SELECT user_id, primary_goal FROM trainingphase").fetchone()
-
-    column_names = {column[1] for column in columns}
-    assert "developer_mode_enabled" in column_names
-    assert not {"email", "password_hash"} & column_names
-    assert "usersecrets" not in tables
-    assert phase == ("11111111111111111111111111111111", "Peak for gravel race")
-    assert version == ("20261028_01",)
+        # THEN a new connection sees the current schema and saved data
+        assert {"user", "trainingphase", "trainingplan", "longtermplanartifact", "workoutdelivery"} <= set(
+            inspect(engine).get_table_names()
+        )
+        with Session(engine) as session:
+            saved_user = session.get(User, user_id)
+            saved_plan = session.get(TrainingPlan, plan_id)
+            assert saved_user is not None
+            assert saved_plan is not None
+            assert saved_user.weekly_hours == 9
+            assert saved_plan.workout_data == [{"name": "Endurance"}]
+        with engine.connect() as connection:
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "20261028_02"
+        command.downgrade(app.db._build_alembic_config(), "base")
+        assert "user" not in inspect(engine).get_table_names()
+        app.db.init_db()
+        assert "user" in inspect(engine).get_table_names()
+    finally:
+        engine.dispose()
+        with admin.begin() as connection:
+            connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+        admin.dispose()

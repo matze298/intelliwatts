@@ -11,3 +11,6 @@ os.environ["LANGUAGE_MODEL"] = "gemini-flash-latest"
 os.environ["APP_PASSWORD"] = secrets.token_urlsafe(32)
 os.environ["SESSION_SECRET"] = secrets.token_urlsafe(32)
 os.environ["APP_ORIGIN"] = "https://testserver"
+os.environ["DATABASE_URL"] = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql+psycopg://intelliwatts:intelliwatts@localhost:5432/intelliwatts_test"
+)

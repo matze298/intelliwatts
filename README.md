@@ -55,14 +55,15 @@ The API key for the language model selected must be set correctly via `.env` or 
 ## Hosted deployments
 Set `APP_PASSWORD` to a strong unique password, `SESSION_SECRET` to a generated random value, and `APP_ORIGIN` to your exact HTTPS origin (for example `https://your-app.onrender.com`) in Render environment variables. Generate the session secret with `python -c "import secrets; print(secrets.token_urlsafe(32))"`; keep it stable across restarts and store it as a secret. It signs the session cookie and is not a JWT key. `SESSION_COOKIE_SECURE` defaults to true. For local HTTP development only, set `APP_ORIGIN=http://localhost:8000` and `SESSION_COOKIE_SECURE=false`. Sessions last 12 hours; changing the password or session secret invalidates them. Login attempts are limited per process, so this guard is intended for a single-instance deployment.
 
-Back up the database before upgrading. The migration irreversibly removes the old email/password columns and encrypted API-key table, while keeping the existing profile row, preferences, and linked training plans. Move API credentials to environment variables first. If the database contains multiple account rows, consolidate them to one profile before upgrading.
+Set `DATABASE_URL` to the connection URL for a persistent PostgreSQL database, such as a free Neon database. Use the provider's TLS-enabled URL and keep it in the hosting service's secrets; the app requires this setting and never falls back to local storage. Existing SQLite databases and the former migration history are not upgraded automatically. This release starts with a fresh PostgreSQL schema; retain any old database files separately if you need their data.
 
 ## Via Local WebApp (Dev)
 
-1.  **Set up the environment:** Run `./setup.sh` in the project root to install dependencies and build static assets (including Tailwind CSS themes).
-2.  **Start the development server:** Run `uvicorn app.main:app --reload`.
-3.  **Access the application:** Open a web browser and navigate to the exposed link, e.g. `http://localhost:8000/`.
-4.  **Generate a plan:** Interact with the UI to generate training plans.
+1. **Configure the app:** Copy `.env.example` to `.env`, set the required password, generated session secret and API credentials, and keep the example `DATABASE_URL` for the local database.
+2. **Set up the environment:** Run `./setup.sh` to install dependencies.
+3. **Start the app:** Run `./run.sh`, then open `http://localhost:8000/`. This starts the PostgreSQL Docker container, waits until it is healthy, and starts the app. The local database and separate test database use the development-only credentials in `docker-compose.yml`.
+
+To use an existing PostgreSQL server instead, set its `DATABASE_URL` in `.env` and start the app with `uv run uvicorn app.main:app --reload`. For tests, set `TEST_DATABASE_URL` to a separate test database.
 
 ## Via FastAPI (Dev)
 1. Run `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` to start the FastAPI server.
@@ -95,9 +96,10 @@ This is the manual equivalent of a lockfile upgrade pass and is the command used
 Before merging an npm upgrade, the StepSecurity `NPM Package Cooldown` check should be configured to a 7-day window in the StepSecurity dashboard. That keeps newly published package versions in a cooldown period long enough to reduce supply-chain risk before the updated lockfile is accepted.
 
 ## Running Tests
-Install the Python test extra and the Playwright browser before running the full test suite locally:
+Start the local PostgreSQL container, then install the Python test extra and Playwright browser before running the full test suite. Tests use the separate `intelliwatts_test` database by default; set `TEST_DATABASE_URL` to use another dedicated test database.
 
 ```bash
+docker compose up -d postgres
 uv sync --extra dev --extra test
 uv run playwright install chromium
 uv run pytest tests/
@@ -112,16 +114,18 @@ The settings for the app are defined in `app/config.py`. There are three types o
 
 
 # Database & Persistence
-This application uses **SQLModel** (built on **SQLAlchemy**) for database interactions. To manage the evolution of our database schema safely, we use **Alembic**.
+This application uses PostgreSQL through **SQLModel** and **SQLAlchemy**, with **Alembic** for schema changes. The local Docker volume persists data across container restarts; use a managed PostgreSQL provider for hosted persistence and maintain independent backups.
 
-> **Note:** Render free-tier local storage is ephemeral. Plans and settings can disappear when the service restarts or redeploys.
+The migration history was reset for the PostgreSQL transition. Databases created from the former SQLite migration chain are not compatible with this baseline; no old data is automatically imported or deleted. Use a new database for this version.
+
+For backups, use `pg_dump` with a standard `postgresql://` connection URL and store the dump outside the application host. Verify restoration into a separate empty database with `pg_restore`. Provider backup and restore features vary by plan; do not assume a free database includes automatic backups.
 
 ## Why Alembic?
 As the application grows, we frequently add new features that require database changes (e.g., Task 6 added persistent user training preferences). Managing these changes manually is error-prone and can lead to data loss or inconsistent environments.
 
 Alembic provides:
 1.  **Version Control for Data**: Every schema change is captured in a migration script, allowing us to track *how* and *when* the database evolved.
-2.  **Safety**: We can "upgrade" to the latest schema or "downgrade" if a change causes issues, without manually writing risky SQL `ALTER TABLE` statements.
+2.  **Safety**: Migrations make schema changes explicit and reviewable; keep backups before upgrades.
 3.  **Consistency**: Ensures that all environments (Local Dev, CI/CD, Production) are running exactly the same database structure.
 4.  **Auto-generation**: Alembic can automatically detect changes in our `SQLModel` classes and generate the necessary migration code for us.
 
