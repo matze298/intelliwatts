@@ -74,16 +74,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install npm
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 24
       
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Check build_tailwind.sh
-        run: ./build_tailwind.sh
+      - name: Build CSS
+        run: npm run build:css
+
+      - name: Check generated CSS is up to date
+        run: git diff --exit-code -- app/static/tailwind-*.css
 
   gatekeeper:
     needs: [githooks, unittests, css_build]

@@ -8,12 +8,14 @@
     "test": "tests"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
     "autoprefixer": "^10.6.1",
     "postcss": "^8.5.31",
     "tailwindcss": "^4.3.3"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build:css": "./build_tailwind.sh",
     "build:tailwind-retro": "tailwindcss -i ./app/static/style-retro.css -o ./app/static/tailwind-retro.css --watch",
     "build:tailwind-minimal": "tailwindcss -i ./app/static/style-minimal.css -o ./app/static/tailwind-minimal.css --watch"
   },
