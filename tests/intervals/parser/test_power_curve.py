@@ -1,6 +1,12 @@
 """Tests for the power curve parser."""
 
+import logging
+from typing import TYPE_CHECKING
+
 from app.intervals.parser.power_curve import ParsedPowerCurve, PowerCurvePoint, parse_power_curves
+
+if TYPE_CHECKING:
+    from _pytest.logging import LogCaptureFixture
 
 
 def test_parse_power_curves() -> None:
@@ -39,6 +45,20 @@ def test_parse_power_curves() -> None:
         {"secs": 300, "watts": 350},
         {"secs": 1200, "watts": 300},
     ]
+
+
+def test_parse_power_curves_skips_mismatched_arrays(caplog: LogCaptureFixture) -> None:
+    """Curves with mismatched seconds and watts arrays are skipped, not truncated."""
+    # GIVEN a response with one malformed curve
+    raw_data = {"list": [{"id": "90d", "secs": [1, 5], "watts": [1000]}]}
+
+    # WHEN parsing the curves
+    with caplog.at_level(logging.WARNING):
+        parsed = parse_power_curves(raw_data)
+
+    # THEN no truncated curve is returned and the malformed curve is reported
+    assert parsed == []
+    assert "Skipping malformed power curve" in caplog.text
 
 
 def test_power_curve_point_to_dict() -> None:
