@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session
 
-from app.config import get_settings
 from app.db import engine
 from app.models.user import User
 from app.profile import get_profile
@@ -61,13 +60,10 @@ def store(
             if not db_user.developer_mode_enabled:
                 raise HTTPException(status_code=403, detail="Developer mode is required")
 
-            settings = get_settings()
-            system_prompt = _normalize_prompt(request.system_prompt)
-            user_prompt = _normalize_prompt(request.user_prompt)
-            if system_prompt:
-                settings.SYSTEM_PROMPT = system_prompt
-            if user_prompt:
-                settings.USER_PROMPT = user_prompt
+            if "system_prompt" in request.model_fields_set:
+                db_user.system_prompt_override = _normalize_prompt(request.system_prompt)
+            if "user_prompt" in request.model_fields_set:
+                db_user.user_prompt_override = _normalize_prompt(request.user_prompt)
         else:
             raise HTTPException(status_code=400, detail="Unknown settings form")
 

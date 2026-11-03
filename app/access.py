@@ -4,23 +4,23 @@ import hashlib
 import hmac
 import secrets
 import time
-from collections import deque
-from threading import Lock
 
 import fastapi
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from sqlmodel import Session, select
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from app import db
 from app.config import get_settings
+from app.models.user import User
+from app.profile import get_profile
 
 Request = fastapi.Request
 templates = Jinja2Templates(directory="app/templates")
 COOKIE_NAME = "intelliwatts_session"
 SESSION_SECONDS = 12 * 60 * 60
 MAX_LOGIN_ATTEMPTS = 5
-_FAILURES: deque[float] = deque()
-_LOCK = Lock()
 _time = time.time
 
 
@@ -99,15 +99,23 @@ async def login(request: Request) -> Response:
     form = await request.form()
     password = form.get("password", "")
     settings = get_settings()
-    with _LOCK:
-        now = time.monotonic()
-        while _FAILURES and _FAILURES[0] <= now - 60:
-            _FAILURES.popleft()
-        if len(_FAILURES) >= MAX_LOGIN_ATTEMPTS:
+    profile = get_profile()
+    with Session(db.engine) as session:
+        statement = select(User).where(User.id == profile.id).with_for_update()
+        db_user = session.exec(statement).one()
+        now = _time()
+        failures = [timestamp for timestamp in db_user.login_failure_timestamps if timestamp > now - 60]
+        if len(failures) >= MAX_LOGIN_ATTEMPTS:
+            db_user.login_failure_timestamps = failures
+            session.add(db_user)
+            session.commit()
             return _login_response(request, error="Too many attempts. Try again in a minute.", status_code=429)
         valid = isinstance(password, str) and secrets.compare_digest(password.encode(), settings.APP_PASSWORD.encode())
         if not valid:
-            _FAILURES.append(now)
+            failures.append(now)
+        db_user.login_failure_timestamps = failures
+        session.add(db_user)
+        session.commit()
     if not valid:
         return _login_response(request, error="Invalid password", status_code=401)
     timestamp = str(int(_time()))

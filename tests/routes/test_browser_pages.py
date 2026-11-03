@@ -15,12 +15,13 @@ import pytest
 import uvicorn
 from playwright.sync_api import Page, expect, sync_playwright
 from sqlalchemy.pool import StaticPool
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine
 
-from app import access, db
+from app import db
 from app import profile as profile_module
 from app.config import get_settings
 from app.main import app
+from app.models.user import User
 from app.routes import api as api_routes
 from app.routes import settings as settings_routes
 from app.routes import web as web_routes
@@ -74,6 +75,16 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def _clear_login_failures() -> None:
+    profile = profile_module.get_profile()
+    with Session(db.engine) as session:
+        user = session.get(User, profile.id)
+        assert user is not None
+        user.login_failure_timestamps = []
+        session.add(user)
+        session.commit()
+
+
 @pytest.fixture
 def browser_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[BrowserServer]:
     """Run the real FastAPI app with isolated DB and fixture-backed external APIs.
@@ -120,7 +131,7 @@ def browser_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
     monkeypatch.setattr(web_routes, "_today", lambda: date(2026, 4, 1))
     app.dependency_overrides[get_settings] = lambda: settings
     app.state.settings = {"settings": settings, "models": ["test-model"]}
-    access._FAILURES.clear()
+    _clear_login_failures()
 
     port = _free_port()
     monkeypatch.setattr(get_settings(), "APP_ORIGIN", f"http://127.0.0.1:{port}")
@@ -152,7 +163,7 @@ def browser_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
         server.should_exit = True
         thread.join(timeout=10)
         app.dependency_overrides.clear()
-        access._FAILURES.clear()
+        _clear_login_failures()
 
 
 def test_core_pages_load_through_browser_transitions(browser_server: BrowserServer) -> None:
