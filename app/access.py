@@ -21,6 +21,7 @@ SESSION_SECONDS = 12 * 60 * 60
 MAX_LOGIN_ATTEMPTS = 5
 _FAILURES: deque[float] = deque()
 _LOCK = Lock()
+_time = time.time
 
 
 def _signature(timestamp: str) -> str:
@@ -32,7 +33,7 @@ def _signature(timestamp: str) -> str:
 def _valid_session(value: str) -> bool:
     try:
         timestamp, signature = value.split(".", 1)
-        age = time.time() - int(timestamp)
+        age = _time() - int(timestamp)
         return 0 <= age <= SESSION_SECONDS and hmac.compare_digest(signature, _signature(timestamp))
     except ValueError, OverflowError:
         return False
@@ -109,7 +110,7 @@ async def login(request: Request) -> Response:
             _FAILURES.append(now)
     if not valid:
         return _login_response(request, error="Invalid password", status_code=401)
-    timestamp = str(int(time.time()))
+    timestamp = str(int(_time()))
     response = RedirectResponse("/", status_code=303)
     response.set_cookie(
         COOKIE_NAME,
