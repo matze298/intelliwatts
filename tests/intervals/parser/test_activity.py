@@ -46,7 +46,7 @@ def test_parse_activities_skips_malformed_record_without_logging_payload(caplog:
     assert len(parsed) == 1
     assert parsed[0].date == "2026-04-20"
     assert parsed[0].avg_hr is None
-    assert "Skipping malformed activity record" in caplog.text
+    assert "Skipping incomplete activity record" in caplog.text
     assert "private activity note" not in caplog.text
 
 
