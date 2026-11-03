@@ -1,11 +1,15 @@
 """Parse an activity from intervals.icu."""
 
+from __future__ import annotations
+
 import logging
-from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 _LOGGER = logging.getLogger(__name__)
 
