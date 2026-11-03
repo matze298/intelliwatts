@@ -10,6 +10,7 @@ from fastapi.routing import APIRoute
 
 _LOGGER = logging.getLogger(__name__)
 
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
@@ -30,8 +31,9 @@ class PlannerErrorRoute(APIRoute):
                 return await original_route_handler(request)
             except HTTPException:
                 raise
-            except Exception:
+            except Exception as exc:
                 _LOGGER.exception("Unhandled planner error on %s", request.url.path)
+                request.state.planner_error = f"{type(exc).__name__}: {exc}"
                 render_planner_error_response = request.app.state.render_planner_error_response
                 return render_planner_error_response(request)
 

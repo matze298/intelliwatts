@@ -32,4 +32,4 @@ def test_plan_prompt_is_rendered_as_escaped_text() -> None:
     assert b"<h1>Generated plan</h1>" in response.body
     assert b"Coach text" in response.body
     assert b"&lt;script&gt;" in response.body
-    assert b"<script>" not in response.body
+    assert b'<script>alert("prompt")</script>' not in response.body

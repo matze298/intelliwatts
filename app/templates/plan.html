@@ -73,7 +73,13 @@
                     {% endif %}
                 </div>
                 <div class="flex flex-wrap gap-2 lg:justify-end">
-                    {{ render_action_button("Generate Plan", form="generate-plan-form", tone="primary", extra_classes="px-4 py-3 text-sm") }}
+                    {{ render_action_button(
+                        "Generate Plan",
+                        form="generate-plan-form",
+                        tone="primary",
+                        extra_classes="px-4 py-3 text-sm",
+                        loading_label="Generating…"
+                    ) }}
                     {% if plan_html %}
                     {{ render_action_button(
                         "Republish Workout" if delivery_status == "published" else "Publishing..." if delivery_status == "publishing" else "Publish Workout",
@@ -82,7 +88,13 @@
                         disabled=delivery_status == "publishing",
                         extra_classes="px-4 py-3 text-sm"
                     ) }}
-                    {{ render_action_button("Update Plan", form="update-plan-form", tone="success-subtle", extra_classes="px-4 py-3 text-sm") }}
+                    {{ render_action_button(
+                        "Update Plan",
+                        form="update-plan-form",
+                        tone="success-subtle",
+                        extra_classes="px-4 py-3 text-sm",
+                        loading_label="Updating…"
+                    ) }}
                     {% endif %}
                 </div>
             </div>
@@ -128,7 +140,15 @@
         {% endcall %}
         {% endif %}
 
-        <form id="generate-plan-form" method="post" action="/generate" class="hidden">
+        <p id="planner-progress" class="hidden mt-3 text-sm text-slate-600" role="status" aria-live="polite"></p>
+
+        <form
+            id="generate-plan-form"
+            method="post"
+            action="/generate"
+            class="hidden"
+            data-progress-message="Gathering recent training data and generating your plan. This can take a few minutes."
+        >
             <input type="hidden" name="week_start" value="{{ selected_week_start }}">
         </form>
 
@@ -179,7 +199,13 @@
             <div class="planner-card rounded-xl p-6">
                 <h3 class="text-lg font-semibold text-slate-900">Adjust plan</h3>
                 <p class="mt-1 text-sm text-slate-600">Write feedback here, then use the top bar to apply it to the selected week.</p>
-                <form id="update-plan-form" method="post" action="/update" class="mt-4 space-y-4">
+                <form
+                    id="update-plan-form"
+                    method="post"
+                    action="/update"
+                    class="mt-4 space-y-4"
+                    data-progress-message="Applying your feedback and updating the plan. This can take a couple of minutes."
+                >
                     <input type="hidden" name="week_start" value="{{ selected_week_start }}">
                     <div>
                         <label for="feedback" class="block text-sm font-medium text-gray-700">What would you like to change?</label>
@@ -217,6 +243,23 @@
         {% endif %}
         {% endif %}
     </div>
+    <script>
+        for (const form of document.querySelectorAll("form[data-progress-message]")) {
+            form.addEventListener("submit", () => {
+                const button = document.querySelector(`button[form="${form.id}"]`);
+                const progress = document.getElementById("planner-progress");
+                if (button) {
+                    button.disabled = true;
+                    button.setAttribute("aria-busy", "true");
+                    button.textContent = button.dataset.loadingLabel || "Working…";
+                }
+                if (progress) {
+                    progress.textContent = form.dataset.progressMessage || "Working on your plan…";
+                    progress.classList.remove("hidden");
+                }
+            });
+        }
+    </script>
 </body>
 
 </html>

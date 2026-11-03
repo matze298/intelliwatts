@@ -74,10 +74,10 @@ def _today() -> date:
 
 
 def render_planner_error_response(request: Request) -> HTMLResponse:
-    """Render the dedicated planner error page for unexpected failures.
+    """Render the planner error page with the underlying error message.
 
     Returns:
-        A 500 response with a generic planner error message.
+        A 500 response with the underlying error message.
     """
     return templates.TemplateResponse(
         request,
@@ -85,6 +85,11 @@ def render_planner_error_response(request: Request) -> HTMLResponse:
         {
             "settings": request.app.state.settings,
             "user": None,
+            "error": getattr(
+                request.state,
+                "planner_error",
+                "No error details available.",
+            ),
         },
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
     )

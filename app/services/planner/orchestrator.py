@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import requests
 from requests_cache import CachedSession
 from sqlmodel import Session, select
+from starlette.concurrency import run_in_threadpool
 
 from app.config import Settings, get_settings
 from app.db import engine
@@ -70,7 +71,11 @@ async def update_training_plan(
         ]
         history.append({"role": LLMRole.USER, "content": feedback})
 
-        llm_response = generate_plan(messages=history, language_model=settings.LANGUAGE_MODEL)
+        llm_response = await run_in_threadpool(
+            generate_plan,
+            messages=history,
+            language_model=settings.LANGUAGE_MODEL,
+        )
 
         saved_plan_id = save_and_stage_weekly_plan(
             session=session,
@@ -115,7 +120,7 @@ async def generate_weekly_plan(
 
     client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session)
 
-    analysis = _get_analysis(client, settings.ANALYSIS_DAYS)
+    analysis = await run_in_threadpool(_get_analysis, client, settings.ANALYSIS_DAYS)
     target_week_start = week_start or get_monday(datetime.now(UTC).date())
 
     with Session(engine) as db_session:
@@ -147,7 +152,8 @@ async def generate_weekly_plan(
             )
         )
 
-    llm_response = generate_plan(
+    llm_response = await run_in_threadpool(
+        generate_plan,
         messages=[
             {"role": LLMRole.SYSTEM, "content": settings.SYSTEM_PROMPT},
             {"role": LLMRole.USER, "content": full_summary},
