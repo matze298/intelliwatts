@@ -84,9 +84,9 @@ def test_session_expires_and_password_rotation_revokes_it(monkeypatch: pytest.Mo
         cookie = client.cookies.get("intelliwatts_session")
         assert cookie is not None
         timestamp = int(cookie.split(".")[0])
-        monkeypatch.setattr(access.time, "time", lambda: timestamp + access.SESSION_SECONDS + 1)
+        monkeypatch.setattr(access, "_time", lambda: timestamp + access.SESSION_SECONDS + 1)
         assert client.get("/", follow_redirects=False).status_code == 303
-        monkeypatch.setattr(access.time, "time", lambda: timestamp)
+        monkeypatch.setattr(access, "_time", lambda: timestamp)
         monkeypatch.setattr(settings, "APP_PASSWORD", secrets.token_urlsafe(32))
         assert client.get("/", follow_redirects=False).status_code == 303
     access._FAILURES.clear()
