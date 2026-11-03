@@ -1,6 +1,7 @@
 """Parse an activity from intervals.icu."""
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite
@@ -75,7 +76,7 @@ def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
     )
 
 
-def parse_activities(activities: list[object]) -> list[ParsedActivity]:
+def parse_activities(activities: Sequence[object]) -> list[ParsedActivity]:
     """Parse a list of activities from intervals.icu.
 
     Returns:
