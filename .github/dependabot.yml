@@ -17,5 +17,6 @@ updates:
       uv-lock:
         patterns:
           - "*"
+        # Dependabot reports no previous version for this extra and skips the entire group.
         exclude-patterns:
           - "psycopg[binary]"
