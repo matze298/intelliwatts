@@ -18,6 +18,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    allow:
+      # Include dependencies from the uv lockfile, not just pyproject.toml.
+      - dependency-type: "all"
     groups:
       uv-lock:
         patterns:
