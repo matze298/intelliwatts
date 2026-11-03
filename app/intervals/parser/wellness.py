@@ -1,6 +1,7 @@
 """Parse wellness data from intervals.icu."""
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import isfinite
 from typing import Any
@@ -56,7 +57,7 @@ def parse_wellness(w: dict[str, Any]) -> ParsedWellness:
     )
 
 
-def parse_wellness_list(wellness_list: list[object]) -> list[ParsedWellness]:
+def parse_wellness_list(wellness_list: Sequence[object]) -> list[ParsedWellness]:
     """Parse a list of wellness records from intervals.icu.
 
     Args:
