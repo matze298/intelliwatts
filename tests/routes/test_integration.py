@@ -629,7 +629,7 @@ async def test_weekly_generation_rejects_invalid_selected_week(
 
 @pytest.mark.asyncio
 async def test_planner_exception_handler_renders_dedicated_page() -> None:
-    """Unexpected planner failures should render the dedicated planner error page."""
+    """Unexpected planner failures should show their plain error message."""
     # GIVEN a planner route wrapper and a downstream handler that crashes
     test_app = FastAPI()
     test_app.state.settings = {"settings": SimpleNamespace(LANGUAGE_MODEL="test-model"), "models": ["test-model"]}
@@ -653,12 +653,11 @@ async def test_planner_exception_handler_renders_dedicated_page() -> None:
         request.scope["fastapi_middleware_astack"] = astack
         resp = await route.get_route_handler()(request)
 
-    # THEN the dedicated planner error page should render without leaking internals
+    # THEN the dedicated planner error page should show the plain error
     assert resp.status_code == 500
     body_text = bytes(resp.body).decode()
-    assert "Something went wrong while planning" in body_text
-    assert "Please return to the home page and try again." in body_text
-    assert "RuntimeError: boom" not in body_text
+    assert "Planning error" in body_text
+    assert "RuntimeError: boom" in body_text
     assert "Traceback" not in body_text
 
 
