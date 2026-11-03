@@ -1,10 +1,14 @@
 """Parse wellness data from intervals.icu."""
 
+from __future__ import annotations
+
 import logging
-from collections.abc import Sequence
 from dataclasses import dataclass
 from math import isfinite
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 from app.intervals.validation import is_iso_date
 
