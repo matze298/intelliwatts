@@ -10,6 +10,8 @@ from google.genai.types import (
     GenerateContentConfig,
     HarmBlockThreshold,
     HarmCategory,
+    HttpOptions,
+    HttpRetryOptions,
     SafetySetting,
 )
 from openai import OpenAI
@@ -22,6 +24,8 @@ if TYPE_CHECKING:
     from openai.types.chat import ChatCompletionMessageParam
 
     from app.config import LanguageModel
+
+MODEL_REQUEST_TIMEOUT_SECONDS = 120
 
 
 class LLMRole(StrEnum):
@@ -99,7 +103,7 @@ def _call_gpt_cached(messages_tuple: tuple[LLMMessage, ...], api_key: str | None
         raise RuntimeError(msg)
 
     messages = [{"role": m.role, "content": m.content} for m in messages_tuple]
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=api_key, timeout=MODEL_REQUEST_TIMEOUT_SECONDS, max_retries=0)
     response = client.chat.completions.parse(
         model=model,
         messages=cast("list[ChatCompletionMessageParam]", messages),
@@ -155,7 +159,13 @@ def _call_gemini_cached(
         raise RuntimeError(msg)
 
     messages = [{"role": m.role, "content": m.content} for m in messages_tuple]
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(
+        api_key=api_key,
+        http_options=HttpOptions(
+            timeout=MODEL_REQUEST_TIMEOUT_SECONDS * 1000,
+            retry_options=HttpRetryOptions(attempts=1),
+        ),
+    )
 
     # For Gemini API, we can either use contents=[...] or use the chat session.
     # To keep it consistent with our message list format:

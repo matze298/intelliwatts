@@ -1,7 +1,8 @@
-{% macro render_action_button(label, form=None, tone="primary", type="submit", disabled=false, extra_classes="") -%}
+{% macro render_action_button(label, form=None, tone="primary", type="submit", disabled=false, extra_classes="", loading_label=None) -%}
 <button
     {% if form %}form="{{ form }}"{% endif %}
     type="{{ type }}"
+    {% if loading_label %}data-loading-label="{{ loading_label }}"{% endif %}
     {% if disabled %}disabled{% endif %}
     class="control-button control-button-{{ tone }}{% if disabled %} control-disabled{% endif %} {{ extra_classes }}"
 >
