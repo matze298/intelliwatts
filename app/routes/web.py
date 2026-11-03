@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from copy import copy
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, NamedTuple
 
@@ -215,12 +216,9 @@ def _settings_page_context(request: Request, user: User) -> dict[str, object]:
         A template context dictionary for the unified settings page.
     """
     app_settings = request.app.state.settings
-    prompt_settings = app_settings["settings"].model_copy(
-        update={
-            "SYSTEM_PROMPT": user.system_prompt_override or app_settings["settings"].SYSTEM_PROMPT,
-            "USER_PROMPT": user.user_prompt_override or app_settings["settings"].USER_PROMPT,
-        }
-    )
+    prompt_settings = copy(app_settings["settings"])
+    prompt_settings.SYSTEM_PROMPT = user.system_prompt_override or app_settings["settings"].SYSTEM_PROMPT
+    prompt_settings.USER_PROMPT = user.user_prompt_override or app_settings["settings"].USER_PROMPT
     return {
         "user": user,
         "settings": {**app_settings, "settings": prompt_settings},
