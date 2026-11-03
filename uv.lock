@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 
 [[package]]
@@ -543,7 +543,7 @@ requires-dist = [
     { name = "playwright", marker = "extra == 'test'", specifier = ">=1.64.0" },
     { name = "polars" },
     { name = "prek", marker = "extra == 'dev'" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pytest", marker = "extra == 'test'" },
