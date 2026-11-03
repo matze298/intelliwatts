@@ -971,9 +971,6 @@ def test_settings_developer_prompt_flow(monkeypatch: pytest.MonkeyPatch) -> None
     SQLModel.metadata.create_all(test_engine)
     monkeypatch.setattr("app.routes.settings.engine", test_engine)
 
-    app_settings = SimpleNamespace(SYSTEM_PROMPT="system default", USER_PROMPT="user default")
-    monkeypatch.setattr("app.routes.settings.get_settings", lambda: app_settings)
-
     user = User(
         id=uuid.uuid4(),
         developer_mode_enabled=True,
@@ -995,13 +992,13 @@ def test_settings_developer_prompt_flow(monkeypatch: pytest.MonkeyPatch) -> None
         route_user,
     )
 
-    # THEN it should update only the global in-memory prompt settings
+    # THEN it should persist profile-specific prompt overrides without changing app defaults
     assert resp == {"stored": True}
-    assert app_settings.SYSTEM_PROMPT == "custom system"
-    assert app_settings.USER_PROMPT == "custom user"
     with Session(test_engine) as session:
         stored_user = session.exec(select(User).where(User.id == user_id)).one()
     assert stored_user.developer_mode_enabled is True
+    assert stored_user.system_prompt_override == "custom system"
+    assert stored_user.user_prompt_override == "custom user"
 
 
 def test_settings_page_renders_preferences(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1041,6 +1038,6 @@ def test_settings_page_renders_preferences(monkeypatch: pytest.MonkeyPatch) -> N
     body = bytes(resp.body).decode()
     assert "Settings" in body
     assert "Enable developer mode" in body
-    assert "LLM prompt" in body
+    assert "LLM prompts" in body
     assert "system default" in body
     assert "user default" in body

@@ -30,7 +30,7 @@ render_settings_section, render_settings_textarea %}
 
         {% call render_settings_section(
         "Preferences",
-        description="Developer mode is stored for this installation and unlocks the prompt editor below."
+        description="Developer mode and prompt overrides are saved to your profile."
         ) %}
         {% call render_settings_form("settingsForm") %}
         <input type="hidden" name="form_type" value="preferences">
@@ -42,8 +42,8 @@ render_settings_section, render_settings_textarea %}
 
         {% if developer_mode_enabled %}
         {% call render_settings_section(
-        "LLM prompt",
-        description="Global prompt text for the current process. Changes affect new plans only."
+        "LLM prompts",
+        description="Profile-specific prompt overrides. Changes affect new plans only."
         ) %}
         {% call render_settings_form("developerPromptForm") %}
         <input type="hidden" name="form_type" value="developer_prompt">
@@ -58,9 +58,9 @@ render_settings_section, render_settings_textarea %}
         settings.settings.USER_PROMPT
         ) }}
         <p class="text-sm text-slate-600">
-            Leave these unchanged if you want to keep the current app-level prompt for future plans.
+        Leave a field blank to use the default app prompt for future plans.
         </p>
-        {{ render_action_button("Save Global Prompt", tone="primary", extra_classes="px-4 py-2 text-sm") }}
+        {{ render_action_button("Save Prompt Overrides", tone="primary", extra_classes="px-4 py-2 text-sm") }}
         {% endcall %}
         <p id="developerPromptMessage" class="mt-4 text-sm font-medium"></p>
         {% endcall %}

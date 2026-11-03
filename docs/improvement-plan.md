@@ -12,7 +12,7 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 - [x] **Validate model output:** Request provider-native structured output and validate it with a shared Pydantic contract. Persist readable Markdown separately from typed workouts, and include the current plan in follow-up context.
 - [x] **Handle external data safely:** Check response shapes and the fields needed for calculations. Treat malformed optional metrics as unavailable, skip unusable records or curves, and reject incomplete workout-publish results.
 - [ ] **Keep generation responsive:** Move synchronous API and model calls out of async request handlers or use async clients. Provide clear progress, timeout and failure states; make retries and workout publication safe against accidental duplicates.
-- [ ] **Persist settings consistently:** Store prompt overrides that should survive restarts alongside other preferences. Before using multiple workers or instances, replace process-local login throttling with shared state or another suitable control.
+- [x] **Persist settings consistently:** Store profile-specific prompt overrides in PostgreSQL and keep the existing five-failures-per-minute login throttle in shared database state.
 
 ## 3. Improve the athlete experience
 

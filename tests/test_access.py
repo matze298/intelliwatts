@@ -4,9 +4,12 @@ import secrets
 from typing import TYPE_CHECKING
 
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 
-from app import access
+from app import access, db
 from app.main import app
+from app.models.user import User
+from app.profile import get_profile
 
 if TYPE_CHECKING:
     import pytest
@@ -14,10 +17,20 @@ if TYPE_CHECKING:
 TEST_PASSWORD = access.get_settings().APP_PASSWORD
 
 
+def _clear_login_failures() -> None:
+    profile = get_profile()
+    with Session(db.engine) as session:
+        user = session.get(User, profile.id)
+        assert user is not None
+        user.login_failure_timestamps = []
+        session.add(user)
+        session.commit()
+
+
 def test_successful_logins_do_not_consume_failure_limit() -> None:
     """Repeated successful sign-ins do not block subsequent sign-ins."""
     # GIVEN a cleared login limiter
-    access._FAILURES.clear()
+    _clear_login_failures()
     with TestClient(app, base_url="https://testserver") as client:
         # WHEN signing in more often than the failure limit
         responses = [
@@ -31,7 +44,7 @@ def test_successful_logins_do_not_consume_failure_limit() -> None:
         ]
         # THEN every sign-in succeeds
         assert all(response.status_code == 303 for response in responses)
-    access._FAILURES.clear()
+    _clear_login_failures()
 
 
 def test_access_requires_login_and_rejects_cross_origin() -> None:
@@ -63,7 +76,7 @@ def test_access_requires_login_and_rejects_cross_origin() -> None:
 
 def test_login_rate_limit_and_cookie_tampering() -> None:
     """Repeated login attempts are limited and fake sessions are rejected."""
-    access._FAILURES.clear()
+    _clear_login_failures()
     with TestClient(app, base_url="https://testserver") as client:
         for _ in range(5):
             response = client.post("/login", data={"password": "bad"}, headers={"origin": "https://testserver"})
@@ -72,13 +85,13 @@ def test_login_rate_limit_and_cookie_tampering() -> None:
         assert response.status_code == 429
         client.cookies.set("intelliwatts_session", "123.invalid")
         assert client.get("/settings", follow_redirects=False).status_code == 303
-    access._FAILURES.clear()
+    _clear_login_failures()
 
 
 def test_session_expires_and_password_rotation_revokes_it(monkeypatch: pytest.MonkeyPatch) -> None:
     """An expired session or a password change requires a new login."""
     settings = access.get_settings()
-    access._FAILURES.clear()
+    _clear_login_failures()
     with TestClient(app, base_url="https://testserver") as client:
         client.post("/login", data={"password": TEST_PASSWORD}, headers={"origin": "https://testserver"})
         cookie = client.cookies.get("intelliwatts_session")
@@ -89,4 +102,4 @@ def test_session_expires_and_password_rotation_revokes_it(monkeypatch: pytest.Mo
         monkeypatch.setattr(access, "_time", lambda: timestamp)
         monkeypatch.setattr(settings, "APP_PASSWORD", secrets.token_urlsafe(32))
         assert client.get("/", follow_redirects=False).status_code == 303
-    access._FAILURES.clear()
+    _clear_login_failures()

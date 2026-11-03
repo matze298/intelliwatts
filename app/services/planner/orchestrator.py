@@ -97,6 +97,13 @@ async def generate_weekly_plan(
     """
     if settings is None:
         settings = get_settings()
+    prompt_updates = {}
+    if user.system_prompt_override is not None:
+        prompt_updates["SYSTEM_PROMPT"] = user.system_prompt_override
+    if user.user_prompt_override is not None:
+        prompt_updates["USER_PROMPT"] = user.user_prompt_override
+    if prompt_updates:
+        settings = settings.model_copy(update=prompt_updates)
 
     session = requests.Session()
     if settings.CACHE_INTERVALS_HOURS > 0:
