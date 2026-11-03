@@ -74,6 +74,18 @@ def test_intervals_client_api_error(requests_mock: Mocker) -> None:
         client.wellness(days=7)
 
 
+def test_intervals_client_rejects_non_list_activity_response(requests_mock: Mocker) -> None:
+    """Reject a successful HTTP response with the wrong activities payload shape."""
+    # GIVEN a client and a successful endpoint returning an error object instead of a list
+    client = IntervalsClient(api_key="test_key", athlete_id="test_id")
+    requests_mock.get(f"{BASE_URL}/athlete/test_id/activities", json={"message": "not an activity list"})
+
+    # WHEN activities are fetched
+    # THEN a contract error is raised instead of passing the object into analysis
+    with pytest.raises(ValueError, match=r"activities.*list"):
+        client.activities(days=7)
+
+
 def test_intervals_client_publish_workout_events(requests_mock: Mocker) -> None:
     """Test that planned workouts are upserted through the bulk events endpoint."""
     # GIVEN a client and one workout event payload
@@ -101,3 +113,29 @@ def test_intervals_client_publish_workout_events(requests_mock: Mocker) -> None:
     request = requests_mock.request_history[0]
     assert request.qs["upsert"] == ["true"]
     assert response == [{"id": 123, "external_id": "plan-1-0"}]
+
+
+def test_publish_rejects_partial_success_response(requests_mock: Mocker) -> None:
+    """A truncated bulk response must not be treated as a successful full publish."""
+    # GIVEN a client submitting two workout events and the API returning only one result
+    client = IntervalsClient(api_key="test_key", athlete_id="test_id")
+    payload: list[WorkoutDeliveryPayload] = [
+        {
+            "category": "WORKOUT",
+            "start_date_local": f"2026-05-{day:02d}T00:00:00",
+            "type": "Ride",
+            "name": f"Workout {day}",
+            "description": "Workout text",
+            "external_id": f"plan-1-{day}",
+        }
+        for day in (18, 19)
+    ]
+    requests_mock.post(
+        f"{BASE_URL}/athlete/test_id/events/bulk",
+        json=[{"id": 123, "external_id": "plan-1-18"}],
+    )
+
+    # WHEN publishing the workouts
+    # THEN reject the partial response so delivery is not marked fully published
+    with pytest.raises(ValueError, match=r"events.*count"):
+        client.publish_workout_events(payload)

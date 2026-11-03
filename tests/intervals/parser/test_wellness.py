@@ -71,3 +71,18 @@ def test_parse_wellness_list_skips_malformed_records(caplog: LogCaptureFixture) 
     # THEN only the valid record should be returned and the malformed record should be logged.
     assert parsed == [ParsedWellness(date="2026-04-01", hrv=60.0)]
     assert "Unable to parse wellness record" in caplog.text
+
+
+def test_parse_wellness_list_keeps_valid_metrics_when_one_is_invalid() -> None:
+    """A malformed optional metric does not discard the rest of a wellness record."""
+    # GIVEN one valid record and one record with a malformed HRV value
+    wellness_list = [
+        {"id": "2026-04-01", "hrv": 60.0},
+        {"id": "2026-04-02", "hrv": "not-a-number"},
+    ]
+
+    # WHEN parsing the records
+    parsed = parse_wellness_list(wellness_list)
+
+    # THEN both dates are retained and the malformed optional metric is treated as missing
+    assert parsed == [ParsedWellness(date="2026-04-01", hrv=60.0), ParsedWellness(date="2026-04-02")]
