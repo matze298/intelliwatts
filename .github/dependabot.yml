@@ -17,3 +17,5 @@ updates:
       uv-lock:
         patterns:
           - "*"
+        exclude-patterns:
+          - "psycopg[binary]"
