@@ -4,8 +4,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    cooldown:
-      default-days: 7
     groups:
       npm-lock:
         patterns:
@@ -15,8 +13,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    cooldown:
-      default-days: 7
     groups:
       uv-lock:
         patterns:
