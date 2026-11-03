@@ -4,7 +4,7 @@ from dataclasses import fields
 from datetime import date
 from functools import cache
 from types import UnionType
-from typing import TYPE_CHECKING, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Union, get_args, get_origin, get_type_hints
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -24,7 +24,8 @@ def is_iso_date(value: object) -> bool:
 @cache
 def numeric_dataclass_field_names(model_type: DataclassInstance) -> tuple[str, ...]:
     """Return numeric dataclass field names derived from annotations."""
-    return tuple(field.name for field in fields(model_type) if is_numeric_annotation(field.type))
+    type_hints = get_type_hints(model_type)
+    return tuple(field.name for field in fields(model_type) if is_numeric_annotation(type_hints[field.name]))
 
 
 def is_numeric_annotation(annotation: object) -> bool:
