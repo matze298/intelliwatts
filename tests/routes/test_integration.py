@@ -650,6 +650,8 @@ async def test_planner_exception_handler_renders_dedicated_page() -> None:
     # WHEN the crashing route is handled by the planner wrapper
     request = build_request(test_app, method="POST", path="/generate")
     async with AsyncExitStack() as astack:
+        request.scope["fastapi_inner_astack"] = astack
+        request.scope["fastapi_function_astack"] = astack
         request.scope["fastapi_middleware_astack"] = astack
         resp = await route.get_route_handler()(request)
 
