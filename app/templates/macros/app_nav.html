@@ -1,0 +1,11 @@
+{% macro app_nav(active="planner") -%}
+<nav class="app-nav" aria-label="Main navigation">
+    <a class="app-brand" href="/">IntelliWatts</a>
+    {% if active != "login" %}<div class="app-nav-links">
+        <a href="/" {% if active == "planner" %}aria-current="page"{% endif %}>Plan</a>
+        <a href="/dashboard" {% if active == "dashboard" %}aria-current="page"{% endif %}>Dashboard</a>
+        <a href="/settings" {% if active == "settings" %}aria-current="page"{% endif %}>Settings</a>
+        <form method="post" action="/logout"><button class="control-button-secondary" type="submit">Sign out</button></form>
+    </div>{% endif %}
+</nav>
+{%- endmacro %}

@@ -24,6 +24,7 @@ from app.models.plan import TrainingPhase, TrainingPlan
 from app.models.user import User
 from app.profile import get_profile
 from app.routes.planner_errors import PlannerErrorRoute
+from app.services.dashboard import get_next_workout
 from app.services.long_term_planner import (
     LongTermWeekOption,
     generate_long_term_plan_artifact,
@@ -469,6 +470,8 @@ def dashboard(
         wellness_data=wellness,
         client=client,
     )
+    current_plan = load_user_plan(user)
+    next_workout = get_next_workout(current_plan.workout_data, _today())
 
     return templates.TemplateResponse(
         request,
@@ -476,6 +479,9 @@ def dashboard(
         {
             "user": user,
             "analysis": analysis.to_dict(),
+            "display_days": days or settings.DASHBOARD_DAYS,
+            "next_workout": next_workout,
+            "has_weekly_plan": current_plan.plan_html is not None,
             "settings": request.app.state.settings,
         },
     )

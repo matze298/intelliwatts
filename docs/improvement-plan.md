@@ -16,9 +16,9 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 
 ## 3. Improve the athlete experience
 
-- [ ] **Redesign the existing UI:** Create a modern, minimal visual style with clear hierarchy, restrained color, readable typography, generous spacing and consistent interactions. Use a shared page shell and semantic theme tokens for login, planner, dashboard and settings.
-- [ ] **Clarify the planner and dashboard:** Lead with the current goal, the selected week and its next action. Make plan status, publication, recovery trends, units and missing data easy to understand on desktop and mobile.
-- [ ] **Inspect and verify with Playwright:** Review the current app and capture desktop and mobile screenshots before designing. Implement the redesign in the existing templates and styles, then inspect screenshots and verify sign-in, planning, dashboard and settings flows, keyboard access, accessibility and responsive layouts.
+- [x] **Redesign the existing UI:** Establish the selected Concept C style with a shared navigation shell and semantic colors across sign-in, planner, dashboard and settings. Remove the legacy theme selector and alternate styles.
+- [x] **Clarify the planner and dashboard:** Lead with training trends and recovery, preview the next saved structured workout, and clarify the planner's selected week, status, units and missing data across screen sizes.
+- [x] **Inspect and verify with Playwright:** Previewed sign-in, planner, dashboard and settings templates at desktop and mobile widths; checked responsive overflow, chart fallback states, dashboard range interaction and browser errors.
 
 ## 4. Make changes easier to maintain
 

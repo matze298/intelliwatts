@@ -1,6 +1,6 @@
 """Service for loading training plans."""
 
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
 from sqlalchemy import desc
 from sqlmodel import Session, select
@@ -28,6 +28,7 @@ class LoadedPlan(NamedTuple):
     delivery_status: str | None
     delivery_last_error: str | None
     week_start: date | None
+    workout_data: list[dict[str, Any]]
 
 
 def load_user_plan(user: User, *, week_start: date | None = None, include_weekly_plan: bool = True) -> LoadedPlan:
@@ -46,11 +47,12 @@ def load_user_plan(user: User, *, week_start: date | None = None, include_weekly
     prompt = None
     delivery_status = None
     delivery_last_error = None
+    workout_data: list[dict[str, Any]] = []
 
     with Session(engine) as session:
         phase = get_active_phase(session, user.id)
         if phase is None:
-            return LoadedPlan(None, None, None, None, None, week_start)
+            return LoadedPlan(None, None, None, None, None, week_start, [])
         artifact_statement = (
             select(LongTermPlanArtifact)
             .where(LongTermPlanArtifact.phase_id == phase.id)
@@ -68,6 +70,7 @@ def load_user_plan(user: User, *, week_start: date | None = None, include_weekly
             if plan:
                 plan_html = render_markdown(plan.raw_content)
                 prompt = plan.prompt_history
+                workout_data = plan.workout_data
                 delivery_statement = select(WorkoutDelivery).where(WorkoutDelivery.training_plan_id == plan.id)
                 delivery = session.exec(delivery_statement).first()
                 if delivery:
@@ -82,4 +85,5 @@ def load_user_plan(user: User, *, week_start: date | None = None, include_weekly
         delivery_status=delivery_status,
         delivery_last_error=delivery_last_error,
         week_start=week_start,
+        workout_data=workout_data,
     )

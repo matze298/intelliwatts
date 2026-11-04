@@ -1,13 +1,14 @@
 <!-- app/templates/widgets/power_curve_chart.html -->
-<div class="p-8 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 space-y-4">
-    <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">⚡ Critical Power Heatmap</h2>
-    <div class="h-64">
+<div class="chart-card space-y-3">
+    <div><h2 class="text-lg mt-0 mb-1">Power curve</h2><p class="text-sm text-slate-600">Best power by effort duration · watts · recent 90 days, season and all-time comparisons</p></div>
+    <div class="chart-frame chart-frame-short">
         <canvas id="powerCurveChart"></canvas>
     </div>
 </div>
 
 <script>
     (function() {
+        if (typeof Chart === 'undefined') return;
         const data = {{ widget.data | tojson }};
 
         const formatPoints = (points) => {

@@ -208,8 +208,8 @@ def _save_long_term_goal(page: Page, base_url: str) -> None:
 def _load_dashboard_and_change_range(page: Page, base_url: str) -> None:
     # GIVEN fixture-backed activity, wellness, and power-curve data.
     page.goto(f"{base_url}/dashboard", wait_until="domcontentloaded")
-    expect(page.get_by_role("heading", name="Performance Center")).to_be_visible()
-    expect(page.get_by_text("Analysis Lookback")).to_be_visible()
+    expect(page.get_by_role("heading", name="Your training, in perspective")).to_be_visible()
+    expect(page.get_by_text("Analysis window")).to_be_visible()
 
     # WHEN the browser changes the dashboard analysis range slider.
     page.locator("#daysSlider").evaluate(

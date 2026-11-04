@@ -1,30 +1,20 @@
 {% from "macros/controls.html" import render_action_button, render_week_select %}
 {% from "macros/disclosure.html" import render_disclosure %}
 {% from "macros/state.html" import render_state_banner %}
-{% from "macros/theme.html" import render_theme_switcher %}
+{% from "macros/app_nav.html" import app_nav %}
 <!DOCTYPE html>
 <html>
 
 <head>
     <title>AI Training Plan</title>
-    <link rel="stylesheet" id="theme-stylesheet" href="/static/tailwind-pro.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/tailwind-concept-c.css">
 </head>
 
 <body class="font-sans">
-    <div class="container max-w-3xl mx-auto p-8 rounded-lg shadow-md mt-10">
-        <nav class="flex justify-between items-center mb-6">
-            <div>
-                <a href="/" class="control-nav-link mr-4">Home</a>
-                <a href="/dashboard" class="control-nav-link mr-4">Dashboard</a>
-            </div>
-            <div>
-                <a href="/settings" class="control-nav-link mr-4">Settings</a>
-
-            <form method="post" action="/logout" style="display:inline"><button type="submit">Sign out</button></form>
-            {{ render_theme_switcher() }}
-            </div>
-        </nav>
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">🚴 AI Training Plan</h1>
+    <main class="container">
+        {{ app_nav("planner") }}
+        <h1 class="mt-0 mb-6">Your training plan</h1>
 
         {% if user %}
         <section class="planner-card mb-6 rounded-xl p-6">
@@ -242,7 +232,7 @@
         {% endcall %}
         {% endif %}
         {% endif %}
-    </div>
+    </main>
     <script>
         for (const form of document.querySelectorAll("form[data-progress-message]")) {
             form.addEventListener("submit", () => {

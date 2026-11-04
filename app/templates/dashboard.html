@@ -1,112 +1,108 @@
 {% from "macros/widgets.html" import render_widget %}
-{% from "macros/sections.html" import render_section_band %}
 {% from "macros/state.html" import render_state_banner %}
-{% from "macros/theme.html" import render_theme_switcher %}
+{% from "macros/app_nav.html" import app_nav %}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <title>IntelliWatts Dashboard</title>
-    <link rel="stylesheet" id="theme-stylesheet" href="/static/tailwind-pro.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard · IntelliWatts</title>
+    <link rel="stylesheet" href="/static/tailwind-concept-c.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
-<body class="font-sans">
-    <div class="container max-w-3xl mx-auto p-8 rounded-lg shadow-md mt-10">
-        <!-- Navigation -->
-        <nav class="flex justify-between items-center mb-6">
-            <div>
-                <a href="/" class="control-nav-link mr-4">Home</a>
-            </div>
-            <div>
-                <a href="/settings" class="control-nav-link mr-4">Settings</a>
-
-                <form method="post" action="/logout" style="display:inline"><button type="submit">Sign out</button></form>
-            {{ render_theme_switcher() }}
-            </div>
-        </nav>
-
-        <div class="mb-12">
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">🚀 Performance Center</h1>
-            <p class="text-gray-600 font-medium">Holistic athlete analysis and physiological trends.</p>
+<body>
+<main class="container">
+    {{ app_nav("dashboard") }}
+    <header class="dashboard-header">
+        <div>
+            <p class="eyebrow">Athlete dashboard</p>
+            <h1 class="mt-2 mb-2">Your training, in perspective</h1>
+            <p class="text-slate-600">A clear view of your recent load, recovery and planned work.</p>
         </div>
+        <a href="/" class="control-button control-button-secondary inline-flex items-center justify-center">Open planner</a>
+    </header>
 
-        <div class="control-surface mb-12">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Plan impact</p>
-                <a href="/" class="control-button control-button-secondary inline-flex items-center justify-center px-4 py-2 text-sm">
-                    Open Planner
-                </a>
+    <section aria-labelledby="training-heading" class="mb-10">
+        <div class="flex flex-wrap items-end justify-between gap-4 mb-4">
+            <div><p class="eyebrow">Training</p><h2 id="training-heading" class="text-2xl mt-1 mb-0">How training is going</h2></div>
+            <div class="control-surface flex items-center gap-3 !p-3">
+                <label for="daysSlider" class="!mb-0">Analysis window</label>
+                <input type="range" id="daysSlider" min="7" max="90" value="{{ display_days }}" class="control-range !w-28">
+                <span id="daysValue" class="control-chip">{{ display_days }} days</span>
             </div>
         </div>
-
-        <!-- Analysis Range Control -->
-        <div class="control-surface mb-12">
-            <div class="flex justify-between items-center mb-4">
-                <label for="daysSlider" class="control-label uppercase tracking-wider">Analysis Lookback</label>
-                <span id="daysValue" class="control-chip">42 Days</span>
-            </div>
-            <input type="range" id="daysSlider" min="7" max="90" value="42" class="control-range">
-        </div>
-
-        <!-- Dynamic Metric Widgets Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {% for widget in analysis.widgets %}
-                {% if not widget.custom_template %}
-                    {{ render_widget(widget) }}
-                {% endif %}
-            {% endfor %}
-        </div>
-
-        {% set primary_custom_widgets = analysis.widgets | selectattr("custom_template") | selectattr("display_group", "equalto", "main") | list %}
-        {% set secondary_custom_widgets = analysis.widgets | selectattr("custom_template") | rejectattr("display_group", "equalto", "main") | list %}
-
+        {% set basic_widgets = analysis.widgets | rejectattr("custom_template") | list %}
+        {% if basic_widgets %}<div class="dashboard-grid mb-4">{% for widget in basic_widgets %}{{ render_widget(widget) }}{% endfor %}</div>{% endif %}
+        {% set pmc_widgets = analysis.widgets | selectattr("name", "equalto", "pmc") | list %}
+        {% for widget in pmc_widgets %}{{ render_widget(widget) }}{% endfor %}
         {% if not analysis.widgets %}
-        {% call render_state_banner("No dashboard data yet", tone="empty", extra_classes="mb-12") %}
-            Sync activities and wellness data to populate the dashboard.
-        {% endcall %}
+        {% call render_state_banner("No dashboard data yet", tone="empty") %}Sync activities and wellness data to populate your trends.{% endcall %}
         {% endif %}
+    </section>
 
-        {% if primary_custom_widgets %}
-        {% call render_section_band("Headline trends") %}
-            {% for widget in primary_custom_widgets %}
-                {{ render_widget(widget) }}
-            {% endfor %}
-        {% endcall %}
-        {% endif %}
+    <section aria-labelledby="recovery-heading" class="mb-10">
+        <div class="mb-4"><p class="eyebrow">Recovery</p><h2 id="recovery-heading" class="text-2xl mt-1 mb-0">Recovery signals</h2></div>
+        {% set recovery_widgets = analysis.widgets | selectattr("name", "equalto", "wellness") | list %}
+        {% for widget in recovery_widgets %}{{ render_widget(widget) }}{% else %}
+        {% call render_state_banner("Recovery data unavailable", tone="empty") %}Sync wellness data to see HRV, resting heart rate and sleep trends.{% endcall %}
+        {% endfor %}
+    </section>
 
-        {% if secondary_custom_widgets %}
-        {% call render_section_band("Supporting evidence") %}
-            {% for widget in secondary_custom_widgets %}
-                {{ render_widget(widget) }}
-            {% endfor %}
-        {% endcall %}
-        {% endif %}
+    <section aria-labelledby="next-heading" class="chart-card next-session mb-10">
+        <p class="eyebrow">This week</p><h2 id="next-heading" class="text-2xl mt-1 mb-2">What to train next</h2>
+        {% if next_workout %}
+        <div class="flex flex-wrap items-start justify-between gap-4 mt-4">
+            <div><p class="text-sm font-semibold text-slate-600">{{ next_workout.day }}{% if next_workout.duration_minutes %} · {{ next_workout.duration_minutes }} min{% endif %}</p>
+                <h3 class="text-xl mt-1 mb-1">{{ next_workout.name }}</h3>
+                {% if next_workout.description %}<p class="text-slate-600 max-w-2xl">{{ next_workout.description }}</p>{% endif %}
+            </div>
+            <a href="/" class="control-button inline-flex items-center justify-center">Review this week</a>
         </div>
+        {% elif has_weekly_plan %}
+        <p class="text-slate-600 mt-2">No structured workouts remain in this week's plan.</p>
+        <a href="/" class="control-button control-button-secondary inline-flex mt-4">Review this week</a>
+        {% else %}
+        <p class="text-slate-600 mt-2">There is no saved plan for this week yet.</p>
+        <a href="/" class="control-button inline-flex mt-4">Create this week's plan</a>
+        {% endif %}
+    </section>
 
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Days Slider
-            const slider = document.getElementById('daysSlider');
-            const valueDisplay = document.getElementById('daysValue');
-            const urlParams = new URLSearchParams(window.location.search);
-            const daysParam = urlParams.get('days');
-            if (daysParam) {
-                slider.value = daysParam;
-                valueDisplay.textContent = `${daysParam} Days`;
-            }
-
-            slider.addEventListener('input', function (event) {
-                valueDisplay.textContent = `${event.target.value} Days`;
-            });
-
-            slider.addEventListener('change', function (event) {
-                const selectedDays = event.target.value;
-                window.location.href = `/dashboard?days=${selectedDays}`;
-            });
-        });
-    </script>
+    {% set supporting_widgets = analysis.widgets | selectattr("custom_template") | rejectattr("name", "equalto", "pmc") | rejectattr("name", "equalto", "wellness") | list %}
+    {% if supporting_widgets %}
+    <section aria-labelledby="analysis-heading" class="mb-8">
+        <div class="mb-4"><p class="eyebrow">Analysis</p><h2 id="analysis-heading" class="text-2xl mt-1 mb-0">Supporting detail</h2></div>
+        <div class="grid grid-cols-1 gap-4">{% for widget in supporting_widgets %}{{ render_widget(widget) }}{% endfor %}</div>
+    </section>
+    {% endif %}
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const slider = document.getElementById('daysSlider');
+    const value = document.getElementById('daysValue');
+    if (!slider || !value) return;
+    value.textContent = `${slider.value} days`;
+    slider.addEventListener('input', () => { value.textContent = `${slider.value} days`; });
+    slider.addEventListener('change', () => { window.location.href = `/dashboard?days=${slider.value}`; });
+    document.querySelectorAll('.chart-card canvas').forEach((canvas) => {
+        const chart = typeof Chart === 'undefined' ? null : Chart.getChart(canvas);
+        const hasValues = chart?.data.datasets.some((dataset) =>
+            Array.isArray(dataset.data) && dataset.data.some((point) => point !== null && point !== undefined)
+        );
+        if (hasValues) return;
+        const frame = canvas.closest('.chart-frame') || canvas.parentElement;
+        if (!frame || frame.querySelector('.chart-unavailable')) return;
+        canvas.hidden = true;
+        frame.classList.add('chart-fallback');
+        canvas.parentElement.querySelector('[data-chart-total]')?.setAttribute('hidden', '');
+        frame.closest('.chart-card')?.querySelector('.control-toggle-group')?.setAttribute('hidden', '');
+        const fallback = document.createElement('p');
+        fallback.className = 'chart-unavailable';
+        fallback.textContent = typeof Chart === 'undefined'
+            ? 'Charts are temporarily unavailable. Your other dashboard data is still available.'
+            : 'No measurements are available for this period.';
+        frame.append(fallback);
+    });
+});
+</script>
 </body>
-
 </html>

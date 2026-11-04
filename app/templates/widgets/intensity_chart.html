@@ -1,10 +1,10 @@
 {% from "macros/controls.html" import render_toggle_button %}
 <!-- app/templates/widgets/intensity_chart.html -->
-<div class="p-8 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 space-y-8">
+<div class="chart-card space-y-6">
     <div class="flex justify-between items-center">
         <div>
-            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">🔥 Training Intensity</h2>
-            <p class="text-sm text-slate-300 dark:text-slate-200">Time-in-zone distribution and style.</p>
+            <h2 class="text-lg mt-0 mb-1">Training intensity</h2>
+            <p class="text-sm text-slate-600">Time spent in each heart-rate or power zone.</p>
         </div>
         <div class="control-toggle-group">
             {{ render_toggle_button("toggle-hr", "HR", true, "updateIntensityChart('hr')") }}
@@ -49,6 +49,7 @@
 
 <script>
     (function() {
+        if (typeof Chart === 'undefined') return;
         const ctx = document.getElementById('intensityChart').getContext('2d');
         const hrData = {{ widget.data.hr_zones | tojson }};
         const powerData = {{ widget.data.power_zones | tojson }};
