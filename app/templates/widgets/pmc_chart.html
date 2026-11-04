@@ -1,12 +1,12 @@
 <section class="chart-card" aria-label="Training load trends">
-    <div class="flex flex-wrap justify-between gap-2"><div><h3 class="text-lg mt-0 mb-1">Training load</h3><p class="text-sm text-slate-600">Daily training stress balance. Load scores are relative, not hours.</p></div><div class="flex gap-4 text-sm"><span><i class="inline-block h-2.5 w-2.5 rounded-full bg-teal-700 mr-1"></i>Fitness (CTL)</span><span><i class="inline-block h-2.5 w-2.5 rounded-full bg-orange-600 mr-1"></i>Fatigue (ATL)</span></div></div>
+    <div class="load-chart-heading"><div><h3 class="text-lg mt-0 mb-1">Training load</h3><p class="text-sm text-slate-600">Daily training stress · relative load score</p></div><div class="load-chart-legend"><span><i class="load-dot is-fitness"></i>Fitness <small>CTL</small></span><span><i class="load-dot is-fatigue"></i>Fatigue <small>ATL</small></span></div></div>
     <div class="chart-frame mt-3"><canvas id="pmcChart" aria-label="Fitness and fatigue over time"></canvas></div>
-    <div class="mt-5 pt-4 border-t border-slate-200"><p class="text-sm font-semibold text-slate-700 mb-2">Form (TSB)</p><div class="chart-frame chart-frame-short"><canvas id="formChart" aria-label="Form over time"></canvas></div></div>
+    <div class="form-chart-band"><p class="text-sm font-semibold text-slate-700 mb-2">Form <span>TSB · training stress balance</span></p><div class="chart-frame chart-frame-short"><canvas id="formChart" aria-label="Form over time"></canvas></div></div>
 </section>
 <script>
 (() => {
  const data = {{ widget.data | tojson }};
- const common = {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0,color:'#647681'}},y:{grid:{color:'#e8eeea'},ticks:{color:'#647681'}}}};
+ const common = {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'#102d28',titleColor:'#fffefa',bodyColor:'#e5eee8',padding:11,cornerRadius:8}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0,color:'#b7cbc0',font:{family:'Lato',size:11}}},y:{grid:{color:'rgba(226,240,230,.12)'},ticks:{color:'#b7cbc0',font:{family:'Lato',size:11}}}}};
  const line = (id,datasets) => {const canvas=document.getElementById(id);if(canvas && typeof Chart!=='undefined') new Chart(canvas,{type:'line',data:{labels:data.dates,datasets},options:common});};
  line('pmcChart',[{label:'Fitness (CTL)',data:data.ctl,borderColor:'#18786e',backgroundColor:'#18786e18',fill:true,tension:.28,pointRadius:0,borderWidth:2.5},{label:'Fatigue (ATL)',data:data.atl,borderColor:'#d97761',tension:.28,pointRadius:0,borderWidth:2}]);
  line('formChart',[{label:'Form (TSB)',data:data.tsb,borderColor:'#426c93',backgroundColor:'#426c9318',fill:true,tension:.28,pointRadius:0,borderWidth:2, spanGaps:true}]);

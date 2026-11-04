@@ -1,8 +1,8 @@
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+<div class="wellness-grid">
  <section class="chart-card" aria-label="Heart rate variability"><h3 class="text-lg mt-0 mb-1">Heart rate variability</h3><p class="text-sm text-slate-600">Milliseconds · daily and 7-day average</p><div class="chart-frame chart-frame-short mt-3"><canvas id="hrvChart" aria-label="Heart rate variability trend"></canvas></div></section>
  <section class="chart-card" aria-label="Resting heart rate"><h3 class="text-lg mt-0 mb-1">Resting heart rate</h3><p class="text-sm text-slate-600">Beats per minute · daily and 7-day average</p><div class="chart-frame chart-frame-short mt-3"><canvas id="restChart" aria-label="Resting heart rate trend"></canvas></div></section>
 </div>
-{% if widget.data.sleep_rating %}<section class="chart-card mt-4" aria-label="Sleep rating"><h3 class="text-lg mt-0 mb-1">Sleep rating</h3><p class="text-sm text-slate-600">Daily score from 0 to 100</p><div class="chart-frame chart-frame-short mt-3"><canvas id="sleepRatingChart" aria-label="Sleep rating trend"></canvas></div></section>{% else %}<p class="mt-3 text-sm text-slate-600">Sleep rating is not available for this period.</p>{% endif %}
+{% if widget.data.sleep_rating %}<section class="chart-card wellness-sleep" aria-label="Sleep rating"><h3 class="text-lg mt-0 mb-1">Sleep quality</h3><p class="text-sm text-slate-600">Daily score · 0–100</p><div class="chart-frame chart-frame-short mt-3"><canvas id="sleepRatingChart" aria-label="Sleep rating trend"></canvas></div></section>{% else %}<p class="wellness-sleep-empty">Sleep rating is not available for this period.</p>{% endif %}
 <script>
 (() => {
  const data = {{ widget.data | tojson }};

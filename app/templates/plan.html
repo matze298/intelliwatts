@@ -14,7 +14,11 @@
 <body class="font-sans">
     <main class="container">
         {{ app_nav("planner") }}
-        <h1 class="mt-0 mb-6">Your training plan</h1>
+        <header class="page-masthead">
+            <p class="eyebrow">Plan / Weekly training</p>
+            <h1 class="mt-0 mb-2">Your training plan</h1>
+            <p class="page-lede">Set your goal, shape the week, then review the sessions before they’re published.</p>
+        </header>
 
         {% if user %}
         <section class="planner-card mb-6 rounded-xl p-6">

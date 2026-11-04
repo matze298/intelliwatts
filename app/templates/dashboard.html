@@ -11,67 +11,64 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<main class="container">
+<main class="container dashboard-shell">
     {{ app_nav("dashboard") }}
-    <header class="dashboard-header">
+    <header class="dashboard-masthead">
         <div>
-            <p class="eyebrow">Athlete dashboard</p>
-            <h1 class="mt-2 mb-2">Your training, in perspective</h1>
-            <p class="text-slate-600">A clear view of your recent load, recovery and planned work.</p>
+            <p class="eyebrow">Performance overview <span aria-hidden="true">/</span> Training profile</p>
+            <h1 class="mt-2 mb-2">Training at a glance</h1>
+            <p class="dashboard-lede">See how your load is moving, how you’re recovering, and what’s on the plan.</p>
         </div>
-        <a href="/" class="control-button control-button-secondary inline-flex items-center justify-center">Open planner</a>
+        <div class="dashboard-tools">
+            <label class="dashboard-range" for="daysSlider">
+                <span class="dashboard-range-label">Analysis window</span>
+                <input type="range" id="daysSlider" min="7" max="90" value="{{ display_days }}" class="control-range">
+                <span id="daysValue" class="control-chip">{{ display_days }} days</span>
+            </label>
+            <a href="/" class="control-button control-button-secondary inline-flex items-center justify-center">Open plan <span aria-hidden="true">↗</span></a>
+        </div>
     </header>
 
     <section aria-labelledby="training-heading" class="mb-10">
-        <div class="flex flex-wrap items-end justify-between gap-4 mb-4">
-            <div><p class="eyebrow">Training</p><h2 id="training-heading" class="text-2xl mt-1 mb-0">How training is going</h2></div>
-            <div class="control-surface flex items-center gap-3 !p-3">
-                <label for="daysSlider" class="!mb-0">Analysis window</label>
-                <input type="range" id="daysSlider" min="7" max="90" value="{{ display_days }}" class="control-range !w-28">
-                <span id="daysValue" class="control-chip">{{ display_days }} days</span>
-            </div>
-        </div>
+        <div class="dashboard-section-heading"><div><p class="eyebrow">Training</p><h2 id="training-heading">How training is going</h2></div><span class="section-note">Load &amp; performance</span></div>
         {% set basic_widgets = analysis.widgets | rejectattr("custom_template") | list %}
-        {% if basic_widgets %}<div class="dashboard-grid mb-4">{% for widget in basic_widgets %}{{ render_widget(widget) }}{% endfor %}</div>{% endif %}
+        {% if basic_widgets %}<div class="dashboard-metrics">{% for widget in basic_widgets %}{{ render_widget(widget) }}{% endfor %}</div>{% endif %}
         {% set pmc_widgets = analysis.widgets | selectattr("name", "equalto", "pmc") | list %}
-        {% for widget in pmc_widgets %}{{ render_widget(widget) }}{% endfor %}
+        {% for widget in pmc_widgets %}<div class="dashboard-load-chart">{{ render_widget(widget) }}</div>{% endfor %}
         {% if not analysis.widgets %}
         {% call render_state_banner("No dashboard data yet", tone="empty") %}Sync activities and wellness data to populate your trends.{% endcall %}
         {% endif %}
     </section>
 
     <section aria-labelledby="recovery-heading" class="mb-10">
-        <div class="mb-4"><p class="eyebrow">Recovery</p><h2 id="recovery-heading" class="text-2xl mt-1 mb-0">Recovery signals</h2></div>
+        <div class="dashboard-section-heading"><div><p class="eyebrow">Recovery</p><h2 id="recovery-heading">Recovery signals</h2></div><span class="section-note">Wellness trends</span></div>
         {% set recovery_widgets = analysis.widgets | selectattr("name", "equalto", "wellness") | list %}
-        {% for widget in recovery_widgets %}{{ render_widget(widget) }}{% else %}
+        <div class="dashboard-recovery">{% for widget in recovery_widgets %}{{ render_widget(widget) }}{% else %}
         {% call render_state_banner("Recovery data unavailable", tone="empty") %}Sync wellness data to see HRV, resting heart rate and sleep trends.{% endcall %}
-        {% endfor %}
+        {% endfor %}</div>
     </section>
 
-    <section aria-labelledby="next-heading" class="chart-card next-session mb-10">
-        <p class="eyebrow">This week</p><h2 id="next-heading" class="text-2xl mt-1 mb-2">What to train next</h2>
+    <section aria-labelledby="next-heading" class="next-session mb-10">
+        <div class="next-session-kicker"><span class="eyebrow">Your plan</span><span class="next-session-index" aria-hidden="true">NEXT SESSION&nbsp; / &nbsp;01</span></div>
+        <h2 id="next-heading">What to train next</h2>
         {% if next_workout %}
-        <div class="flex flex-wrap items-start justify-between gap-4 mt-4">
-            <div><p class="text-sm font-semibold text-slate-600">{{ next_workout.day }}{% if next_workout.duration_minutes %} · {{ next_workout.duration_minutes }} min{% endif %}</p>
-                <h3 class="text-xl mt-1 mb-1">{{ next_workout.name }}</h3>
-                {% if next_workout.description %}<p class="text-slate-600 max-w-2xl">{{ next_workout.description }}</p>{% endif %}
+        <div class="next-session-body">
+            <div class="next-session-day"><span>{{ next_workout.day }}</span>{% if next_workout.duration_minutes %}<span>{{ next_workout.duration_minutes }} <small>MIN</small></span>{% endif %}</div>
+            <div class="next-session-copy"><h3>{{ next_workout.name }}</h3>{% if next_workout.description %}<p>{{ next_workout.description }}</p>{% endif %}</div>
+            <a href="/" class="control-button next-session-action">Review this week <span aria-hidden="true">↗</span></a>
             </div>
-            <a href="/" class="control-button inline-flex items-center justify-center">Review this week</a>
-        </div>
         {% elif has_weekly_plan %}
-        <p class="text-slate-600 mt-2">No structured workouts remain in this week's plan.</p>
-        <a href="/" class="control-button control-button-secondary inline-flex mt-4">Review this week</a>
+        <div class="next-session-body"><div class="next-session-copy"><h3>That’s this week covered.</h3><p>No structured workouts remain in this week's plan.</p></div><a href="/" class="control-button next-session-action">Review this week <span aria-hidden="true">↗</span></a></div>
         {% else %}
-        <p class="text-slate-600 mt-2">There is no saved plan for this week yet.</p>
-        <a href="/" class="control-button inline-flex mt-4">Create this week's plan</a>
+        <div class="next-session-body"><div class="next-session-copy"><h3>A fresh week starts here.</h3><p>There is no saved plan for this week yet.</p></div><a href="/" class="control-button next-session-action">Create this week's plan <span aria-hidden="true">↗</span></a></div>
         {% endif %}
     </section>
 
     {% set supporting_widgets = analysis.widgets | selectattr("custom_template") | rejectattr("name", "equalto", "pmc") | rejectattr("name", "equalto", "wellness") | list %}
     {% if supporting_widgets %}
     <section aria-labelledby="analysis-heading" class="mb-8">
-        <div class="mb-4"><p class="eyebrow">Analysis</p><h2 id="analysis-heading" class="text-2xl mt-1 mb-0">Supporting detail</h2></div>
-        <div class="grid grid-cols-1 gap-4">{% for widget in supporting_widgets %}{{ render_widget(widget) }}{% endfor %}</div>
+        <div class="dashboard-section-heading"><div><p class="eyebrow">Explore</p><h2 id="analysis-heading">Supporting detail</h2></div><span class="section-note">Volume, power &amp; distribution</span></div>
+        <div class="dashboard-supporting-grid">{% for widget in supporting_widgets %}<div class="dashboard-supporting-item">{{ render_widget(widget) }}</div>{% endfor %}</div>
     </section>
     {% endif %}
 </main>

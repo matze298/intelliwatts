@@ -27,7 +27,7 @@
                     {
                         label: 'All-Time',
                         data: allTimePoints,
-                        borderColor: '#aeaeb2',
+                        borderColor: '#9aa9a1',
                         borderDash: [5, 5],
                         borderWidth: 1.5,
                         fill: false,
@@ -38,8 +38,8 @@
                     {
                         label: 'Season',
                         data: seasonPoints,
-                        borderColor: '#34c759',
-                        backgroundColor: 'rgba(52, 199, 89, 0.1)',
+                        borderColor: '#c89b50',
+                        backgroundColor: 'rgba(200, 155, 80, 0.10)',
                         borderWidth: 2,
                         fill: 2, // Fill to dataset index 2 (Recent 90d)
                         pointRadius: 0,
@@ -49,8 +49,8 @@
                     {
                         label: 'Recent 90d',
                         data: recent90dPoints,
-                        borderColor: '#0071e3',
-                        backgroundColor: 'rgba(0, 113, 227, 0.1)',
+                        borderColor: '#147969',
+                        backgroundColor: 'rgba(20, 121, 105, 0.10)',
                         borderWidth: 3,
                         fill: 'origin',
                         pointRadius: 0,
@@ -66,7 +66,7 @@
                     legend: {
                         position: 'bottom',
                         labels: {
-                            color: '#94a3b8',
+                            color: '#71817a',
                             usePointStyle: true,
                             boxWidth: 6,
                             padding: 20,
@@ -118,9 +118,9 @@
                 scales: {
                     x: {
                         type: 'logarithmic',
-                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        grid: { color: 'rgba(53, 83, 70, 0.10)' },
                         ticks: {
-                            color: '#64748b',
+                            color: '#71817a',
                             font: { size: 10 },
                             callback: function(value, index, ticks) {
                                 // Only show specific duration ticks to keep it clean
@@ -144,9 +144,9 @@
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        grid: { color: 'rgba(53, 83, 70, 0.10)' },
                         ticks: { 
-                            color: '#64748b', 
+                            color: '#71817a',
                             font: { size: 10 },
                             callback: (value) => value + 'W'
                         }

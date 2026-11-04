@@ -24,20 +24,20 @@
         const ctx = document.getElementById('weeklyVolumeChart').getContext('2d');
         
         const sportColors = {
-            'Ride': '#3b82f6',   // Blue
-            'VirtualRide': '#60a5fa', // Light Blue
-            'Run': '#10b981',    // Emerald
-            'VirtualRun': '#34d399', // Light Emerald
-            'Swim': '#06b6d4',   // Cyan
-            'Walk': '#f59e0b',   // Amber
-            'WeightTraining': '#8b5cf6', // Violet
-            'Yoga': '#d946ef',   // Fuchsia
-            'Other': '#94a3b8'   // Slate
+            'Ride': '#147969',
+            'VirtualRide': '#76ae9a',
+            'Run': '#d8755c',
+            'VirtualRun': '#efa48e',
+            'Swim': '#6e91a0',
+            'Walk': '#c89b50',
+            'WeightTraining': '#827a91',
+            'Yoga': '#b7a48a',
+            'Other': '#9aa9a1'
         };
 
         const uniqueColors = [
-            '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', 
-            '#f97316', '#d946ef', '#14b8a6', '#6366f1'
+            '#c89b50', '#b65e4f', '#827a91', '#6e91a0',
+            '#d8755c', '#9c7790', '#5d9b89', '#647c69'
         ];
 
         function getColor(sport, index) {
@@ -75,16 +75,16 @@
                         stacked: true,
                         grid: { display: false },
                         ticks: {
-                            color: '#94a3b8',
+                            color: '#71817a',
                             font: { size: 10, weight: 'bold' }
                         }
                     },
                     y: {
                         stacked: true,
                         beginAtZero: true,
-                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        grid: { color: 'rgba(53, 83, 70, 0.10)' },
                         ticks: {
-                            color: '#94a3b8',
+                            color: '#71817a',
                             font: { size: 10, weight: 'bold' }
                         }
                     }
@@ -96,7 +96,7 @@
                         labels: {
                             boxWidth: 12,
                             padding: 15,
-                            color: '#94a3b8',
+                            color: '#71817a',
                             font: { size: 10, weight: 'bold' }
                         }
                     },
