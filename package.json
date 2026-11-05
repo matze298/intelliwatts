@@ -16,7 +16,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:css": "./build_tailwind.sh",
-    "watch:css": "tailwindcss -i ./app/static/style-concept-c.css -o ./app/static/tailwind-concept-c.css --watch"
+    "watch:css": "tailwindcss -i ./app/static/style-light.css -o ./app/static/tailwind-light.css --watch"
   },
   "keywords": [],
   "author": "",

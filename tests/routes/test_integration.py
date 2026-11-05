@@ -836,7 +836,7 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
     assert "Large Language model" in body
     assert "Include Readiness & Recovery (Wellness) Data" in body
     assert "control-button" in body
-    assert 'href="/static/tailwind-concept-c.css"' in body
+    assert 'href="/static/tailwind-light.css"' in body
 
 
 def test_home_page_renders_selected_week_plan(selected_week_route_context: SelectedWeekRouteContext) -> None:

@@ -20,6 +20,6 @@ if ! command -v npm >/dev/null 2>&1; then
   fi
 fi
 
-echo "Building Concept C Tailwind CSS..."
-./node_modules/.bin/tailwindcss -i ./app/static/style-concept-c.css -o ./app/static/tailwind-concept-c.css
-echo "Concept C CSS built successfully ✔"
+echo "Building light style Tailwind CSS..."
+./node_modules/.bin/tailwindcss -i ./app/static/style-light.css -o ./app/static/tailwind-light.css
+echo "light style CSS built successfully ✔"
