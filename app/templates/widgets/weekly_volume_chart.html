@@ -1,10 +1,10 @@
 {% from "macros/controls.html" import render_toggle_button %}
 <!-- app/templates/widgets/weekly_volume_chart.html -->
-<div class="p-8 rounded-lg shadow bg-slate-500 bg-opacity-10 border border-slate-700 space-y-8">
+<div class="chart-card space-y-5">
     <div class="flex justify-between items-center">
         <div>
-            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 italic uppercase">📊 Weekly Volume</h2>
-            <p class="text-sm text-slate-300 dark:text-slate-200">Volume trends and training stress.</p>
+            <h2 class="text-lg mt-0 mb-1">Weekly volume</h2>
+            <p class="text-sm text-slate-600">Compare training time and training stress.</p>
         </div>
         <div class="control-toggle-group">
             {{ render_toggle_button("toggle-hours", "Hours", true, "updateVolumeChart('duration')") }}
@@ -12,31 +12,32 @@
         </div>
     </div>
 
-    <div class="relative w-full h-64">
+    <div class="chart-frame chart-frame-short">
         <canvas id="weeklyVolumeChart"></canvas>
     </div>
 </div>
 
 <script>
     (function() {
+        if (typeof Chart === 'undefined') return;
         const data = {{ widget.data | tojson }};
         const ctx = document.getElementById('weeklyVolumeChart').getContext('2d');
         
         const sportColors = {
-            'Ride': '#3b82f6',   // Blue
-            'VirtualRide': '#60a5fa', // Light Blue
-            'Run': '#10b981',    // Emerald
-            'VirtualRun': '#34d399', // Light Emerald
-            'Swim': '#06b6d4',   // Cyan
-            'Walk': '#f59e0b',   // Amber
-            'WeightTraining': '#8b5cf6', // Violet
-            'Yoga': '#d946ef',   // Fuchsia
-            'Other': '#94a3b8'   // Slate
+            'Ride': '#147969',
+            'VirtualRide': '#76ae9a',
+            'Run': '#d8755c',
+            'VirtualRun': '#efa48e',
+            'Swim': '#6e91a0',
+            'Walk': '#c89b50',
+            'WeightTraining': '#827a91',
+            'Yoga': '#b7a48a',
+            'Other': '#9aa9a1'
         };
 
         const uniqueColors = [
-            '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', 
-            '#f97316', '#d946ef', '#14b8a6', '#6366f1'
+            '#c89b50', '#b65e4f', '#827a91', '#6e91a0',
+            '#d8755c', '#9c7790', '#5d9b89', '#647c69'
         ];
 
         function getColor(sport, index) {
@@ -74,16 +75,16 @@
                         stacked: true,
                         grid: { display: false },
                         ticks: {
-                            color: '#94a3b8',
+                            color: '#71817a',
                             font: { size: 10, weight: 'bold' }
                         }
                     },
                     y: {
                         stacked: true,
                         beginAtZero: true,
-                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        grid: { color: 'rgba(53, 83, 70, 0.10)' },
                         ticks: {
-                            color: '#94a3b8',
+                            color: '#71817a',
                             font: { size: 10, weight: 'bold' }
                         }
                     }
@@ -95,7 +96,7 @@
                         labels: {
                             boxWidth: 12,
                             padding: 15,
-                            color: '#94a3b8',
+                            color: '#71817a',
                             font: { size: 10, weight: 'bold' }
                         }
                     },

@@ -90,6 +90,7 @@ def test_load_user_plan(session: Session, phase_context: PlanLoaderPhaseContext)
         phase_id=phase_context.phase.id,
         week_start=monday,
         raw_content="# Weekly Plan",
+        workout_data=[{"day": "Tuesday", "workout_name": "Intervals", "segments": []}],
         prompt_history=[{"role": "user", "content": "hi"}],
     )
     session.add(plan)
@@ -111,6 +112,7 @@ def test_load_user_plan(session: Session, phase_context: PlanLoaderPhaseContext)
     assert loaded.prompt == [{"role": "user", "content": "hi"}]
     assert loaded.delivery_status is None
     assert loaded.delivery_last_error is None
+    assert loaded.workout_data[0]["workout_name"] == "Intervals"
 
 
 def test_load_user_plan_sanitizes_persisted_markdown(session: Session, phase_context: PlanLoaderPhaseContext) -> None:

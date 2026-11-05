@@ -1,18 +1,16 @@
-{% from "macros/theme.html" import render_theme_switcher %}
+{% from "macros/app_nav.html" import app_nav %}
 <!DOCTYPE html>
 <html>
 
 <head>
     <title>Planning Error</title>
-    <link rel="stylesheet" id="theme-stylesheet" href="/static/tailwind-pro.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/tailwind-light.css">
 </head>
 
 <body class="font-sans">
-    <div class="container max-w-3xl mx-auto p-8 rounded-lg shadow-md mt-10">
-        <nav class="flex justify-between items-center mb-6">
-            <a href="/" class="control-nav-link">Home</a>
-            {{ render_theme_switcher() }}
-        </nav>
+    <main class="container">
+        {{ app_nav("planner") }}
 
         <section class="planner-card rounded-xl p-6">
             <h1 class="text-2xl font-bold text-slate-900">Planning error</h1>
@@ -22,7 +20,7 @@
                 <a href="/" class="control-button control-button-primary inline-flex px-4 py-3 text-sm">Back to Home</a>
             </div>
         </section>
-    </div>
+    </main>
 </body>
 
 </html>
