@@ -441,25 +441,25 @@ def test_dashboard_flow(  # ruff: ignore[too-many-arguments, too-many-positional
     # THEN it should render successfully and contain widget info
     assert resp.status_code == 200
     body_text = bytes(resp.body).decode()
-    assert "Performance Center" in body_text
-    assert "control-surface" in body_text
-    assert "Plan impact" in body_text
-    assert "Headline trends" in body_text
-    assert "Supporting evidence" in body_text
+    assert "Your training rhythm" in body_text
+    assert "Training load" in body_text
+    assert "Recovery signals" in body_text
+    assert "Supporting detail" in body_text
     assert "More charts and comparisons" not in body_text
     assert "control-toggle-group" in body_text
-    assert "Open Planner" in body_text
+    assert "Open plan" in body_text
+    assert 'class="next-session-day"' in body_text
+    assert "Start with a fresh plan." in body_text
     assert "Recent Training" in body_text
-    assert "Performance Management" in body_text
-    assert "Wellness Trends" in body_text
-    assert body_text.index("Headline trends") < body_text.index("Performance Management")
-    assert body_text.index("Performance Management") < body_text.index("Supporting evidence")
-    assert body_text.index("Wellness Trends") < body_text.index("Supporting evidence")
+    assert "Heart rate variability" in body_text
+    assert "Training intensity" in body_text
+    assert body_text.index("Your training rhythm") < body_text.index("Training load")
+    assert body_text.index("Training load") < body_text.index("Recovery signals")
+    assert body_text.index("Recovery signals") < body_text.index("Supporting detail")
     assert "100 TSS" in body_text
-    assert "Training Intensity" in body_text
     assert "Highly Polarized" in body_text
-    assert "Critical Power Heatmap" in body_text
-    assert "Weekly Volume" in body_text
+    assert "Power curve" in body_text
+    assert "Weekly volume" in body_text
     assert "Recent Activity History" in body_text
     assert "Weekly Plan" not in body_text
 
