@@ -209,7 +209,7 @@ def _load_dashboard_and_change_range(page: Page, base_url: str) -> None:
     # GIVEN fixture-backed activity, wellness, and power-curve data.
     page.goto(f"{base_url}/dashboard", wait_until="domcontentloaded")
     expect(page.get_by_role("heading", name="Build your next strong season.")).to_be_visible()
-    expect(page.get_by_text("Analysis window")).to_be_visible()
+    expect(page.get_by_text("Analysis window", exact=True)).to_be_visible()
 
     # WHEN the browser changes the dashboard analysis range slider.
     page.locator("#daysSlider").evaluate(
@@ -222,7 +222,7 @@ def _load_dashboard_and_change_range(page: Page, base_url: str) -> None:
 
     # THEN the dashboard should transition to the selected range URL and update its label.
     page.wait_for_url(f"{base_url}/dashboard?days=14")
-    expect(page.locator("#daysValue")).to_have_text("14 Days")
+    expect(page.locator("#daysValue")).to_have_text("14 days")
 
 
 def _load_settings_and_save_preferences(page: Page, base_url: str) -> None:
