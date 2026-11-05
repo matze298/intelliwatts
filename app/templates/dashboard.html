@@ -7,6 +7,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard · IntelliWatts</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/tailwind-light.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -15,9 +18,9 @@
     {{ app_nav("dashboard") }}
     <header class="dashboard-masthead">
         <div>
-            <p class="eyebrow">Performance overview <span aria-hidden="true">/</span> Training profile</p>
-            <h1 class="mt-2 mb-2">Training at a glance</h1>
-            <p class="dashboard-lede">See how your load is moving, how you’re recovering, and what’s on the plan.</p>
+            <p class="eyebrow">Your training, in perspective</p>
+            <h1 class="mt-2 mb-2">Build your next<br><em>strong season.</em></h1>
+            <p class="dashboard-lede">A clear read on your training load, recovery, and the work ahead.</p>
         </div>
         <div class="dashboard-tools">
             <label class="dashboard-range" for="daysSlider">
@@ -30,11 +33,26 @@
     </header>
 
     <section aria-labelledby="training-heading" class="mb-10">
-        <div class="dashboard-section-heading"><div><p class="eyebrow">Training</p><h2 id="training-heading">How training is going</h2></div><span class="section-note">Load &amp; performance</span></div>
+        <div class="dashboard-section-heading"><div><p class="eyebrow">The big picture</p><h2 id="training-heading">Your training rhythm</h2></div><span class="section-note">Last {{ display_days }} days</span></div>
         {% set basic_widgets = analysis.widgets | rejectattr("custom_template") | list %}
         {% if basic_widgets %}<div class="dashboard-metrics">{% for widget in basic_widgets %}{{ render_widget(widget) }}{% endfor %}</div>{% endif %}
         {% set pmc_widgets = analysis.widgets | selectattr("name", "equalto", "pmc") | list %}
-        {% for widget in pmc_widgets %}<div class="dashboard-load-chart">{{ render_widget(widget) }}</div>{% endfor %}
+        <div class="dashboard-overview-grid">
+            <div class="dashboard-load-chart">{% for widget in pmc_widgets %}{{ render_widget(widget) }}{% endfor %}</div>
+            <aside aria-labelledby="next-heading" class="next-session">
+                <div class="next-session-kicker"><span class="eyebrow">On your plan</span><span class="next-session-index" aria-hidden="true">UP NEXT</span></div>
+                {% if next_workout %}
+                <div class="next-session-day">{{ next_workout.day }}{% if next_workout.duration_minutes %}<span>{{ next_workout.duration_minutes }} min</span>{% endif %}</div>
+                <h2 id="next-heading">{{ next_workout.name }}</h2>
+                {% if next_workout.description %}<p class="next-session-description">{{ next_workout.description }}</p>{% endif %}
+                <a href="/" class="next-session-action">Review this week <span aria-hidden="true">↗</span></a>
+                {% elif has_weekly_plan %}
+                <div class="next-session-day">A well-earned pause</div><h2 id="next-heading">That’s this week covered.</h2><p class="next-session-description">No structured workouts remain in this week’s plan.</p><a href="/" class="next-session-action">Review this week <span aria-hidden="true">↗</span></a>
+                {% else %}
+                <div class="next-session-day">Ready when you are</div><h2 id="next-heading">Start with a fresh plan.</h2><p class="next-session-description">Shape a week around your goals and available time.</p><a href="/" class="next-session-action">Create this week’s plan <span aria-hidden="true">↗</span></a>
+                {% endif %}
+            </aside>
+        </div>
         {% if not analysis.widgets %}
         {% call render_state_banner("No dashboard data yet", tone="empty") %}Sync activities and wellness data to populate your trends.{% endcall %}
         {% endif %}
@@ -46,22 +64,6 @@
         <div class="dashboard-recovery">{% for widget in recovery_widgets %}{{ render_widget(widget) }}{% else %}
         {% call render_state_banner("Recovery data unavailable", tone="empty") %}Sync wellness data to see HRV, resting heart rate and sleep trends.{% endcall %}
         {% endfor %}</div>
-    </section>
-
-    <section aria-labelledby="next-heading" class="next-session mb-10">
-        <div class="next-session-kicker"><span class="eyebrow">Your plan</span><span class="next-session-index" aria-hidden="true">NEXT SESSION&nbsp; / &nbsp;01</span></div>
-        <h2 id="next-heading">What to train next</h2>
-        {% if next_workout %}
-        <div class="next-session-body">
-            <div class="next-session-day"><span>{{ next_workout.day }}</span>{% if next_workout.duration_minutes %}<span>{{ next_workout.duration_minutes }} <small>MIN</small></span>{% endif %}</div>
-            <div class="next-session-copy"><h3>{{ next_workout.name }}</h3>{% if next_workout.description %}<p>{{ next_workout.description }}</p>{% endif %}</div>
-            <a href="/" class="control-button next-session-action">Review this week <span aria-hidden="true">↗</span></a>
-            </div>
-        {% elif has_weekly_plan %}
-        <div class="next-session-body"><div class="next-session-copy"><h3>That’s this week covered.</h3><p>No structured workouts remain in this week's plan.</p></div><a href="/" class="control-button next-session-action">Review this week <span aria-hidden="true">↗</span></a></div>
-        {% else %}
-        <div class="next-session-body"><div class="next-session-copy"><h3>A fresh week starts here.</h3><p>There is no saved plan for this week yet.</p></div><a href="/" class="control-button next-session-action">Create this week's plan <span aria-hidden="true">↗</span></a></div>
-        {% endif %}
     </section>
 
     {% set supporting_widgets = analysis.widgets | selectattr("custom_template") | rejectattr("name", "equalto", "pmc") | rejectattr("name", "equalto", "wellness") | list %}
