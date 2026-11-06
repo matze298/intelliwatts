@@ -446,3 +446,51 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 
 
 /* Keep the taller intensity visualization independent of the expanded history row. */
+
+
+/* Selected IntelliWatts artwork: road cyclist, brain rear wheel, lightning front wheel. */
+.app-nav .app-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 4px 2px 22px;
+  text-decoration: none;
+}
+.app-brand-art {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 138px;
+  height: 86px;
+  overflow: hidden;
+}
+.app-brand-art img {
+  position: absolute;
+  display: block;
+  width: 148px;
+  max-width: none;
+  height: 148px;
+  top: -16px;
+  left: -5px;
+  mix-blend-mode: multiply;
+}
+.app-brand-name {
+  color: var(--iw-ink);
+  font-family: "DM Serif Display", Georgia, serif;
+  font-size: 1.34rem;
+  line-height: 1.15;
+  letter-spacing: -.045em;
+  font-weight: 400;
+}
+@media (max-width: 890px) {
+  .app-nav .app-brand {
+    flex-direction: row;
+    align-items: center;
+    gap: 3px;
+    padding: 0;
+  }
+  .app-brand-art { width: 57px; height: 43px; }
+  .app-brand-art img { width: 72px; height: 72px; top: -9px; left: -8px; }
+  .app-brand-name { font-size: 1.08rem; }
+}
