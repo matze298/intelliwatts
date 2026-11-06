@@ -174,6 +174,6 @@ INTELLIWATTS_CAPTURE_SCREENSHOTS=1 uv run pytest tests/routes/test_browser_pages
 ```
 
 It writes `docs/screenshots/ui-planner-desktop.png`, `ui-planner-mobile.png`,
-`ui-dashboard-desktop.png`, and `ui-dashboard-mobile.png`. The screenshot CI workflow captures
-them once for the UI refresh branch and commits the images to the PR; delete them to deliberately
-refresh them after further visual changes. This fixture output is for visual QA only, not live personal data.
+`ui-dashboard-desktop.png`, and `ui-dashboard-mobile.png`. These images were captured using Playwright against the running FastAPI test fixture and committed
+under `docs/screenshots/` for review. Rerun the command and commit updated images when the UI
+changes. This fixture output is for visual QA only, not live personal data.
