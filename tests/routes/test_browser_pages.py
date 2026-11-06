@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import socket
 import threading
 import time
@@ -231,3 +232,50 @@ def _load_settings_and_save_preferences(page: Page, base_url: str) -> None:
     page.get_by_label("Enable developer mode").check()
     page.get_by_role("button", name="Save Preferences").click()
     expect(page.get_by_text("LLM prompt")).to_be_visible()
+
+
+@pytest.mark.skipif(
+    os.getenv("INTELLIWATTS_CAPTURE_SCREENSHOTS") != "1",
+    reason="Explicitly opt in to refreshing screenshot fixtures.",
+)
+def test_capture_ui_reference_screenshots(browser_server: BrowserServer) -> None:
+    """Capture actual desktop/mobile FastAPI pages with anonymized fixture data."""
+    # GIVEN the real running app with test credentials and fixture-backed training data.
+    screenshot_dir = Path("docs/screenshots")
+    screenshot_dir.mkdir(parents=True, exist_ok=True)
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        context = browser.new_context(viewport={"width": 1440, "height": 960}, device_scale_factor=1)
+        page = context.new_page()
+        page.goto(f"{browser_server.base_url}/login", wait_until="domcontentloaded")
+        page.get_by_label("Master password").fill(get_settings().APP_PASSWORD)
+        page.get_by_role("button", name="Sign in").click()
+        expect(page.get_by_role("heading", name="Goal & planning horizon")).to_be_visible()
+
+        # WHEN rendering the actual planner and dashboard at desktop and phone sizes.
+        for width, height, suffix in ((1440, 960, "desktop"), (390, 844, "mobile")):
+            page.set_viewport_size({"width": width, "height": height})
+            for route, screen in (("/", "planner"), ("/dashboard?days=42", "dashboard")):
+                page.goto(f"{browser_server.base_url}{route}", wait_until="domcontentloaded")
+                if screen == "dashboard":
+                    page.locator("#daysValue").wait_for()
+                    page.wait_for_function(
+                        "() => typeof window.IWCharts !== 'undefined' && typeof window.Chart !== 'undefined'",
+                        timeout=15000,
+                    )
+                    # Allow remote fonts, chart canvas layout, and data series to settle.
+                    page.locator("#pmcChart").wait_for()
+                    page.evaluate("document.fonts.ready")
+                    page.wait_for_timeout(500)
+                    assert page.evaluate("IWCharts.weekLabel('28.09', false)") != "Date unavailable"
+                page.screenshot(
+                    path=str(screenshot_dir / f"ui-{screen}-{suffix}.png"),
+                    full_page=True,
+                    animations="disabled",
+                )
+                # THEN no viewport has an unintended horizontal overflow.
+                assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), (
+                    f"{screen} overflows at {width}px"
+                )
+        browser.close()
