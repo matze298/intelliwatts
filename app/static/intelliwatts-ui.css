@@ -347,7 +347,8 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 .next-session-action { padding: 11px; }
 .dashboard-recovery { gap: 11px; }
 .dashboard-recovery .chart-card, .wellness-sleep { padding: 12px 15px !important; }
-.dashboard-recovery .chart-frame, .wellness-sleep .chart-frame { height: 103px; margin-top: 6px; }
+/* Reserve enough vertical space to compare daily recovery values at a glance. */
+.dashboard-recovery .chart-frame, .wellness-sleep .chart-frame { height: clamp(195px, 16vw, 225px); margin-top: 10px; }
 .dashboard-recovery .chart-card h3, .wellness-sleep h3 { font-size: .86rem !important; }
 .dashboard-recovery .chart-card p, .wellness-sleep p { font-size: .7rem; }
 .page-masthead h1 { font-size: clamp(2.55rem,3.7vw,3.8rem); margin: 0 0 5px; }
@@ -410,7 +411,7 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
   .dashboard-metrics .stat-card:only-child .stat-trend { margin: 0; }
   .dashboard-load-chart .chart-frame { height: 170px; }
   .dashboard-load-chart .chart-frame.chart-frame-short { height: 77px; }
-  .dashboard-recovery .chart-frame, .wellness-sleep .chart-frame { height: 120px; }
+  .dashboard-recovery .chart-frame, .wellness-sleep .chart-frame { height: 215px; }
   .dashboard-overview-grid .next-session-day { margin: 13px 0 10px; }
   .planner-goal-card, .planner-controls-card { padding: 18px !important; }
   .planner-goal-card { min-height: 0; }
