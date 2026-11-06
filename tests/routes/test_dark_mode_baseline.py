@@ -82,9 +82,9 @@ class SampleIntervalsClient(FixtureIntervalsClient):
         ]
 
 
-def test_capture_baseline(browser_server: BrowserServer, monkeypatch: object) -> None:
-    """Capture actual Planner and Dashboard before dark-mode changes."""
-    # GIVEN the app running the code on main with synthetic fixture data.
+def test_capture_dark_mode(browser_server: BrowserServer, monkeypatch: object) -> None:
+    """Capture actual Planner and Dashboard in the dark theme."""
+    # GIVEN the real app running with synthetic training and wellness data.
     from pytest import MonkeyPatch
 
     assert isinstance(monkeypatch, MonkeyPatch)
@@ -101,7 +101,14 @@ def test_capture_baseline(browser_server: BrowserServer, monkeypatch: object) ->
         page.get_by_label("Master password").fill(get_settings().APP_PASSWORD)
         page.get_by_role("button", name="Sign in").click()
         page.get_by_role("heading", name="Goal & planning horizon").wait_for()
-        # WHEN capturing the current design at desktop and mobile widths.
+        # WHEN the user selects dark mode and moves between pages.
+        page.locator("#theme-toggle").click()
+        assert page.evaluate("document.documentElement.dataset.theme") == "dark"
+        assert page.locator("#theme-toggle").get_attribute("aria-pressed") == "true"
+        page.reload(wait_until="domcontentloaded")
+        assert page.evaluate("document.documentElement.dataset.theme") == "dark"
+
+        # THEN capture the dark theme at desktop and mobile widths.
         for width, height, suffix in ((1440, 960, "desktop"), (390, 844, "mobile")):
             page.set_viewport_size({"width": width, "height": height})
             for name, route in (("dashboard", "/dashboard?days=42"), ("planner", "/")):
@@ -112,13 +119,27 @@ def test_capture_baseline(browser_server: BrowserServer, monkeypatch: object) ->
                         "() => typeof Chart !== 'undefined' && Boolean(Chart.getChart(document.querySelector('#pmcChart')))",
                         timeout=15000,
                     )
+                assert page.evaluate("document.documentElement.dataset.theme") == "dark"
+                assert page.locator("#theme-toggle").get_attribute("aria-pressed") == "true"
+                assert page.evaluate("""() => {
+                    const image = document.querySelector(".app-brand-art img");
+                    return image && image.complete && image.naturalWidth > 0;
+                }""")
+                if name == "dashboard":
+                    assert page.evaluate("""() => {
+                        const chart = Chart.getChart(document.querySelector("#pmcChart"));
+                        return chart.options.scales.y.ticks.color === "#a6c5bd";
+                    }""")
                 page.evaluate("document.fonts.ready")
                 page.evaluate("window.scrollTo(0,0)")
                 page.screenshot(
-                    path=str(output / f"dark-mode-baseline-{name}-{suffix}.png"),
+                    path=str(output / f"dark-mode-actual-{name}-{suffix}.png"),
                     full_page=True,
                     animations="disabled",
                 )
                 # THEN the page should fit the viewport.
                 assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
+        # The explicit preference can also return to light without losing the session.
+        page.locator("#theme-toggle").click()
+        assert page.evaluate("document.documentElement.dataset.theme") == "light"
         browser.close()
