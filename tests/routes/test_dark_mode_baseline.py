@@ -131,6 +131,13 @@ def test_capture_dark_mode(browser_server: BrowserServer, monkeypatch: object) -
                         return chart.options.scales.y.ticks.color === "#a6c5bd";
                     }""")
                     assert page.locator("#hrv-reading").is_visible()
+                    if width == 1440:
+                        assert page.evaluate("""() => {
+                            const panel = document.querySelector(
+                                '[data-widget-name="intensity"] .chart-card'
+                            );
+                            return panel && panel.getBoundingClientRect().height < 440;
+                        }""")
                     if width == 390:
                         assert page.evaluate("""() => {
                             const hours = document.querySelector('#toggle-hours').getBoundingClientRect();
