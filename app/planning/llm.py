@@ -16,16 +16,15 @@ from google.genai.types import (
 )
 from openai import OpenAI
 
-from app.config import get_settings
+from app.config import LanguageModel, get_settings
 from app.planning.coach_prompt import SYSTEM_PROMPT
 from app.planning.schemas import WeeklyPlanOutput
 
 if TYPE_CHECKING:
     from openai.types.chat import ChatCompletionMessageParam
 
-    from app.config import LanguageModel
-
 MODEL_REQUEST_TIMEOUT_SECONDS = 120
+GROQ_API_BASE_URL = "https://api.groq.com/openai/v1"
 
 
 class LLMRole(StrEnum):
@@ -68,6 +67,14 @@ def generate_plan(
         The training plan.
     """
     secrets = get_settings()
+    if language_model == LanguageModel.GROQ_GPT_OSS_120B:
+        return call_gpt(
+            messages,
+            api_key=secrets.GROQ_API_KEY,
+            model=language_model,
+            base_url=GROQ_API_BASE_URL,
+        )
+
     if "gpt" in language_model:
         return call_gpt(messages, api_key=secrets.OPENAI_API_KEY, model=language_model)
 
@@ -78,32 +85,43 @@ def generate_plan(
     raise NotImplementedError(msg)
 
 
-def call_gpt(messages: list[dict[str, str]], api_key: str | None, model: LanguageModel) -> LLMResponse:
-    """Sends a prompt to the GPT model.
+def call_gpt(
+    messages: list[dict[str, str]],
+    api_key: str | None,
+    model: LanguageModel,
+    base_url: str | None = None,
+) -> LLMResponse:
+    """Sends a prompt to an OpenAI-compatible chat completions model.
 
     Returns:
         The text response and the prompt.
     """
     messages_tuple = tuple(LLMMessage(LLMRole(m["role"]), m["content"]) for m in messages)
-    return _call_gpt_cached(messages_tuple, api_key, model)
+    return _call_gpt_cached(messages_tuple, api_key, model, base_url)
 
 
 @lru_cache
-def _call_gpt_cached(messages_tuple: tuple[LLMMessage, ...], api_key: str | None, model: LanguageModel) -> LLMResponse:
-    """Sends a prompt to the GPT model (cached version).
+def _call_gpt_cached(
+    messages_tuple: tuple[LLMMessage, ...],
+    api_key: str | None,
+    model: LanguageModel,
+    base_url: str | None = None,
+) -> LLMResponse:
+    """Sends a prompt to an OpenAI-compatible model (cached version).
 
     Returns:
         The text response and the prompt.
 
     Raises:
-        RuntimeError: if the API key is not set
+        RuntimeError: If the provider API key is not set.
     """
     if not api_key:
-        msg = "OPENAI_API_KEY must be set if using GPT!"
+        key_name, provider = ("GROQ_API_KEY", "Groq") if base_url == GROQ_API_BASE_URL else ("OPENAI_API_KEY", "OpenAI")
+        msg = f"{key_name} must be set if using {provider}!"
         raise RuntimeError(msg)
 
     messages = [{"role": m.role, "content": m.content} for m in messages_tuple]
-    client = OpenAI(api_key=api_key, timeout=MODEL_REQUEST_TIMEOUT_SECONDS, max_retries=0)
+    client = OpenAI(api_key=api_key, base_url=base_url, timeout=MODEL_REQUEST_TIMEOUT_SECONDS, max_retries=0)
     response = client.chat.completions.parse(
         model=model,
         messages=cast("list[ChatCompletionMessageParam]", messages),
@@ -112,7 +130,7 @@ def _call_gpt_cached(messages_tuple: tuple[LLMMessage, ...], api_key: str | None
     )
     output = response.choices[0].message.parsed
     if output is None:
-        msg = "GPT returned no structured plan output"
+        msg = "Model returned no structured plan output"
         raise RuntimeError(msg)
 
     return LLMResponse(
