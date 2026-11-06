@@ -1,180 +1,124 @@
 # IntelliWatts
-IntelliWatts is a personal cycling coach that parses your training data from intervals.icu and generates a weekly training plan for you using an LLM of your choice.
 
-It is customizable in terms of:
-- Training goals
-- Weekly training volume
-- Readiness & Recovery (HRV, Resting HR, Wellness)
-- Available measurements
-  - HR measurements
-  - Power measurements
+IntelliWatts is a personal cycling training application. It imports workout and wellness data from [Intervals.icu](https://intervals.icu), displays performance and recovery metrics, and generates structured weekly training plans with an LLM.
 
-Current supported LLMs:
-- OpenAI ChatGPT (requires subscription!)
-- Google Gemini (free tier available!)
-
-## Hosted app
-
-- [IntelliWatts](https://intelliwatts.onrender.com) (password required)
-- [Health check](https://intelliwatts.onrender.com/health)
-
-## Build Status
 [![Gatekeeper](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml/badge.svg?branch=main)](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml)
-[![codecov](https://codecov.io/github/matze298/intelliwatts/graph/badge.svg?token=HC93HLOWOB)](https://codecov.io/github/matze298/intelliwatts)
+[![codecov](https://codecov.io/github/matze298/intelliwatts/graph/badge.svg)](https://codecov.io/github/matze298/intelliwatts)
 
+## Application
 
+The web application has three primary views:
 
+| View | Route | Features |
+|---|---|---|
+| Plan | `/` | Long-term goals, target date, weekly hours and session limits, model selection, recovery-data inclusion, plan generation and publishing |
+| Dashboard | `/dashboard` | Training load (CTL, ATL, TSB), HRV, resting heart rate, sleep, activity mix, weekly volume, power curve, intensity distribution and recent activities |
+| Settings | `/settings` | Training and model preferences, including developer-mode options |
 
+The Dashboard supports a selectable analysis window of 7–90 days. Recent activity history shows five sessions initially, with older sessions available through an expandable list. Cycling activities are displayed as **Cycling**.
 
-> [!IMPORTANT] 
-> The app is currently limited to personal usage as it uses the athlete ID and personal API-Token to parse intervals.icu.
+The interface uses server-rendered Jinja2 templates, Tailwind CSS, the IntelliWatts stylesheet, and Chart.js. It supports desktop and mobile layouts.
 
-# Initial SetUp
-API Tokens are used to authenticate with the respective APIs (Intervals.icu, OpenAI, Google Gemini). For local development, they are stored in the `.env` file which **must not be shared publicly**. For all required keys, check the `.env.example` file.
-Set API keys in environment variables or the local `.env` file.
+## Integrations
 
-## Intervals.icu
-Authentication to intervals.icu is required to parse past workouts.
-Go to https://intervals.icu/settings `Settings -> Dev --> API-Key` and set `INTERVALS_API_KEY` and `INTERVALS_ATHLETE_ID` in `.env`.
+- **Intervals.icu:** Activity, power, training-stress and wellness data, and workout publishing.
+- **OpenAI:** Plan generation with configured OpenAI API credentials.
+- **Google Gemini:** Plan generation with configured Gemini API credentials.
 
-## Language Model
-The API key for the language model selected must be set correctly via `.env` or environment variables. The default model is Gemini Flash which provides free usage.
+The selected model, prompt overrides and relevant training preferences are configurable through application settings. External API access requires the corresponding credentials.
 
-### OpenAI (optional)
-1. Open https://platform.openai.com/api-keys
-2. `Create new secret key`
-3. Set `OPENAI_API_KEY` in `.env` to your key
+## Requirements
 
-### Google Gemini (optional)
-1. Open https://aistudio.google.com/api-keys
-2. Click "Create API Key"
-3. Set `GEMINI_API_KEY` in `.env` to your key.
+- Python 3.14 or newer
+- `uv`
+- PostgreSQL
+- Node.js and npm for building CSS assets
+- Intervals.icu API key and athlete ID
+- At least one supported LLM API key
 
+## Configuration
 
-# Usage
-## Hosted deployments
-Set `APP_PASSWORD` to a strong unique password, `SESSION_SECRET` to a generated random value, and `APP_ORIGIN` to your exact HTTPS origin (for example `https://your-app.onrender.com`) in Render environment variables. Generate the session secret with `python -c "import secrets; print(secrets.token_urlsafe(32))"`; keep it stable across restarts and store it as a secret. It signs the session cookie and is not a JWT key. `SESSION_COOKIE_SECURE` defaults to true. For local HTTP development only, set `APP_ORIGIN=http://localhost:8000` and `SESSION_COOKIE_SECURE=false`. Sessions last 12 hours; changing the password or session secret invalidates them. Login attempts are limited per process, so this guard is intended for a single-instance deployment.
+Copy `.env.example` to `.env` and configure the values required for your installation. Do not commit `.env` or API tokens.
 
-Set `DATABASE_URL` to the connection URL for a persistent PostgreSQL database, such as a free Neon database. Use the provider's TLS-enabled URL and keep it in the hosting service's secrets; the app requires this setting and never falls back to local storage. Existing SQLite databases and the former migration history are not upgraded automatically. This release starts with a fresh PostgreSQL schema; retain any old database files separately if you need their data.
+| Setting | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection URL |
+| `APP_PASSWORD` | Password for the web interface |
+| `SESSION_SECRET` | Random secret used to sign session cookies |
+| `APP_ORIGIN` | Public HTTPS origin or `http://localhost:8000` for local development |
+| `INTERVALS_API_KEY` | Intervals.icu API key |
+| `INTERVALS_ATHLETE_ID` | Intervals.icu athlete ID |
+| `OPENAI_API_KEY` | OpenAI credential when using OpenAI |
+| `GEMINI_API_KEY` | Gemini credential when using Gemini |
+| `LANGUAGE_MODEL` | Default language-model selection |
+| `SESSION_COOKIE_SECURE` | Secure cookie setting; use `false` only with local HTTP |
 
-## Via Local WebApp (Dev)
+Generate a session secret with:
 
-1. **Configure app settings:** Copy `.env.example` to `.env`, then set the required password, generated session secret and API credentials.
-2. **Link the Neon project:** Run `neon link --project-id flat-credit-25097795` and select the `development` branch.
-3. **Set the development database URL:** Run `neon connection-string development` and put its direct connection URL in `.env` as `DATABASE_URL`. Keep it private. (Neon's `env pull` provides both pooled and direct variables; this app uses the direct URL for both queries and migrations.)
-4. **Set up the environment:** Run `./setup.sh` to install dependencies.
-5. **Start the app:** Run `./run.sh`, then open `http://localhost:8000/`. The direct URL is used for app queries and Alembic migrations.
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 
-For tests, use a separate disposable PostgreSQL database or Neon branch through `TEST_DATABASE_URL`; do not run tests against production. In Render, set `DATABASE_URL` to the Neon direct URL; also provide `INTERVALS_ATHLETE_ID`, `INTERVALS_API_KEY`, and `LANGUAGE_MODEL`. Add the API key for the selected model (`OPENAI_API_KEY` or `GEMINI_API_KEY`).
+The app uses a shared password and a signed session cookie. Sessions last 12 hours. The installed instance is intended for a single athlete profile.
 
-## Via FastAPI (Dev)
-1. Run `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` to start the FastAPI server.
-2. Call `curl -X POST http://localhost:8000/api/generate-plan` to retrieve the request.
-
-## Via Python (Dev)
-1. Run `python app/main.py` to generate the training plan.
-
-# Local Development Setup
-To set up the local DevEnv, run the `setup.sh` script in your project's root directory:
+## Local development
 
 ```bash
 ./setup.sh
+uv run alembic upgrade head
+./run.sh
 ```
 
-This script will:
-- Create and activate a Python virtual environment.
-- Install Python dependencies using `uv`.
-- Install pre-commit hooks.
+Open `http://localhost:8000/` and sign in with `APP_PASSWORD`.
 
-## Updating npm Packages Manually
-To refresh the npm dependencies and `package-lock.json` to the latest versions allowed by `package.json`, run this from the project root:
+FastAPI can also be started directly:
 
 ```bash
-npm update
+uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-This is the manual equivalent of a lockfile upgrade pass and is the command used when you want to update all npm packages in one go.
+A hosted instance is available at [intelliwatts.onrender.com](https://intelliwatts.onrender.com) (password required). The health endpoint is `GET /health`.
 
-Before merging an npm upgrade, the StepSecurity `NPM Package Cooldown` check should be configured to a 7-day window in the StepSecurity dashboard. That keeps newly published package versions in a cooldown period long enough to reduce supply-chain risk before the updated lockfile is accepted.
+## Database
 
-## Running Tests
-Install the Python test extra and Playwright browser, then run the suite against a disposable PostgreSQL database or a separate Neon test branch. Set `TEST_DATABASE_URL` to its direct connection URL; never point tests at production or the development branch.
+IntelliWatts stores plans, preferences and application state in PostgreSQL using SQLModel/SQLAlchemy. Alembic manages schema migrations.
 
-```bash
-uv sync --extra dev --extra test
-uv run playwright install chromium
-TEST_DATABASE_URL="postgresql://user:password@host/database?sslmode=require" uv run pytest tests/
-```
-
-# Settings
-The settings for the app are defined in `app/config.py`. There are three types of settings:
-
-1. Settings that can be updated via the App interface (e.g., `developer_mode_enabled`, prompt overrides, `weekly_hours`, `weekly_sessions`).
-2. Settings that are managed via `.env` or environment variables (e.g., `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
-3. Settings that are hardcoded and cannot be changed (e.g., `CACHE_INTERVALS_HOURS`).
-
-
-# Database & Persistence
-This application uses PostgreSQL through **SQLModel** and **SQLAlchemy**, with **Alembic** for schema changes. The local Docker volume persists data across container restarts; use a managed PostgreSQL provider for hosted persistence and maintain independent backups.
-
-The migration history was reset for the PostgreSQL transition. Databases created from the former SQLite migration chain are not compatible with this baseline; no old data is automatically imported or deleted. Use a new database for this version.
-
-For backups, use `pg_dump` with a standard `postgresql://` connection URL and store the dump outside the application host. Verify restoration into a separate empty database with `pg_restore`. Provider backup and restore features vary by plan; do not assume a free database includes automatic backups.
-
-## Why Alembic?
-As the application grows, we frequently add new features that require database changes (e.g., Task 6 added persistent user training preferences). Managing these changes manually is error-prone and can lead to data loss or inconsistent environments.
-
-Alembic provides:
-1.  **Version Control for Data**: Every schema change is captured in a migration script, allowing us to track *how* and *when* the database evolved.
-2.  **Safety**: Migrations make schema changes explicit and reviewable; keep backups before upgrades.
-3.  **Consistency**: Ensures that all environments (Local Dev, CI/CD, Production) are running exactly the same database structure.
-4.  **Auto-generation**: Alembic can automatically detect changes in our `SQLModel` classes and generate the necessary migration code for us.
-
-In practice, we treat `--autogenerate` as a starting point. Review the draft migration, then hand-edit it as needed for conditional upgrades, backfills, or other repo-specific schema history.
-
-## Running Migrations
-When you pull new changes, you should always sync your local database with the latest schema:
 ```bash
 uv run alembic upgrade head
 ```
 
-For developers creating new models or modifying existing ones:
-1.  Update your `SQLModel` in `app/models/`.
-2.  Generate a new migration script: `uv run alembic revision --autogenerate -m "describe_your_change"`.
-3.  Review and adjust the generated script in `migrations/versions/` before committing it.
-4.  Apply the change: `uv run alembic upgrade head`.
+Database backups can be created with `pg_dump` and restored with `pg_restore`. Store backups separately from the application host.
 
-# Web Page Style & Themes
-This application uses [Tailwind CSS](https://tailwindcss.com/) for its styling, processed via PostCSS.
-To generate the static css files, execute the `build_tailwind.sh` script. This script will **build Tailwind CSS assets for all available themes**, generating `app/static/tailwind-<theme>.css`
+## CSS assets
 
-Currently available themes are:
-1.  **Retro90s (Default)**: A nostalgic, terminal-inspired look with a dark background, neon pink text, and light blue accents.
-2.  **Minimalistic**: A clean, accessible design with a light background and subtle colors.
-
-The themes are defined in `app/static/style-<theme>.css`.
-Switching themes is managed entirely on the client-side via a dropdown menu.
-
-## Performance cockpit UI
-
-The planner and dashboard use the existing FastAPI + Jinja2 + Tailwind setup with a small unbundled
-stylesheet (`app/static/intelliwatts-ui.css`) and Chart.js formatting helpers
-(`app/static/chart-quality.js`). No React application or backend rewrite is required.
-
-The sidebar now includes a dedicated `/analysis` screen, reusing the dashboard's supporting metrics with a more spacious analysis layout.
-Activity types retain their original intervals.icu identifiers in storage while displaying
-friendly names (for example, Ride is shown as Cycling).
-
-### Capture actual browser screenshots
-
-The opt-in Playwright test runs the FastAPI application with anonymized fixture data:
+Tailwind CSS assets are generated from the styles under `app/static/` and the application templates. The current web UI loads `app/static/tailwind-light.css` followed by `app/static/intelliwatts-ui.css`.
 
 ```bash
-INTELLIWATTS_CAPTURE_SCREENSHOTS=1 uv run pytest tests/routes/test_browser_pages.py::test_capture_ui_reference_screenshots -q
+npm ci
+npm run build:css
 ```
 
-It writes desktop/mobile screenshots for `planner`, `dashboard`, and `analysis`
-(e.g. `docs/screenshots/ui-analysis-desktop.png`). The visual fixture covers a reproducible
-42-day history and uses the original FastAPI routes, not a screenshot mockup. These images were captured using Playwright against the running FastAPI test fixture and committed
-under `docs/screenshots/` for review. Rerun the command and commit updated images when the UI
-changes. This fixture output is for visual QA only, not live personal data.
+The generated CSS files are committed to the repository and checked by CI.
+
+## Tests
+
+Use a disposable PostgreSQL database or a separate test database/branch. Set `TEST_DATABASE_URL` to its connection URL.
+
+```bash
+uv sync --extra dev --extra test
+uv run playwright install chromium
+TEST_DATABASE_URL="postgresql://user:password@host/test_database" uv run pytest tests/
+```
+
+GitHub Actions **Gatekeeper** runs linting, unit/browser tests and a CSS-build consistency check. It does not generate or commit screenshots.
+
+## Manual browser screenshots
+
+A standalone Playwright utility is available at `scripts/capture_ui_screenshots.py`. It captures Planner and Dashboard at desktop and mobile widths from a running local IntelliWatts instance.
+
+```bash
+export INTELLIWATTS_SCREENSHOT_PASSWORD="your-local-app-password"
+uv run python scripts/capture_ui_screenshots.py --base-url http://127.0.0.1:8000
+```
+
+Output is written to `artifacts/ui-screenshots/`, which is gitignored. Captures can contain personal training and wellness data. Agent-specific instructions are in [AGENTS.md](AGENTS.md).
