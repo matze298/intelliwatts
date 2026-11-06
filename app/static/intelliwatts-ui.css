@@ -488,3 +488,12 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 .activity-history-card .activity-history-more[open] > .activity-history-more-toggle span { transform: rotate(180deg); }
 .activity-history-card .activity-history-extra { display: grid; gap: 8px; margin-top: 10px; }
 .activity-history-card .activity-history-more-toggle:hover { background: #ffffff22; }
+
+
+/* Keep the taller intensity visualization independent of the expanded history row. */
+@media (min-width: 891px) {
+  .analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] { align-self: start; }
+  .analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .chart-card {
+    height: auto; min-height: 460px;
+  }
+}
