@@ -458,16 +458,19 @@ def dashboard(
         settings.INTERVALS_ATHLETE_ID,
         session=session,
     )
-    # Fetch and parse data
-    raw_activities = client.activities(days=settings.ANALYSIS_DAYS)
+    # Fetch enough history to fill the selected display window, including when
+    # it exceeds the default LLM analysis period (e.g. 42- or 90-day charts).
+    display_days = max(7, min(90, days if days is not None else settings.DASHBOARD_DAYS))
+    lookback_days = max(settings.ANALYSIS_DAYS, display_days)
+    raw_activities = client.activities(days=lookback_days)
     activities = parse_activities(raw_activities)
 
-    raw_wellness = client.wellness(days=settings.ANALYSIS_DAYS)
+    raw_wellness = client.wellness(days=lookback_days)
     wellness = parse_wellness_list(raw_wellness)
 
     analysis = compute_analysis(
         activities,
-        display_days=days or settings.DASHBOARD_DAYS,
+        display_days=display_days,
         wellness_data=wellness,
         client=client,
     )
@@ -480,7 +483,7 @@ def dashboard(
         {
             "user": user,
             "analysis": analysis.to_dict(),
-            "display_days": days or settings.DASHBOARD_DAYS,
+            "display_days": display_days,
             "next_workout": next_workout,
             "has_weekly_plan": current_plan.plan_html is not None,
             "settings": request.app.state.settings,
