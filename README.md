@@ -1,57 +1,108 @@
+<p align="center">
+  <img src="app/static/intelliwatts-logo.webp" alt="IntelliWatts — road cyclist with brain and lightning wheels" width="280">
+</p>
+
 # IntelliWatts
 
-IntelliWatts is a personal cycling training application. It imports workout and wellness data from [Intervals.icu](https://intervals.icu), displays performance and recovery metrics, and generates structured weekly training plans with an LLM.
+**IntelliWatts** is a personal, cycling-focused training coach that brings together performance analytics, recovery signals, and AI-generated training plans. It reads workout and wellness data from [Intervals.icu](https://intervals.icu), lets you set longer-term goals and weekly limits, and generates structured workouts with OpenAI or Google Gemini.
 
 [![Gatekeeper](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml/badge.svg?branch=main)](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml)
 [![codecov](https://codecov.io/github/matze298/intelliwatts/graph/badge.svg)](https://codecov.io/github/matze298/intelliwatts)
 
-## Application
+**Web app:** [intelliwatts.onrender.com](https://intelliwatts.onrender.com) (password required) · **Health check:** [GET /health](https://intelliwatts.onrender.com/health)
 
-The web application has three primary views:
+## Features
 
-| View | Route | Features |
-|---|---|---|
-| Plan | `/` | Long-term goals, target date, weekly hours and session limits, model selection, recovery-data inclusion, plan generation and publishing |
-| Dashboard | `/dashboard` | Training load (CTL, ATL, TSB), HRV, resting heart rate, sleep, activity mix, weekly volume, power curve, intensity distribution and recent activities |
-| Settings | `/settings` | Training and model preferences, including developer-mode options |
+### Training planner
 
-The Dashboard supports a selectable analysis window of 7–90 days. Recent activity history shows five sessions initially, with older sessions available through an expandable list. Cycling activities are displayed as **Cycling**.
+- **Long-term goal:** Define the main training objective and target date.
+- **Planning horizon:** View the long-term plan and select the week to work on.
+- **Weekly limits:** Set available training hours and the maximum number of planned sessions.
+- **Recovery context:** Choose whether readiness and wellness signals are included in plan generation.
+- **Model selection:** Select a configured OpenAI or Gemini model.
+- **Weekly workout generation:** Create a structured weekly plan based on the goal, selected week, constraints, and available context.
+- **Review, update, and publish:** Inspect the generated plan, request an update, and publish the selected workout to Intervals.icu.
 
-The interface uses server-rendered Jinja2 templates, Tailwind CSS, the IntelliWatts stylesheet, and Chart.js. It supports desktop and mobile layouts.
+### Performance dashboard
 
-## Integrations
+The Dashboard contains the training analysis in one place. It includes:
 
-- **Intervals.icu:** Activity, power, training-stress and wellness data, and workout publishing.
-- **OpenAI:** Plan generation with configured OpenAI API credentials.
-- **Google Gemini:** Plan generation with configured Gemini API credentials.
+| Area | Information |
+|---|---|
+| Training load | Fitness (CTL), fatigue (ATL), and form/training-stress balance (TSB) over time |
+| Recovery | Heart-rate variability (HRV), resting heart rate, and sleep-quality trends |
+| Activity mix | Training time grouped by sport, including Cycling, Soccer, Hiking, and Strength where present |
+| Weekly volume | Stacked training hours or training stress (TSS) by activity type |
+| Power | Cycling power–duration curve, including available comparison series |
+| Intensity | Heart-rate and power-zone time distribution and training-style indicators |
+| Session history | The most recent five activities, with an expandable list of older sessions |
+| Plan context | The next planned workout, or a prompt to create a plan when none is available |
 
-The selected model, prompt overrides and relevant training preferences are configurable through application settings. External API access requires the corresponding credentials.
+The analysis-window control supports **7 to 90 days**. Charts retain missing measurements as missing data rather than treating them as zero. Sport labels are human-readable; for example, an Intervals.icu `Ride` is displayed as **Cycling**.
+
+### Settings
+
+The Settings page stores profile preferences. Developer mode makes LLM prompt overrides available. Changes to prompts affect future plan generations; the user can leave an override empty to use the application default.
+
+## How to use the application
+
+1. **Sign in.** Open the web app and enter the configured application password.
+2. **Check the Dashboard.** Review training load, recent activities, recovery signals, and the current analysis window.
+3. **Set your goal.** On the Plan page, enter the target and date, then save the long-term goal.
+4. **Configure the week.** Select the planning week and define the weekly hours, session limit, model, and optional wellness context.
+5. **Generate and review.** Generate the weekly plan, check the proposed workout and any available long-term context, and update it if needed.
+6. **Publish.** Use the publish action to send the selected workout to Intervals.icu when it is ready.
+
+The Planner, Dashboard, and Settings are available from the main navigation. On smaller screens the navigation moves into the page header.
+
+## Supported integrations
+
+| Integration | Usage |
+|---|---|
+| [Intervals.icu](https://intervals.icu) | Training activities, wellness data, power curves, training load, and workout publishing |
+| [OpenAI](https://platform.openai.com/api-keys) | Supported LLM backend for training-plan generation |
+| [Google Gemini](https://aistudio.google.com/api-keys) | Supported LLM backend for training-plan generation |
+
+The available model identifiers are maintained in `app/config.py`. The configured API key for the selected provider is required whenever a plan is generated.
 
 ## Requirements
 
-- Python 3.14 or newer
-- `uv`
-- PostgreSQL
-- Node.js and npm for building CSS assets
-- Intervals.icu API key and athlete ID
-- At least one supported LLM API key
+- Python **3.14+** with [uv](https://docs.astral.sh/uv/)
+- PostgreSQL and a database connection URL
+- Node.js and npm for rebuilding Tailwind CSS
+- Intervals.icu athlete ID and API key
+- API credentials for at least one supported LLM provider
+- A strong application password and a session-signing secret
 
-## Configuration
+The hosted installation uses environment variables for credentials. For local development, configure a private `.env` file.
 
-Copy `.env.example` to `.env` and configure the values required for your installation. Do not commit `.env` or API tokens.
+## Installation and local development
 
-| Setting | Purpose |
+### 1. Configure environment variables
+
+Copy the example file:
+
+```bash
+cp .env.example .env
+```
+
+Set the required values. Keep the real `.env` file out of source control.
+
+| Variable | Description |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection URL |
-| `APP_PASSWORD` | Password for the web interface |
-| `SESSION_SECRET` | Random secret used to sign session cookies |
-| `APP_ORIGIN` | Public HTTPS origin or `http://localhost:8000` for local development |
-| `INTERVALS_API_KEY` | Intervals.icu API key |
-| `INTERVALS_ATHLETE_ID` | Intervals.icu athlete ID |
-| `OPENAI_API_KEY` | OpenAI credential when using OpenAI |
-| `GEMINI_API_KEY` | Gemini credential when using Gemini |
-| `LANGUAGE_MODEL` | Default language-model selection |
-| `SESSION_COOKIE_SECURE` | Secure cookie setting; use `false` only with local HTTP |
+| `DATABASE_URL` | PostgreSQL URL used by the app and migrations |
+| `APP_PASSWORD` | Web-interface password (at least 12 characters) |
+| `SESSION_SECRET` | Session-signing secret (at least 32 characters) |
+| `APP_ORIGIN` | Origin of the app, such as `http://localhost:8000` or an HTTPS domain |
+| `SESSION_COOKIE_SECURE` | Set to `false` for local HTTP; use `true` for HTTPS |
+| `INTERVALS_ATHLETE_ID` | Athlete identifier from Intervals.icu |
+| `INTERVALS_API_KEY` | Intervals.icu API credential |
+| `LANGUAGE_MODEL` | Default model identifier for plan generation |
+| `OPENAI_API_KEY` | OpenAI credential, if using OpenAI |
+| `GEMINI_API_KEY` | Gemini credential, if using Gemini |
+| `CACHE_INTERVALS_HOURS` | Number of hours to cache Intervals.icu API responses (default: 0) |
+| `ANALYSIS_DAYS` | History window for coach context (default: 120) |
+| `DASHBOARD_DAYS` | Default Dashboard display window (default: 42) |
 
 Generate a session secret with:
 
@@ -59,66 +110,131 @@ Generate a session secret with:
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-The app uses a shared password and a signed session cookie. Sessions last 12 hours. The installed instance is intended for a single athlete profile.
+Intervals.icu API credentials are available from **Settings → Developer → API Key** in your Intervals.icu account.
 
-## Local development
+### 2. Install dependencies
 
 ```bash
 ./setup.sh
+```
+
+Alternatively, install the Python environment directly:
+
+```bash
+uv sync
+```
+
+### 3. Apply database migrations
+
+```bash
 uv run alembic upgrade head
+```
+
+Use a dedicated development database. The app uses PostgreSQL for training plans, preferences, and application state.
+
+### 4. Start the web server
+
+```bash
 ./run.sh
 ```
 
-Open `http://localhost:8000/` and sign in with `APP_PASSWORD`.
-
-FastAPI can also be started directly:
+Or start FastAPI directly:
 
 ```bash
 uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-A hosted instance is available at [intelliwatts.onrender.com](https://intelliwatts.onrender.com) (password required). The health endpoint is `GET /health`.
+Open [http://localhost:8000/](http://localhost:8000/) and sign in with `APP_PASSWORD`. The Dashboard is at `/dashboard` and Settings at `/settings`.
 
-## Database
+## Authentication and data handling
 
-IntelliWatts stores plans, preferences and application state in PostgreSQL using SQLModel/SQLAlchemy. Alembic manages schema migrations.
+IntelliWatts is configured for a personal athlete profile. The app uses a password-protected interface and a signed session cookie. Sessions expire after 12 hours. Changing the app password or session secret invalidates existing sessions.
+
+Workout and wellness information comes from Intervals.icu. The application stores its own planning and preference data in PostgreSQL. Protect both the database credentials and external API tokens, and use HTTPS for hosted installations.
+
+### Database backup and migrations
+
+Apply pending Alembic migrations after updating the code:
 
 ```bash
 uv run alembic upgrade head
 ```
 
-Database backups can be created with `pg_dump` and restored with `pg_restore`. Store backups separately from the application host.
+Use PostgreSQL backup tools such as `pg_dump` and `pg_restore` or your provider's backup facilities. Test restores against a separate database, not the active application database.
 
-## CSS assets
+## Frontend and project structure
 
-Tailwind CSS assets are generated from the styles under `app/static/` and the application templates. The current web UI loads `app/static/tailwind-light.css` followed by `app/static/intelliwatts-ui.css`.
+IntelliWatts uses **Python + FastAPI** for the backend and **Jinja2 + Tailwind CSS** for server-rendered pages. Interactive analytics are rendered with **Chart.js**. A small application stylesheet adds the IntelliWatts visual system.
+
+| Location | Purpose |
+|---|---|
+| `app/routes/` | FastAPI HTTP routes |
+| `app/planning/` and `app/services/` | Planning and application services |
+| `app/intervals/` | Intervals.icu client, parsing and analytics |
+| `app/models/` | Persistent data models |
+| `app/templates/` | Jinja2 templates and shared UI macros |
+| `app/static/` | CSS, JavaScript and logo artwork |
+| `migrations/versions/` | Alembic migrations |
+| `tests/` | Unit, integration and browser-flow tests |
+| `scripts/` | Local developer and agent utilities |
+
+The brand artwork is stored at [`app/static/intelliwatts-logo.webp`](app/static/intelliwatts-logo.webp). The navigation uses the same selected image.
+
+### Rebuild styles
 
 ```bash
 npm ci
 npm run build:css
 ```
 
-The generated CSS files are committed to the repository and checked by CI.
+Generated Tailwind assets are committed and checked for consistency by CI. The app loads `tailwind-light.css` first, then `intelliwatts-ui.css`.
 
-## Tests
+## Tests and quality checks
 
-Use a disposable PostgreSQL database or a separate test database/branch. Set `TEST_DATABASE_URL` to its connection URL.
+Install test dependencies and Playwright Chromium:
 
 ```bash
 uv sync --extra dev --extra test
 uv run playwright install chromium
+```
+
+Run the suite against a disposable PostgreSQL database or a separate test branch:
+
+```bash
 TEST_DATABASE_URL="postgresql://user:password@host/test_database" uv run pytest tests/
 ```
 
-GitHub Actions **Gatekeeper** runs linting, unit/browser tests and a CSS-build consistency check. It does not generate or commit screenshots.
+Run repository pre-commit checks:
 
-## Manual browser screenshots
+```bash
+uv run prek run --all-files --show-diff-on-failure
+```
 
-A standalone Playwright utility is available at `scripts/capture_ui_screenshots.py`. It captures Planner and Dashboard at desktop and mobile widths from a running local IntelliWatts instance.
+The GitHub **Gatekeeper** workflow runs code checks, unit/browser-flow tests, and generated-CSS verification. Screenshot creation is not part of Gatekeeper.
+
+### Manual screenshots for agents
+
+A standalone Playwright capture script produces desktop (1440 px) and mobile (390 px) screenshots for the Planner and Dashboard:
 
 ```bash
 export INTELLIWATTS_SCREENSHOT_PASSWORD="your-local-app-password"
 uv run python scripts/capture_ui_screenshots.py --base-url http://127.0.0.1:8000
 ```
 
-Output is written to `artifacts/ui-screenshots/`, which is gitignored. Captures can contain personal training and wellness data. Agent-specific instructions are in [AGENTS.md](AGENTS.md).
+Captures are written to `artifacts/ui-screenshots/`, which is gitignored. **Screenshots can contain personal fitness and health data**: inspect them before sharing or attaching them to a PR. The script is opt-in and runs only when invoked manually.
+
+## Troubleshooting
+
+| Symptom | What to check |
+|---|---|
+| Sign-in fails | `APP_PASSWORD`, `APP_ORIGIN`, session cookie security setting, and the expected local/HTTPS origin |
+| No workout or wellness data | Intervals.icu athlete ID, API key, account permissions, and data availability for the selected period |
+| Plan generation fails | Selected model, corresponding provider API key, weekly limits, and server logs |
+| Publishing fails | Intervals.icu authentication, the selected workout, and the publish status displayed in the Planner |
+| Charts are empty | Whether the selected 7–90-day window contains activities, power, or wellness measurements |
+| Styling is stale | Rebuild CSS with `npm ci && npm run build:css` and refresh the browser |
+| Database errors | `DATABASE_URL`, database reachability, and `uv run alembic upgrade head` |
+
+## Scope
+
+IntelliWatts is a personal training-planning application, not a medical monitoring service. Its metrics and model-generated plans are training aids; they should be interpreted alongside the athlete's own experience and available data.
