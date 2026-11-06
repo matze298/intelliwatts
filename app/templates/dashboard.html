@@ -72,7 +72,7 @@
     {% set supporting_widgets = analysis.widgets | selectattr("custom_template") | rejectattr("name", "equalto", "pmc") | rejectattr("name", "equalto", "wellness") | list %}
     {% if supporting_widgets %}
     <section aria-labelledby="analysis-heading" class="supporting-section mb-8">
-        <div class="dashboard-section-heading"><div><p class="eyebrow">Explore</p><h2 id="analysis-heading">Supporting detail</h2></div><a href="/analysis?days={{ display_days }}" class="analysis-link">Open detailed analysis <span aria-hidden="true">↗</span></a></div>
+        <div class="dashboard-section-heading"><div><p class="eyebrow">Explore</p><h2 id="analysis-heading">Supporting detail</h2></div><span class="section-note">Volume, power &amp; distribution</span></div>
         <div class="dashboard-supporting-grid">{% for widget in supporting_widgets %}<div class="dashboard-supporting-item" data-widget-name="{{ widget.name }}">{{ render_widget(widget) }}</div>{% endfor %}</div>
     </section>
     {% endif %}
