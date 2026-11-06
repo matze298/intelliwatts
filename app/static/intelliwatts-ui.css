@@ -471,3 +471,20 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
   .planner-week-heading { font-size: 1.65rem; }
   .analysis-link { font-size: .74rem; }
 }
+
+
+/* Session list preview: show context first, expand history without leaving the screen. */
+.activity-history-card .activity-row + .activity-row { margin-top: 8px; }
+.activity-history-card .activity-history-more {
+  margin-top: 10px; padding: 0; border: 0; border-radius: 0; background: transparent;
+}
+.activity-history-card .activity-history-more > .activity-history-more-toggle {
+  display: flex; justify-content: space-between; align-items: center; min-height: 42px;
+  gap: 12px; padding: 10px 12px; border: 1px solid #ffffff42;
+  border-radius: 8px; color: #e3f6ed; background: #ffffff12;
+  font-size: .8rem; font-weight: 750; list-style: none; cursor: pointer;
+}
+.activity-history-card .activity-history-more > .activity-history-more-toggle::-webkit-details-marker { display: none; }
+.activity-history-card .activity-history-more[open] > .activity-history-more-toggle span { transform: rotate(180deg); }
+.activity-history-card .activity-history-extra { display: grid; gap: 8px; margin-top: 10px; }
+.activity-history-card .activity-history-more-toggle:hover { background: #ffffff22; }
