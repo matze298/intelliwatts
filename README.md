@@ -44,6 +44,12 @@ The analysis-window control supports **7 to 90 days**. Charts retain missing mea
 
 The Settings page stores profile preferences. Developer mode makes LLM prompt overrides available. Changes to prompts affect future plan generations; the user can leave an override empty to use the application default.
 
+### Appearance
+
+IntelliWatts supports light and dark appearance on the Dashboard, Planner, Settings, and sign-in page. The theme switch at the bottom of the navigation sidebar selects either appearance. The choice is stored in your browser and remains active across page navigation and reloads; when no choice has been saved, the app follows your device's appearance preference.
+
+Charts adjust their axis labels, gridlines, legends, and tooltips to remain legible in both themes. The metric values, training data, and planning settings are the same in both modes.
+
 ## How to use the application
 
 1. **Sign in.** Open the web app and enter the configured application password.
@@ -187,7 +193,7 @@ npm ci
 npm run build:css
 ```
 
-Generated Tailwind assets are committed and checked for consistency by CI. The app loads `tailwind-light.css` first, then `intelliwatts-ui.css`.
+Generated Tailwind assets are committed and checked for consistency by CI. The app loads `tailwind-light.css`, `intelliwatts-ui.css`, and `intelliwatts-dark.css`. The theme switch uses `theme.js`, and Dashboard charts use `chart-theme.js`.
 
 ## Tests and quality checks
 
