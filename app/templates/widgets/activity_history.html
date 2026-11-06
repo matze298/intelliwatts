@@ -1,4 +1,38 @@
-<!-- Detailed activity history keeps the original session data and disclosure controls. -->
+<!-- The compact preview keeps long training histories out of the initial dashboard viewport. -->
+{% macro activity_row(activity) -%}
+<details class="activity-row">
+    <summary class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <span class="flex flex-wrap items-center gap-3">
+            <strong>{{ {'Ride': 'Cycling', 'VirtualRide': 'Cycling (indoor)', 'Run': 'Running', 'WeightTraining': 'Strength'}.get(activity.type, activity.type) }}</strong>
+            <span class="activity-hint">{{ activity.date }}</span>
+        </span>
+        <span class="activity-meta">
+            <span>{{ "%.1f"|format(activity.duration_h) }} h</span>
+            <span>{{ "%.0f"|format(activity.training_stress) }} TSS</span>
+            {% if activity.distance_km is not none %}
+            <span>{{ "%.1f"|format(activity.distance_km) }} km</span>
+            {% endif %}
+        </span>
+    </summary>
+    <div class="activity-detail">
+        {% if activity.avg_power is not none %}
+        <div><p>Avg power</p><p>{{ "%.0f"|format(activity.avg_power) }} W</p></div>
+        {% endif %}
+        {% if activity.avg_hr is not none %}
+        <div><p>Avg HR</p><p>{{ "%.0f"|format(activity.avg_hr) }} bpm</p></div>
+        {% endif %}
+        {% if activity.max_hr is not none %}
+        <div><p>Max HR</p><p>{{ "%.0f"|format(activity.max_hr) }} bpm</p></div>
+        {% endif %}
+        {% if activity.elevation_gain is not none %}
+        <div><p>Elevation gain</p><p>{{ "%.0f"|format(activity.elevation_gain) }} m</p></div>
+        {% endif %}
+        {% if activity.ftp is not none %}
+        <div><p>FTP</p><p>{{ "%.0f"|format(activity.ftp) }} W</p></div>
+        {% endif %}
+    </div>
+</details>
+{%- endmacro %}
 <section class="activity-history-card" aria-labelledby="activity-history-heading">
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -8,41 +42,23 @@
         <span class="activity-count">{{ widget.data.activities|length }} SESSIONS</span>
     </div>
     <div class="mt-4">
-        {% for activity in widget.data.activities %}
-        <details>
-            <summary class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <span class="flex flex-wrap items-center gap-3">
-                    <strong>{{ {'Ride': 'Cycling', 'VirtualRide': 'Cycling (indoor)', 'Run': 'Running', 'WeightTraining': 'Strength'}.get(activity.type, activity.type) }}</strong>
-                    <span class="activity-hint">{{ activity.date }}</span>
-                </span>
-                <span class="activity-meta">
-                    <span>{{ "%.1f"|format(activity.duration_h) }} h</span>
-                    <span>{{ "%.0f"|format(activity.training_stress) }} TSS</span>
-                    {% if activity.distance_km is not none %}
-                    <span>{{ "%.1f"|format(activity.distance_km) }} km</span>
-                    {% endif %}
-                </span>
-            </summary>
-            <div class="activity-detail">
-                {% if activity.avg_power is not none %}
-                <div><p>Avg power</p><p>{{ "%.0f"|format(activity.avg_power) }} W</p></div>
-                {% endif %}
-                {% if activity.avg_hr is not none %}
-                <div><p>Avg HR</p><p>{{ "%.0f"|format(activity.avg_hr) }} bpm</p></div>
-                {% endif %}
-                {% if activity.max_hr is not none %}
-                <div><p>Max HR</p><p>{{ "%.0f"|format(activity.max_hr) }} bpm</p></div>
-                {% endif %}
-                {% if activity.elevation_gain is not none %}
-                <div><p>Elevation gain</p><p>{{ "%.0f"|format(activity.elevation_gain) }} m</p></div>
-                {% endif %}
-                {% if activity.ftp is not none %}
-                <div><p>FTP</p><p>{{ "%.0f"|format(activity.ftp) }} W</p></div>
-                {% endif %}
-            </div>
-        </details>
+        {% for activity in widget.data.activities[:5] %}
+        {{ activity_row(activity) }}
         {% else %}
         <p class="activity-hint">No activity data for this period.</p>
         {% endfor %}
+        {% if widget.data.activities|length > 5 %}
+        <details class="activity-history-more">
+            <summary class="activity-history-more-toggle">
+                Show {{ widget.data.activities|length - 5 }} earlier sessions
+                <span aria-hidden="true">⌄</span>
+            </summary>
+            <div class="activity-history-extra">
+                {% for activity in widget.data.activities[5:] %}
+                {{ activity_row(activity) }}
+                {% endfor %}
+            </div>
+        </details>
+        {% endif %}
     </div>
 </section>
