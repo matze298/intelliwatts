@@ -161,7 +161,7 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 .dashboard-supporting-item .chart-card { padding: 20px !important; }
 .dashboard-supporting-item .chart-frame,
 .dashboard-supporting-item .chart-frame.chart-frame-short { height: 245px; }
-.dashboard-supporting-item:last-child { grid-column: 1 / -1; }
+.dashboard-supporting-item:has(.activity-history-card) { grid-column: 1 / -1; }
 .chart-card h2, .chart-card h3 { font-size: 1rem !important; font-weight: 750; letter-spacing: -.025em; }
 .chart-card p { line-height: 1.4; }
 .chart-frame { max-width: 100%; min-width: 0; }
@@ -263,7 +263,7 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
  .dashboard-recovery { grid-template-columns: 1fr; }
  .wellness-sleep { grid-column: auto; }
  .dashboard-supporting-grid { grid-template-columns: 1fr; }
- .dashboard-supporting-item:last-child { grid-column: auto; }
+ .dashboard-supporting-item:has(.activity-history-card) { grid-column: auto; }
  .dashboard-supporting-item .chart-frame, .dashboard-supporting-item .chart-frame.chart-frame-short { height: 218px; }
  .planner-card { padding: 19px !important; }
  .planner-goal-card { min-height: 0; }
