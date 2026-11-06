@@ -1,0 +1,50 @@
+{% from "macros/widgets.html" import render_widget %}
+{% from "macros/state.html" import render_state_banner %}
+{% from "macros/app_nav.html" import app_nav %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Analysis · IntelliWatts</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/tailwind-light.css">
+    <link rel="stylesheet" href="/static/intelliwatts-ui.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/chart-quality.js"></script>
+</head>
+<body>
+<main class="container analysis-page">
+    {{ app_nav("analysis") }}
+    <header class="analysis-masthead">
+        <div>
+            <p class="eyebrow">Explore</p>
+            <h1>Supporting detail</h1>
+            <p class="page-lede">Understand your training volume, power, and intensity distribution.</p>
+        </div>
+        <div class="analysis-header-tools">
+            <span class="section-note">Last {{ display_days }} days</span>
+            <a class="control-button control-button-secondary" href="/dashboard?days={{ display_days }}">Back to dashboard</a>
+        </div>
+    </header>
+    {% set supporting_widgets = analysis.widgets | selectattr("custom_template") | rejectattr("name", "equalto", "pmc") | rejectattr("name", "equalto", "wellness") | list %}
+    {% if supporting_widgets %}
+    <section aria-labelledby="analysis-heading">
+        <div class="dashboard-section-heading"><div><p class="eyebrow">Deep dive</p><h2 id="analysis-heading">Volume, power &amp; distribution</h2></div></div>
+        <div class="dashboard-supporting-grid analysis-grid">
+            {% for widget in supporting_widgets %}
+            <div class="dashboard-supporting-item" data-widget-name="{{ widget.name }}">{{ render_widget(widget) }}</div>
+            {% endfor %}
+        </div>
+    </section>
+    {% else %}
+        {% call render_state_banner("Analysis data unavailable", tone="empty") %}
+        Sync activities and wellness data to populate your charts.
+        {% endcall %}
+    {% endif %}
+</main>
+<script src="/static/dashboard-empty-charts.js" defer></script>
+</body>
+</html>
