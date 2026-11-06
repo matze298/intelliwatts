@@ -277,3 +277,15 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) {
  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* A centered, calm sign-in layout reuses the same brand without the app sidebar. */
+.auth-shell { margin: max(9vh, 56px) auto 40px; padding: 20px; }
+.auth-shell .app-nav {
+  position: static; display: block; width: 100%; height: auto; padding: 12px 0 26px;
+  margin-bottom: 20px; border: 0; border-radius: 0; background: transparent; box-shadow: none;
+}
+.auth-shell .app-brand { padding: 0; }
+.auth-shell h1 { font-family: "DM Serif Display", Georgia, serif; font-size: 2.5rem; font-weight: 400; }
+.auth-shell form:not(.nav-logout) { padding: 25px; border: 1px solid var(--iw-stroke); border-radius: 13px; background: var(--iw-paper); box-shadow: var(--iw-shadow); }
+.auth-shell input[type=password] { width: 100%; border: 1px solid #cbd8d0; border-radius: 9px; }
+@media (max-width: 640px) { .auth-shell { margin-top: 40px; } }
