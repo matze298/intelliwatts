@@ -26,3 +26,11 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 - [x] **Review CI dependencies:** Update workflow actions and add weekly Dependabot checks for GitHub Actions, alongside the existing npm and uv checks.
 - [ ] **Reduce concentrated responsibilities:** Split route handling, rendering and external-service setup in `app/routes/web.py` as those areas change. Separate coach-context normalization from presentation where that improves reuse and testing.
 - [ ] **Improve coaching context:** Prioritize planned-versus-completed training and recovery changes against an athlete's baseline, with clear missing-data indicators. Add richer signals only when their use in planning is defined.
+
+## 5. Cycling-focused UI refresh
+
+- [x] Restore a first-party cycling-chainring brand mark and responsive app navigation.
+- [x] Improve Planner grouping, generation empty state, and dashboard chart hierarchy without altering the Python training logic.
+- [x] Guard chart axes against invalid week dates, use concise labels, and display Cycling rather than Ride.
+- [ ] Inspect and attach actual Playwright desktop/mobile screenshots from the PR workflow.
+- [ ] Review the live dashboard with real intervals.icu data after merging.
