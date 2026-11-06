@@ -1,6 +1,7 @@
 """Activity history metric provider."""
 
 from dataclasses import dataclass
+from math import isfinite
 from numbers import Real
 from typing import TYPE_CHECKING, Any, override
 
@@ -131,6 +132,7 @@ class ActivityHistoryProvider(MetricProvider[ActivityHistoryResult | None]):
                 ftp=self._to_optional_float(row["activity_ftp"]),
             )
             for row in exploded.to_dicts()
+            if isfinite(float(row["activity_durations"])) and isfinite(float(row["activity_tss"]))
         ]
 
         return ActivityHistoryResult(activities=entries, has_data=bool(entries))
@@ -205,6 +207,6 @@ class ActivityHistoryProvider(MetricProvider[ActivityHistoryResult | None]):
         Returns:
             Rounded float output, or None if the value is missing.
         """
-        if value is None or not isinstance(value, Real):
+        if value is None or not isinstance(value, Real) or not isfinite(float(value)):
             return None
         return round(float(value), 1)

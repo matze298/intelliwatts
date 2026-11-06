@@ -6,7 +6,7 @@
 <script>
 (() => {
  const data = {{ widget.data | tojson }};
- const common = {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'#19362f',titleColor:'#fffefa',bodyColor:'#e5eee8',padding:11,cornerRadius:8}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0,color:'#7a8980',font:{family:'DM Sans',size:11}}},y:{grid:{color:'#e8e8df'},ticks:{color:'#7a8980',font:{family:'DM Sans',size:11}}}}};
+ const common = {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'#19362f',titleColor:'#fffefa',bodyColor:'#e5eee8',padding:11,cornerRadius:8}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0,color:'#7a8980',font:{family:'DM Sans',size:11}}},y:{beginAtZero:true,grid:{color:'#edf0ea'},ticks:{color:'#7a8980',font:{family:'DM Sans',size:11}}}}};
  const line = (id,datasets) => {const canvas=document.getElementById(id);if(canvas && typeof Chart!=='undefined') new Chart(canvas,{type:'line',data:{labels:data.dates,datasets},options:common});};
  line('pmcChart',[{label:'Fitness (CTL)',data:data.ctl,borderColor:'#4f9472',backgroundColor:'#4f947218',fill:true,tension:.28,pointRadius:0,borderWidth:2.5},{label:'Fatigue (ATL)',data:data.atl,borderColor:'#d97761',tension:.28,pointRadius:0,borderWidth:2}]);
  line('formChart',[{label:'Form (TSB)',data:data.tsb,borderColor:'#557c9d',backgroundColor:'#557c9d18',fill:true,tension:.28,pointRadius:0,borderWidth:2, spanGaps:true}]);

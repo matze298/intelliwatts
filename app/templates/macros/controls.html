@@ -26,6 +26,7 @@
 {% macro render_toggle_button(id, label, active, onclick) -%}
 <button
     id="{{ id }}"
+    aria-pressed="{{ 'true' if active else 'false' }}"
     type="button"
     onclick="{{ onclick }}"
     class="control-button control-toggle{% if active %} control-toggle-active{% endif %}"

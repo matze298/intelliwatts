@@ -118,10 +118,21 @@
                 scales: {
                     x: {
                         type: 'logarithmic',
-                        grid: { color: 'rgba(53, 83, 70, 0.10)' },
+                        grid: { display: false },
+                        afterBuildTicks: scale => {
+                            // Fixed exercise-duration landmarks instead of randomly skipped log ticks.
+                            const landmarks = [5, 30, 60, 300, 1200, 3600];
+                            const visible = landmarks.filter(value => value >= scale.min && value <= scale.max);
+                            if (visible.length >= 2) {
+                                scale.ticks = visible.map(value => ({ value }));
+                            }
+                        },
                         ticks: {
                             color: '#71817a',
                             font: { size: 10 },
+                            maxRotation: 0,
+                            minRotation: 0,
+                            autoSkip: false,
                             callback: function(value, index, ticks) {
                                 // Only show specific duration ticks to keep it clean
                                 const labels = {
@@ -144,7 +155,7 @@
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(53, 83, 70, 0.10)' },
+                        grid: { color: 'rgba(53, 83, 70, 0.07)' },
                         ticks: { 
                             color: '#71817a',
                             font: { size: 10 },

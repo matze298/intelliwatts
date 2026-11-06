@@ -113,6 +113,8 @@
                 ssContainer.classList.remove('hidden');
             }
 
+            btnHr.setAttribute('aria-pressed', String(type === 'hr'));
+            btnPower.setAttribute('aria-pressed', String(type === 'power'));
             window.intensityChart.data.labels = labels.slice(0, data.length);
             window.intensityChart.data.datasets[0].data = data;
             window.intensityChart.data.datasets[0].backgroundColor = colors.slice(0, data.length);

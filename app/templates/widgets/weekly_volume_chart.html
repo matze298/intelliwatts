@@ -44,16 +44,14 @@
             return sportColors[sport] || uniqueColors[index % uniqueColors.length];
         }
 
-        const labels = data.weeks.map(w => {
-            const date = new Date(w);
-            return `${date.getMonth() + 1}-${date.getDate()}`;
-        });
+        // The provider uses DD.MM week starts. Native Date parsing would show NaN.
+        const labels = data.weeks.map(week => IWCharts.weekLabel(week, false));
 
         function createDatasets(metric) {
             const dataSource = metric === 'duration' ? data.duration_by_type : data.tss_by_type;
             return Object.keys(dataSource).map((sport, index) => ({
-                label: sport,
-                data: dataSource[sport],
+                label: IWCharts.displaySport(sport),
+                data: dataSource[sport].map(IWCharts.validNumber),
                 backgroundColor: getColor(sport, index),
                 borderWidth: 0,
                 borderRadius: 4,
@@ -76,7 +74,11 @@
                         grid: { display: false },
                         ticks: {
                             color: '#71817a',
-                            font: { size: 10, weight: 'bold' }
+                            font: { size: 10, weight: 'bold' },
+                            autoSkip: true,
+                            maxTicksLimit: 6,
+                            maxRotation: 0,
+                            minRotation: 0
                         }
                     },
                     y: {
@@ -101,16 +103,17 @@
                         }
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        backgroundColor: 'rgba(15, 55, 44, 0.95)',
                         padding: 12,
                         cornerRadius: 8,
                         titleFont: { size: 12, weight: 'bold' },
                         bodyFont: { size: 12 },
                         callbacks: {
+                            title: items => IWCharts.weekLabel(data.weeks[items[0].dataIndex], true),
                             label: function(context) {
                                 const val = context.raw;
                                 const metric = window.currentVolumeMetric === 'tss' ? 'TSS' : 'h';
-                                return ` ${context.dataset.label}: ${val}${metric}`;
+                                return val === null || !Number.isFinite(val) ? '' : ` ${context.dataset.label}: ${val} ${metric}`;
                             }
                         }
                     }
@@ -134,6 +137,8 @@
             }
 
             window.volumeChart.data.datasets = createDatasets(metric);
+            btnHours.setAttribute('aria-pressed', String(metric === 'duration'));
+            btnTss.setAttribute('aria-pressed', String(metric === 'tss'));
             window.volumeChart.update();
         };
     })();
