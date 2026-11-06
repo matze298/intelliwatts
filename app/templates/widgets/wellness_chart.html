@@ -6,7 +6,7 @@
 <script>
 (() => {
  const data = {{ widget.data | tojson }};
- const options = {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:7,color:'#405560',padding:14}},tooltip:{mode:'index',intersect:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:7,maxRotation:0,color:'#647681'}},y:{grid:{color:'#e8eeea'},ticks:{color:'#647681'}}}};
+ const options = {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:7,color:'#405560',padding:14}},tooltip:{mode:'index',intersect:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:6,maxRotation:0,minRotation:0,color:'#647681'}},y:{grid:{color:'#edf0ea'},ticks:{color:'#647681'}}}};
  const draw = (id,sets, suggested={}) => {const c=document.getElementById(id);if(c && typeof Chart!=='undefined')new Chart(c,{type:'line',data:{labels:data.dates,datasets:sets},options:{...options,scales:{...options.scales,y:{...options.scales.y,...suggested}}}});};
  draw('hrvChart',[{label:'Daily HRV · ms',data:data.hrv,borderColor:'#89bdb5',pointRadius:1.5,tension:.25},{label:'7-day average · ms',data:data.hrv_7d,borderColor:'#18786e',pointRadius:0,borderWidth:2.5,tension:.25}]);
  draw('restChart',[{label:'Daily resting HR · bpm',data:data.resting_hr,borderColor:'#e6ad9e',pointRadius:1.5,tension:.25},{label:'7-day average · bpm',data:data.resting_hr_7d,borderColor:'#d97761',pointRadius:0,borderWidth:2.5,tension:.25}]);
