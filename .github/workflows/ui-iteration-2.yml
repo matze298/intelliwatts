@@ -52,7 +52,7 @@ jobs:
           npm run build:css
 
       - name: Install Playwright
-        run: uv run playwright install --with-deps chromium
+        run: uv run playwright install chromium
 
       - name: Capture actual application screenshots
         run: INTELLIWATTS_CAPTURE_SCREENSHOTS=1 uv run pytest tests/routes/test_browser_pages.py::test_capture_ui_reference_screenshots -q
