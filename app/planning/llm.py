@@ -122,13 +122,32 @@ def _call_gpt_cached(
 
     messages = [{"role": m.role, "content": m.content} for m in messages_tuple]
     client = OpenAI(api_key=api_key, base_url=base_url, timeout=MODEL_REQUEST_TIMEOUT_SECONDS, max_retries=0)
-    response = client.chat.completions.parse(
-        model=model,
-        messages=cast("list[ChatCompletionMessageParam]", messages),
-        temperature=0.2,
-        response_format=WeeklyPlanOutput,
-    )
-    output = response.choices[0].message.parsed
+    if base_url == GROQ_API_BASE_URL:
+        request_messages = [message.copy() for message in messages]
+        request_messages[0]["content"] += (
+            "\n\nReturn one JSON object with keys `plan_markdown` and `workouts`. Each workout has "
+            "`day`, `workout_name`, `description`, and `segments`; each segment has `title`, `repeats`, "
+            "and `steps`; each step has `duration_m`, `power_pct`, and optional `rpm`. Do not include "
+            "markdown fences or text outside the JSON object."
+        )
+        chunks = client.chat.completions.create(
+            model=model,
+            messages=cast("list[ChatCompletionMessageParam]", request_messages),
+            temperature=0.2,
+            response_format={"type": "json_object"},
+            stream=True,
+        )
+        response_text = "".join(chunk.choices[0].delta.content or "" for chunk in chunks if chunk.choices)
+        output = WeeklyPlanOutput.model_validate_json(response_text)
+    else:
+        with client.chat.completions.stream(
+            model=model,
+            messages=cast("list[ChatCompletionMessageParam]", messages),
+            temperature=0.2,
+            response_format=WeeklyPlanOutput,
+        ) as stream:
+            response = stream.get_final_completion()
+        output = response.choices[0].message.parsed
     if output is None:
         msg = "Model returned no structured plan output"
         raise RuntimeError(msg)
@@ -181,7 +200,7 @@ def _call_gemini_cached(
         api_key=api_key,
         http_options=HttpOptions(
             timeout=MODEL_REQUEST_TIMEOUT_SECONDS * 1000,
-            retry_options=HttpRetryOptions(attempts=1),
+            retry_options=HttpRetryOptions(attempts=2),
         ),
     )
 
@@ -196,33 +215,36 @@ def _call_gemini_cached(
         role = "user" if msg.role == LLMRole.USER else "model"
         gemini_contents.append({"role": role, "parts": [{"text": msg.content}]})
 
-    response = client.models.generate_content(
-        model=model,
-        contents=gemini_contents,
-        config=GenerateContentConfig(
-            system_instruction=system_instruction,
-            temperature=temperature,
-            max_output_tokens=max_output_tokens,
-            response_mime_type="application/json",
-            response_schema=WeeklyPlanOutput,
-            safety_settings=[
-                SafetySetting(
-                    category=HarmCategory.HARM_CATEGORY_HARASSMENT,
-                    threshold=HarmBlockThreshold.BLOCK_NONE,
-                ),
-                SafetySetting(
-                    category=HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                    threshold=HarmBlockThreshold.BLOCK_NONE,
-                ),
-            ],
-        ),
+    response_text = "".join(
+        chunk.text or ""
+        for chunk in client.models.generate_content_stream(
+            model=model,
+            contents=gemini_contents,
+            config=GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=temperature,
+                max_output_tokens=max_output_tokens,
+                response_mime_type="application/json",
+                response_schema=WeeklyPlanOutput,
+                safety_settings=[
+                    SafetySetting(
+                        category=HarmCategory.HARM_CATEGORY_HARASSMENT,
+                        threshold=HarmBlockThreshold.BLOCK_NONE,
+                    ),
+                    SafetySetting(
+                        category=HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                        threshold=HarmBlockThreshold.BLOCK_NONE,
+                    ),
+                ],
+            ),
+        )
     )
 
-    if not response.text:
+    if not response_text:
         msg = "Gemini returned no structured plan output"
         raise RuntimeError(msg)
 
-    output = WeeklyPlanOutput.model_validate_json(response.text)
+    output = WeeklyPlanOutput.model_validate_json(response_text)
     return LLMResponse(
         plan=output.plan_markdown,
         prompt=messages,
