@@ -337,3 +337,39 @@ html[data-theme="dark"] [aria-label="Resting heart rate"] .wellness-reading stro
   .dashboard-supporting-item .control-toggle { min-height: 33px; padding: 5px 8px; font-size: .72rem; }
   .dashboard-supporting-item .chart-card > .flex.justify-between { align-items: start; gap: 9px; }
 }
+
+
+/* In the desktop supporting-detail row, keep the donut and its summary side by side. */
+@media (min-width: 960px) {
+  html[data-theme="dark"] .dashboard-supporting-item[data-widget-name="intensity"] .chart-card > .flex.flex-col {
+    display: grid;
+    grid-template-columns: minmax(155px, 43%) minmax(0, 1fr);
+    align-items: center;
+    justify-content: stretch;
+    column-gap: 17px;
+    row-gap: 0;
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
+  }
+  html[data-theme="dark"] .dashboard-supporting-item[data-widget-name="intensity"] .chart-card > .flex.flex-col > * {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  html[data-theme="dark"] .dashboard-supporting-item[data-widget-name="intensity"] .w-56.h-56 {
+    width: min(100%, 187px);
+    height: 187px;
+    justify-self: center;
+  }
+  html[data-theme="dark"] .dashboard-supporting-item[data-widget-name="intensity"] .w-full.max-w-lg {
+    width: 100%;
+    max-width: none;
+  }
+  html[data-theme="dark"] .dashboard-supporting-item[data-widget-name="intensity"] .grid.grid-cols-1 {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+  html[data-theme="dark"] .dashboard-supporting-item[data-widget-name="intensity"] .grid.grid-cols-1 > div {
+    padding: 12px !important;
+    border-radius: 13px;
+  }
+}
