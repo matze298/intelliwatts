@@ -25,3 +25,6 @@ docs/superpowers/
 intervals_cache.sqlite
 # Neon CLI project link
 .neon
+
+# Local browser captures may contain personal health data
+artifacts/
