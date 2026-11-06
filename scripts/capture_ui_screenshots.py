@@ -31,7 +31,9 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--base-url", default=_DEFAULT_BASE_URL, help="Local IntelliWatts app URL.")
     parser.add_argument("--output-dir", type=Path, default=_DEFAULT_OUTPUT, help="Private local screenshot directory.")
     parser.add_argument("--days", type=int, default=42, choices=range(7, 91), metavar="7-90")
-    parser.add_argument("--theme", choices=("system", "light", "dark"), default="system", help="Browser appearance for the captures.")
+    parser.add_argument(
+        "--theme", choices=("system", "light", "dark"), default="system", help="Browser appearance for the captures."
+    )
     parser.add_argument(
         "--password-env",
         default="INTELLIWATTS_SCREENSHOT_PASSWORD",
