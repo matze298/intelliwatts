@@ -6,6 +6,7 @@ import json
 import socket
 import threading
 import time
+from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, NamedTuple, cast
@@ -230,5 +231,3 @@ def _load_settings_and_save_preferences(page: Page, base_url: str) -> None:
     page.get_by_label("Enable developer mode").check()
     page.get_by_role("button", name="Save Preferences").click()
     expect(page.get_by_text("LLM prompt")).to_be_visible()
-
-
