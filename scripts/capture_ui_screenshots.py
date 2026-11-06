@@ -32,6 +32,9 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=_DEFAULT_OUTPUT, help="Private local screenshot directory.")
     parser.add_argument("--days", type=int, default=42, choices=range(7, 91), metavar="7-90")
     parser.add_argument(
+        "--theme", choices=("system", "light", "dark"), default="system", help="Browser appearance for the captures."
+    )
+    parser.add_argument(
         "--password-env",
         default="INTELLIWATTS_SCREENSHOT_PASSWORD",
         help="Name of the environment variable containing the app sign-in password.",
@@ -103,10 +106,12 @@ def main() -> int:
             context = browser.new_context(viewport={"width": 1440, "height": 960}, device_scale_factor=1)
             page = context.new_page()
             _login(page, args.base_url, password)
+            page.evaluate("(theme) => IWTheme.set(theme)", args.theme)
             for label, width, height in _VIEWPORTS:
                 page.set_viewport_size({"width": width, "height": height})
                 for name, route in _PAGES:
-                    output = args.output_dir / f"ui-{name}-{label}.png"
+                    variant = f"-{args.theme}" if args.theme != "system" else ""
+                    output = args.output_dir / f"ui-{name}-{label}{variant}.png"
                     _capture(
                         page,
                         urljoin(args.base_url, route.format(days=args.days)),
