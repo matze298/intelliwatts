@@ -7,6 +7,7 @@ training and wellness information: output stays in a gitignored local directory.
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 from pathlib import Path
 from urllib.parse import urljoin
@@ -17,6 +18,7 @@ _DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 _DEFAULT_OUTPUT = Path("artifacts/ui-screenshots")
 _VIEWPORTS = (("desktop", 1440, 960), ("mobile", 390, 844))
 _PAGES = (("planner", "/"), ("dashboard", "/dashboard?days={days}"))
+_LOGGER = logging.getLogger(__name__)
 
 
 def _arguments() -> argparse.Namespace:
@@ -59,6 +61,9 @@ def _capture(page: Page, url: str, output: Path, *, check_charts: bool) -> None:
         url: Full app URL.
         output: Destination PNG.
         check_charts: Require an initialized performance chart.
+
+    Raises:
+        RuntimeError: If the viewport has horizontal overflow.
     """
     page.goto(url, wait_until="domcontentloaded")
     if check_charts:
@@ -80,6 +85,9 @@ def main() -> int:
 
     Returns:
         Process exit status.
+
+    Raises:
+        SystemExit: If the screenshot password environment variable is missing.
     """
     args = _arguments()
     password = os.environ.get(args.password_env)
@@ -87,6 +95,7 @@ def main() -> int:
         msg = f"Set {args.password_env} in the environment before running the capture script."
         raise SystemExit(msg)
 
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
@@ -104,7 +113,7 @@ def main() -> int:
                         output,
                         check_charts=name == "dashboard",
                     )
-                    print(output)
+                    _LOGGER.info("Saved %s", output)
         finally:
             browser.close()
     return 0
