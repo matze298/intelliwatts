@@ -161,7 +161,7 @@ The planner and dashboard use the existing FastAPI + Jinja2 + Tailwind setup wit
 stylesheet (`app/static/intelliwatts-ui.css`) and Chart.js formatting helpers
 (`app/static/chart-quality.js`). No React application or backend rewrite is required.
 
-The new sidebar includes an Analysis jump link to the supporting-detail section of the dashboard.
+The sidebar now includes a dedicated `/analysis` screen, reusing the dashboard's supporting metrics with a more spacious analysis layout.
 Activity types retain their original intervals.icu identifiers in storage while displaying
 friendly names (for example, Ride is shown as Cycling).
 
@@ -173,7 +173,8 @@ The opt-in Playwright test runs the FastAPI application with anonymized fixture 
 INTELLIWATTS_CAPTURE_SCREENSHOTS=1 uv run pytest tests/routes/test_browser_pages.py::test_capture_ui_reference_screenshots -q
 ```
 
-It writes `docs/screenshots/ui-planner-desktop.png`, `ui-planner-mobile.png`,
-`ui-dashboard-desktop.png`, and `ui-dashboard-mobile.png`. These images were captured using Playwright against the running FastAPI test fixture and committed
+It writes desktop/mobile screenshots for `planner`, `dashboard`, and `analysis`
+(e.g. `docs/screenshots/ui-analysis-desktop.png`). The visual fixture covers a reproducible
+42-day history and uses the original FastAPI routes, not a screenshot mockup. These images were captured using Playwright against the running FastAPI test fixture and committed
 under `docs/screenshots/` for review. Rerun the command and commit updated images when the UI
 changes. This fixture output is for visual QA only, not live personal data.
