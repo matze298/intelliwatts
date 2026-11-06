@@ -4,7 +4,7 @@
 
 # IntelliWatts
 
-**IntelliWatts** is a personal, cycling-focused training coach that brings together performance analytics, recovery signals, and AI-generated training plans. It reads workout and wellness data from [Intervals.icu](https://intervals.icu), lets you set longer-term goals and weekly limits, and generates structured workouts with OpenAI or Google Gemini.
+**IntelliWatts** is a personal, cycling-focused training coach that brings together performance analytics, recovery signals, and AI-generated training plans. It reads workout and wellness data from [Intervals.icu](https://intervals.icu), lets you set longer-term goals and weekly limits, and generates structured workouts with OpenAI, Groq, or Google Gemini.
 
 [![Gatekeeper](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml/badge.svg?branch=main)](https://github.com/matze298/intelliwatts/actions/workflows/gatekeeper.yml)
 [![codecov](https://codecov.io/github/matze298/intelliwatts/graph/badge.svg)](https://codecov.io/github/matze298/intelliwatts)
@@ -19,7 +19,7 @@
 - **Planning horizon:** View the long-term plan and select the week to work on.
 - **Weekly limits:** Set available training hours and the maximum number of planned sessions.
 - **Recovery context:** Choose whether readiness and wellness signals are included in plan generation.
-- **Model selection:** Select a configured OpenAI or Gemini model.
+- **Model selection:** Select a configured OpenAI, Groq, or Gemini model.
 - **Weekly workout generation:** Create a structured weekly plan based on the goal, selected week, constraints, and available context.
 - **Review, update, and publish:** Inspect the generated plan, request an update, and publish the selected workout to Intervals.icu.
 
@@ -67,6 +67,7 @@ The Planner, Dashboard, and Settings are available from the main navigation. On 
 |---|---|
 | [Intervals.icu](https://intervals.icu) | Training activities, wellness data, power curves, training load, and workout publishing |
 | [OpenAI](https://platform.openai.com/api-keys) | Supported LLM backend for training-plan generation |
+| [Groq](https://console.groq.com/keys) | Supported LLM backend for training-plan generation |
 | [Google Gemini](https://aistudio.google.com/api-keys) | Supported LLM backend for training-plan generation |
 
 The available model identifiers are maintained in `app/config.py`. The configured API key for the selected provider is required whenever a plan is generated.
@@ -105,6 +106,7 @@ Set the required values. Keep the real `.env` file out of source control.
 | `INTERVALS_API_KEY` | Intervals.icu API credential |
 | `LANGUAGE_MODEL` | Default model identifier for plan generation |
 | `OPENAI_API_KEY` | OpenAI credential, if using OpenAI |
+| `GROQ_API_KEY` | Groq credential, if using Groq |
 | `GEMINI_API_KEY` | Gemini credential, if using Gemini |
 | `CACHE_INTERVALS_HOURS` | Number of hours to cache Intervals.icu API responses (default: 0) |
 | `ANALYSIS_DAYS` | History window for coach context (default: 120) |

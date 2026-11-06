@@ -17,9 +17,7 @@ class LanguageModel(StrEnum):
 
     GPT_5_MINI = "gpt-5-mini-2025-08-07"
     GEMINI_FLASH = "gemini-flash-latest"
-    GEMINI_2_5_PRO = "gemini-2.5-pro"
-    GEMINI_1_5_PRO = "gemini-1.5-pro"
-    GEMINI_2_0_FLASH = "gemini-2.0-flash"
+    GROQ_GPT_OSS_120B = "openai/gpt-oss-120b"
 
 
 class Settings(BaseSettings):
@@ -30,6 +28,7 @@ class Settings(BaseSettings):
         INTERVALS_API_KEY: API key for Intervals.icu.
         OPENAI_API_KEY: API key for OpenAI.
         GEMINI_API_KEY: API key for Google Gemini.
+        GROQ_API_KEY: API key for Groq.
         LANGUAGE_MODEL: The LLM model to use for planning.
         CACHE_INTERVALS_HOURS: How long to cache Intervals.icu API responses.
         ANALYSIS_DAYS: Number of days of history to analyze for the coach.
@@ -72,6 +71,7 @@ class Settings(BaseSettings):
     INTERVALS_API_KEY: str
     OPENAI_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
+    GROQ_API_KEY: str | None = None
 
     # App configuration
     LANGUAGE_MODEL: LanguageModel
