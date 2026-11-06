@@ -33,4 +33,6 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 - [x] Improve Planner grouping, generation empty state, and dashboard chart hierarchy without altering the Python training logic.
 - [x] Guard chart axes against invalid week dates, use concise labels, and display Cycling rather than Ride.
 - [x] Capture and attach actual Playwright desktop/mobile screenshots from the fixture-backed app.
+- [x] Review alignment against target mockups, tighten dashboard/planner vertical rhythm, and add a dedicated Analysis page.
+- [x] Extend browser visual QA with six screenshots covering a deterministic 42-day training sample.
 - [ ] Review the live dashboard with real intervals.icu data after merging.
