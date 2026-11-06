@@ -289,3 +289,185 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 .auth-shell form:not(.nav-logout) { padding: 25px; border: 1px solid var(--iw-stroke); border-radius: 13px; background: var(--iw-paper); box-shadow: var(--iw-shadow); }
 .auth-shell input[type=password] { width: 100%; border: 1px solid #cbd8d0; border-radius: 9px; }
 @media (max-width: 640px) { .auth-shell { margin-top: 40px; } }
+
+
+/* Iteration 2 — denser editorial rhythm, aligned charts, genuine analysis view. */
+@media (min-width: 1191px) {
+  .container:not(.max-w-xl) { width: calc(100% - 180px); max-width: none; margin-left: 180px; padding: 24px 30px 52px; }
+  .app-nav { width: 174px; padding: 23px 10px 18px; }
+  .app-brand { padding: 3px 7px 25px; gap: 7px; font-size: 1.07rem; }
+  .app-brand-mark { width: 28px; height: 28px; }
+  .app-nav .app-nav-links > a { min-height: 41px; padding: 10px 11px; }
+}
+@media (min-width: 891px) and (max-width: 1190px) {
+  .container:not(.max-w-xl) { width: calc(100% - 168px); margin-left: 168px; padding: 22px 22px 52px; }
+  .app-nav { width: 162px; padding: 22px 8px 16px; }
+  .app-brand { gap: 5px; padding: 3px 6px 22px; font-size: .96rem; }
+  .app-brand-mark { width: 26px; height: 26px; }
+  .app-nav .app-nav-links > a { min-height: 41px; padding: 10px 9px; gap: 7px; }
+}
+.nav-symbol { width: 18px; height: 18px; flex: none; }
+.dashboard-masthead, .page-masthead {
+  min-height: 0; margin: 0 0 18px; padding: 2px 0 17px;
+}
+.dashboard-masthead {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+}
+.dashboard-masthead h1 {
+  margin: 5px 0 6px; font-size: clamp(2.25rem, 3.1vw, 3.1rem);
+  line-height: 1.06; letter-spacing: -.042em;
+}
+.dashboard-lede, .page-lede { font-size: .88rem; line-height: 1.45; }
+.dashboard-masthead .eyebrow { margin-bottom: 4px; }
+.dashboard-tools { flex: none; gap: 10px; }
+.dashboard-range { gap: 9px; padding: 7px 10px; }
+.dashboard-tools > a { min-height: 38px; padding: 9px 13px; }
+.dashboard-section-heading { margin-bottom: 10px; }
+.dashboard-section-heading h2 { font-size: 1.35rem; }
+.dashboard-section-heading .eyebrow { margin-bottom: 2px; }
+.training-section, .recovery-section { margin-bottom: 18px !important; }
+.dashboard-metrics { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 12px; }
+.dashboard-metrics .stat-card:only-child {
+  display: flex; align-items: center; gap: 22px; min-height: 57px; padding: 9px 18px !important;
+}
+.dashboard-metrics .stat-card:only-child .stat-label { flex: none; margin: 0; padding-right: 17px; border-right: 1px solid var(--iw-stroke); }
+.dashboard-metrics .stat-card:only-child > div { display: flex; align-items: baseline; gap: 20px; }
+.dashboard-metrics .stat-card:only-child .stat-value { font-size: 1.95rem; }
+.dashboard-metrics .stat-card:only-child .stat-trend { margin: 0; }
+.dashboard-load-chart .chart-card { padding: 16px 18px 11px !important; }
+.dashboard-load-chart .chart-card h3 { font-size: .96rem !important; }
+.dashboard-load-chart .chart-frame { height: 160px; }
+.dashboard-load-chart .chart-frame.chart-frame-short { height: 66px; }
+.form-chart-band { margin-top: 10px; padding-top: 8px; }
+.dashboard-overview-grid { gap: 12px; grid-template-columns: minmax(0,1fr) minmax(240px,25%); }
+.next-session { min-height: 0; padding: 18px !important; }
+.next-session-day { margin: 25px 0 11px; font-size: clamp(1.75rem,2.4vw,2.2rem); }
+.next-session h2 { font-size: 1.32rem; }
+.next-session-description { font-size: .81rem; line-height: 1.5; }
+.next-session-action { padding: 11px; }
+.dashboard-recovery { gap: 11px; }
+.dashboard-recovery .chart-card, .wellness-sleep { padding: 12px 15px !important; }
+.dashboard-recovery .chart-frame, .wellness-sleep .chart-frame { height: 103px; margin-top: 6px; }
+.dashboard-recovery .chart-card h3, .wellness-sleep h3 { font-size: .86rem !important; }
+.dashboard-recovery .chart-card p, .wellness-sleep p { font-size: .7rem; }
+.analysis-link {
+  font-size: .78rem; font-weight: 800; text-decoration: none;
+  color: var(--iw-green); padding: 6px 0; white-space: nowrap;
+}
+.analysis-link:hover { text-decoration: underline; }
+.page-masthead h1 { font-size: clamp(2.55rem,3.7vw,3.8rem); margin: 0 0 5px; }
+.planner-goal-card { min-height: 255px; padding: 18px 21px !important; margin-bottom: 14px !important; }
+.planner-card h2 { font-size: 1.48rem; }
+.planner-goal-card > form { margin-top: 10px !important; }
+.planner-goal-card > form > div + div { margin-top: 9px !important; }
+.planner-goal-card form .control-button { margin-top: 0; }
+.planner-goal-card label { display: block; font-size: .79rem; }
+.planner-goal-card input { min-height: 38px; padding: 7px 10px; }
+.planner-goal-card::after { width: 44%; }
+.planner-controls-card { padding: 18px 21px !important; margin-bottom: 14px !important; }
+.planner-controls-card > .grid { align-items: center; }
+.planner-controls-card .control-surface { padding: 15px 18px !important; margin-top: 14px !important; }
+.planner-controls-card .control-surface .grid { margin-top: 10px; gap: 10px 20px; }
+.planner-controls-card .control-surface .grid > div {
+  display: flex; align-items: center; gap: 9px; min-width: 0;
+}
+.planner-controls-card .control-surface .control-label { flex: 0 0 132px; min-width: 0; font-size: .77rem; line-height: 1.35; }
+.planner-controls-card .control-surface .control-field { min-width: 0; width: min(180px,100%); min-height: 38px; padding: 7px 10px; font-size: .82rem; }
+.planner-controls-card .control-surface input[type=checkbox] { min-height: 0; flex: none; }
+.planner-controls-card .control-surface label[for=use_wellness] { font-size: .78rem; line-height: 1.4; }
+.planner-controls-card .control-surface .grid > div:has(> input[type=checkbox]) { min-height: 41px; padding: 6px 10px; }
+.planner-long-term {
+  margin: 0 0 16px;
+  border: 1px solid var(--iw-stroke); border-radius: 12px;
+  background: var(--iw-paper); box-shadow: var(--iw-shadow);
+}
+.planner-long-term > summary { min-height: 44px; padding: 12px 17px; font-weight: 750; font-size: .85rem; }
+.planner-long-term > :not(summary) { margin: 0 18px 16px; }
+.planner-long-term-hint { color: var(--iw-muted); font-size: .83rem; }
+.planner-week-heading { margin: 12px 0 8px; font-size: 1.75rem; }
+.planner-empty-state {
+  position: relative; isolation: isolate; overflow: hidden;
+  min-height: 190px; padding: 21px !important; background: var(--iw-paper) !important;
+}
+.planner-empty-state::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: url("/static/topography.svg") right bottom / 23rem auto no-repeat;
+  opacity: .14;
+}
+.planner-empty-icon { width: 32px; height: 32px; margin-bottom: 8px; }
+.planner-empty-state h3 { font-size: 1.38rem; }
+.planner-empty-state p { margin-bottom: 12px; font-size: .85rem; }
+.planner-empty-state button { min-height: 38px; padding: 8px 15px; }
+.analysis-masthead {
+  display: flex; justify-content: space-between; align-items: end; gap: 16px;
+  padding: 4px 0 18px; margin: 0 0 22px; border-bottom: 1px solid var(--iw-stroke);
+}
+.analysis-masthead h1 {
+  margin: 4px 0 8px; color: var(--iw-ink); font: 400 clamp(2.5rem,3.3vw,3.55rem)/1.05 "DM Serif Display",Georgia,serif;
+}
+.analysis-header-tools { display: flex; gap: 15px; align-items: center; }
+.analysis-header-tools > a { min-height: 38px; padding: 8px 12px; font-size: .78rem; }
+.analysis-page .dashboard-supporting-grid.analysis-grid {
+  display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
+  grid-template-areas: "sport volume" "power intensity" "history intensity";
+  grid-template-rows: auto auto auto; gap: 12px;
+}
+.analysis-grid .dashboard-supporting-item[data-widget-name="activity_type"] { grid-area: sport; }
+.analysis-grid .dashboard-supporting-item[data-widget-name="weekly_volume"] { grid-area: volume; }
+.analysis-grid .dashboard-supporting-item[data-widget-name="power_curve"] { grid-area: power; }
+.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] { grid-area: intensity; }
+.analysis-grid .dashboard-supporting-item[data-widget-name="activity_history"] { grid-area: history; }
+.analysis-page .dashboard-supporting-item:has(.activity-history-card) { grid-column: auto; }
+.analysis-grid .dashboard-supporting-item .chart-card { height: 100%; padding: 17px !important; }
+.analysis-grid .dashboard-supporting-item .chart-frame,
+.analysis-grid .dashboard-supporting-item .chart-frame.chart-frame-short { height: 200px; }
+.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .chart-card { height: 100%; }
+.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .chart-card > .flex.flex-col { gap: 10px; padding: 10px 0; }
+.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .w-56.h-56 { width: 196px; height: 196px; }
+.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .w-full.max-w-lg { max-width: 100%; }
+.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .w-full.max-w-lg.space-y-6 { margin-top: 0; }
+.analysis-grid .dashboard-supporting-item[data-widget-name="activity_type"] .w-48.h-48 { width: 160px; height: 160px; }
+.analysis-grid .dashboard-supporting-item[data-widget-name="activity_history"] .activity-history-card { height: 100%; }
+@media (max-width: 890px) {
+  .dashboard-masthead { display: block; }
+  .dashboard-masthead h1 { font-size: clamp(2.25rem,5.1vw,3.1rem); }
+  .dashboard-masthead .dashboard-tools { margin-top: 13px; }
+  .dashboard-overview-grid { grid-template-columns: 1fr; }
+  .dashboard-load-chart .chart-frame { height: 190px; }
+  .dashboard-load-chart .chart-frame.chart-frame-short { height: 80px; }
+  .planner-goal-card > form { width: min(100%,67%); }
+  .analysis-page .analysis-grid { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-areas: none; }
+  .analysis-page .analysis-grid > .dashboard-supporting-item { grid-area: auto; }
+}
+@media (max-width: 640px) {
+  .dashboard-masthead h1 { font-size: clamp(2.15rem,9vw,2.6rem); }
+  .dashboard-metrics .stat-card:only-child { display: flex; gap: 14px; align-items: center; padding: 12px 15px !important; }
+  .dashboard-metrics .stat-card:only-child .stat-label { flex: 0 0 98px; margin: 0; padding-right: 8px; border-right: 1px solid var(--iw-stroke); }
+  .dashboard-metrics .stat-card:only-child > div { display: block; }
+  .dashboard-metrics .stat-card:only-child .stat-trend { margin: 0; }
+  .dashboard-load-chart .chart-frame { height: 170px; }
+  .dashboard-load-chart .chart-frame.chart-frame-short { height: 77px; }
+  .dashboard-recovery .chart-frame, .wellness-sleep .chart-frame { height: 120px; }
+  .dashboard-overview-grid .next-session-day { margin: 13px 0 10px; }
+  .analysis-masthead { display: block; }
+  .analysis-masthead h1 { font-size: 2.55rem; }
+  .analysis-header-tools { justify-content: space-between; margin-top: 14px; }
+  .analysis-page .analysis-grid { display: grid; grid-template-columns: 1fr; grid-template-areas: none; }
+  .analysis-page .analysis-grid > .dashboard-supporting-item { grid-area: auto; grid-column: auto; }
+  .analysis-grid .dashboard-supporting-item .chart-frame,
+  .analysis-grid .dashboard-supporting-item .chart-frame.chart-frame-short { height: 205px; }
+  .planner-goal-card, .planner-controls-card { padding: 18px !important; }
+  .planner-goal-card { min-height: 0; }
+  .planner-goal-card > form { width: 100%; }
+  .planner-goal-card::after { display: none; }
+  .planner-goal-card input { width: 100%; }
+  .planner-controls-card .control-surface .grid { display: grid; grid-template-columns: 1fr; gap: 11px; }
+  .planner-controls-card .control-surface .grid > div { display: block; }
+  .planner-controls-card .control-surface .control-label { display: block; margin-bottom: 5px; width: auto; }
+  .planner-controls-card .control-surface .control-field { display: block; width: 100%; min-height: 42px; }
+  .planner-controls-card .control-surface .grid > div:has(> input[type=checkbox]) { display: flex; }
+  .planner-long-term > summary { min-height: 45px; }
+  .planner-empty-state::before { opacity: .09; background-size: 18rem auto; }
+  .planner-week-heading { font-size: 1.65rem; }
+  .analysis-link { font-size: .74rem; }
+}
