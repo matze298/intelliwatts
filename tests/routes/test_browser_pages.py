@@ -339,7 +339,9 @@ def test_capture_ui_reference_screenshots(
                     page.get_by_label("Weekly max sessions").fill("1")
                     expect(page.locator(".planner-long-term summary")).to_be_visible()
                     if width == 390:
-                        assert page.locator("#max_hours").bounding_box()["width"] >= 230
+                        field_bounds = page.locator("#max_hours").bounding_box()
+                        assert field_bounds is not None
+                        assert field_bounds["width"] >= 230
                 else:
                     page.wait_for_function(
                         "() => typeof window.IWCharts !== 'undefined' && typeof window.Chart !== 'undefined'",
@@ -353,6 +355,11 @@ def test_capture_ui_reference_screenshots(
                     )
                     assert page.evaluate("IWCharts.weekLabel('28.09', false)") != "Date unavailable"
                     expect(page.get_by_text("NaN", exact=True)).to_have_count(0)
+                    assert page.evaluate("""() => Object.values(Chart.instances).every(chart =>
+                        Object.values(chart.scales).every(axis =>
+                            axis.ticks.every(tick => !String(tick.label).includes('NaN'))
+                        )
+                    )""")
                 page.evaluate("document.fonts.ready")
                 page.wait_for_timeout(400)
                 page.screenshot(
