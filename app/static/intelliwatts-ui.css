@@ -436,7 +436,7 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
   .dashboard-load-chart .chart-frame { height: 190px; }
   .dashboard-load-chart .chart-frame.chart-frame-short { height: 80px; }
   .planner-goal-card > form { width: min(100%,67%); }
-  .analysis-page .analysis-grid { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-areas: none; }
+  .analysis-page .dashboard-supporting-grid.analysis-grid { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-areas: none; }
   .analysis-page .analysis-grid > .dashboard-supporting-item { grid-area: auto; }
 }
 @media (max-width: 640px) {
@@ -452,7 +452,7 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
   .analysis-masthead { display: block; }
   .analysis-masthead h1 { font-size: 2.55rem; }
   .analysis-header-tools { justify-content: space-between; margin-top: 14px; }
-  .analysis-page .analysis-grid { display: grid; grid-template-columns: 1fr; grid-template-areas: none; }
+  .analysis-page .dashboard-supporting-grid.analysis-grid { display: grid; grid-template-columns: 1fr; grid-template-areas: none; }
   .analysis-page .analysis-grid > .dashboard-supporting-item { grid-area: auto; grid-column: auto; }
   .analysis-grid .dashboard-supporting-item .chart-frame,
   .analysis-grid .dashboard-supporting-item .chart-frame.chart-frame-short { height: 205px; }
