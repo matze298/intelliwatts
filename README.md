@@ -154,3 +154,26 @@ Currently available themes are:
 
 The themes are defined in `app/static/style-<theme>.css`.
 Switching themes is managed entirely on the client-side via a dropdown menu.
+
+## Performance cockpit UI
+
+The planner and dashboard use the existing FastAPI + Jinja2 + Tailwind setup with a small unbundled
+stylesheet (`app/static/intelliwatts-ui.css`) and Chart.js formatting helpers
+(`app/static/chart-quality.js`). No React application or backend rewrite is required.
+
+The new sidebar includes an Analysis jump link to the supporting-detail section of the dashboard.
+Activity types retain their original intervals.icu identifiers in storage while displaying
+friendly names (for example, Ride is shown as Cycling).
+
+### Capture actual browser screenshots
+
+The opt-in Playwright test runs the FastAPI application with anonymized fixture data:
+
+```bash
+INTELLIWATTS_CAPTURE_SCREENSHOTS=1 uv run pytest tests/routes/test_browser_pages.py::test_capture_ui_reference_screenshots -q
+```
+
+It writes `docs/screenshots/ui-planner-desktop.png`, `ui-planner-mobile.png`,
+`ui-dashboard-desktop.png`, and `ui-dashboard-mobile.png`. The screenshot CI workflow captures
+them once for the UI refresh branch and commits the images to the PR; delete them to deliberately
+refresh them after further visual changes. This fixture output is for visual QA only, not live personal data.
