@@ -432,7 +432,6 @@ async def long_term_plan(
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.get("/analysis", response_class=HTMLResponse)
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(
     request: Request,
@@ -479,7 +478,7 @@ def dashboard(
 
     return templates.TemplateResponse(
         request,
-        "analysis.html" if request.url.path == "/analysis" else "dashboard.html",
+        "dashboard.html",
         {
             "user": user,
             "analysis": analysis.to_dict(),
