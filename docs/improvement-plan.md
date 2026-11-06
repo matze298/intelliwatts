@@ -32,5 +32,5 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 - [x] Restore a first-party cycling-chainring brand mark and responsive app navigation.
 - [x] Improve Planner grouping, generation empty state, and dashboard chart hierarchy without altering the Python training logic.
 - [x] Guard chart axes against invalid week dates, use concise labels, and display Cycling rather than Ride.
-- [ ] Inspect and attach actual Playwright desktop/mobile screenshots from the PR workflow.
+- [x] Capture and attach actual Playwright desktop/mobile screenshots from the fixture-backed app.
 - [ ] Review the live dashboard with real intervals.icu data after merging.
