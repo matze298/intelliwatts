@@ -6,13 +6,18 @@
 <html>
 
 <head>
-    <title>AI Training Plan</title>
+    <meta charset="utf-8">
+    <title>Plan · IntelliWatts</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/tailwind-light.css">
+    <link rel="stylesheet" href="/static/intelliwatts-ui.css">
 </head>
 
 <body class="font-sans">
-    <main class="container">
+    <main class="container planner-shell">
         {{ app_nav("planner") }}
         <header class="page-masthead">
             <p class="eyebrow">Plan / Weekly training</p>
@@ -21,7 +26,7 @@
         </header>
 
         {% if user %}
-        <section class="planner-card mb-6 rounded-xl p-6">
+        <section class="planner-card planner-goal-card mb-6 rounded-xl p-6">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <h2 class="text-xl font-semibold text-slate-900">Goal & planning horizon</h2>
@@ -41,7 +46,7 @@
             </form>
         </section>
 
-        <section class="planner-card mb-6 rounded-xl p-6">
+        <section class="planner-card planner-controls-card mb-6 rounded-xl p-6">
             <div class="grid gap-4 lg:grid-cols-3 lg:items-end">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Current plan status</p>
@@ -209,10 +214,17 @@
             </div>
         </section>
         {% else %}
-        <h2 class="text-2xl font-semibold text-gray-700 mb-4 mt-8">Weekly Training Plan</h2>
-        {% call render_state_banner("No weekly plan yet", tone="empty") %}
-            Generate a plan to see the week here.
-        {% endcall %}
+        <h2 class="planner-week-heading">Weekly Training Plan</h2>
+        <div class="planner-empty-state" role="status">
+            <svg class="planner-empty-icon" viewBox="0 0 48 48" aria-hidden="true" fill="none">
+                <rect x="7" y="11" width="34" height="30" rx="5" stroke="currentColor" stroke-width="2.7"/>
+                <path d="M15 6v10M33 6v10M7 21h34" stroke="currentColor" stroke-width="2.7" stroke-linecap="round"/>
+                <path d="M16 28h5M28 28h5M16 35h5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <h3>No weekly plan yet</h3>
+            <p>Generate a plan to see the week here.</p>
+            {{ render_action_button("Generate weekly plan", form="generate-plan-form", tone="primary", extra_classes="px-4 py-3 text-sm", loading_label="Generating…") }}
+        </div>
         {% endif %}
 
         {% if summary %}
