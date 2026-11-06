@@ -1,0 +1,87 @@
+name: IntelliWatts visual review captures
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feature/intelliwatts-ui-refresh'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: intelliwatts
+          POSTGRES_PASSWORD: intelliwatts
+          POSTGRES_DB: intelliwatts_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U intelliwatts -d intelliwatts_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: true
+
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.14
+
+      - name: Install dependencies
+        run: uv sync --extra dev --extra test
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+
+      - name: Rebuild Tailwind CSS
+        run: |
+          npm ci
+          npm run build:css
+
+      - name: Install Playwright
+        run: uv run playwright install --with-deps chromium
+
+      - name: Capture actual application screenshots
+        run: INTELLIWATTS_CAPTURE_SCREENSHOTS=1 uv run pytest tests/routes/test_browser_pages.py::test_capture_ui_reference_screenshots -q
+
+      - name: Run repository pre-commit checks
+        run: uv run prek run --all-files --show-diff-on-failure
+
+      - name: Upload screenshots as artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: intelliwatts-ui-iteration-2
+          path: docs/screenshots/ui-*.png
+          if-no-files-found: error
+
+      - name: Commit updated screenshots and generated styles
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/ui-*.png app/static/tailwind-light.css
+          if git diff --cached --quiet; then
+            echo "No visual changes to commit."
+            exit 0
+          fi
+          git commit -m "docs(ui): capture second-iteration Playwright screenshots"
+          for attempt in 1 2 3; do
+            git fetch origin "${{ github.head_ref }}"
+            git rebase "origin/${{ github.head_ref }}"
+            if git push origin HEAD:${{ github.head_ref }}; then
+              exit 0
+            fi
+          done
+          exit 1
