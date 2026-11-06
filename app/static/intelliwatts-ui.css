@@ -291,7 +291,7 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 640px) { .auth-shell { margin-top: 40px; } }
 
 
-/* Iteration 2 — denser editorial rhythm, aligned charts, genuine analysis view. */
+/* Main application layout and responsive spacing. */
 @media (min-width: 1191px) {
   .container:not(.max-w-xl) { width: calc(100% - 180px); max-width: none; margin-left: 180px; padding: 24px 30px 52px; }
   .app-nav { width: 174px; padding: 23px 10px 18px; }
@@ -350,11 +350,6 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 .dashboard-recovery .chart-frame, .wellness-sleep .chart-frame { height: 103px; margin-top: 6px; }
 .dashboard-recovery .chart-card h3, .wellness-sleep h3 { font-size: .86rem !important; }
 .dashboard-recovery .chart-card p, .wellness-sleep p { font-size: .7rem; }
-.analysis-link {
-  font-size: .78rem; font-weight: 800; text-decoration: none;
-  color: var(--iw-green); padding: 6px 0; white-space: nowrap;
-}
-.analysis-link:hover { text-decoration: underline; }
 .page-masthead h1 { font-size: clamp(2.55rem,3.7vw,3.8rem); margin: 0 0 5px; }
 .planner-goal-card { min-height: 255px; padding: 18px 21px !important; margin-bottom: 14px !important; }
 .planner-card h2 { font-size: 1.48rem; }
@@ -398,36 +393,6 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 .planner-empty-state h3 { font-size: 1.38rem; }
 .planner-empty-state p { margin-bottom: 12px; font-size: .85rem; }
 .planner-empty-state button { min-height: 38px; padding: 8px 15px; }
-.analysis-masthead {
-  display: flex; justify-content: space-between; align-items: end; gap: 16px;
-  padding: 4px 0 18px; margin: 0 0 22px; border-bottom: 1px solid var(--iw-stroke);
-}
-.analysis-masthead h1 {
-  margin: 4px 0 8px; color: var(--iw-ink); font: 400 clamp(2.5rem,3.3vw,3.55rem)/1.05 "DM Serif Display",Georgia,serif;
-}
-.analysis-header-tools { display: flex; gap: 15px; align-items: center; }
-.analysis-header-tools > a { min-height: 38px; padding: 8px 12px; font-size: .78rem; }
-.analysis-page .dashboard-supporting-grid.analysis-grid {
-  display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
-  grid-template-areas: "sport volume" "power intensity" "history intensity";
-  grid-template-rows: auto auto auto; gap: 12px;
-}
-.analysis-grid .dashboard-supporting-item[data-widget-name="activity_type"] { grid-area: sport; }
-.analysis-grid .dashboard-supporting-item[data-widget-name="weekly_volume"] { grid-area: volume; }
-.analysis-grid .dashboard-supporting-item[data-widget-name="power_curve"] { grid-area: power; }
-.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] { grid-area: intensity; }
-.analysis-grid .dashboard-supporting-item[data-widget-name="activity_history"] { grid-area: history; }
-.analysis-page .dashboard-supporting-item:has(.activity-history-card) { grid-column: auto; }
-.analysis-grid .dashboard-supporting-item .chart-card { height: 100%; padding: 17px !important; }
-.analysis-grid .dashboard-supporting-item .chart-frame,
-.analysis-grid .dashboard-supporting-item .chart-frame.chart-frame-short { height: 200px; }
-.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .chart-card { height: 100%; }
-.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .chart-card > .flex.flex-col { gap: 10px; padding: 10px 0; }
-.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .w-56.h-56 { width: 196px; height: 196px; }
-.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .w-full.max-w-lg { max-width: 100%; }
-.analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .w-full.max-w-lg.space-y-6 { margin-top: 0; }
-.analysis-grid .dashboard-supporting-item[data-widget-name="activity_type"] .w-48.h-48 { width: 160px; height: 160px; }
-.analysis-grid .dashboard-supporting-item[data-widget-name="activity_history"] .activity-history-card { height: 100%; }
 @media (max-width: 890px) {
   .dashboard-masthead { display: block; }
   .dashboard-masthead h1 { font-size: clamp(2.25rem,5.1vw,3.1rem); }
@@ -436,8 +401,6 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
   .dashboard-load-chart .chart-frame { height: 190px; }
   .dashboard-load-chart .chart-frame.chart-frame-short { height: 80px; }
   .planner-goal-card > form { width: min(100%,67%); }
-  .analysis-page .dashboard-supporting-grid.analysis-grid { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-areas: none; }
-  .analysis-page .analysis-grid > .dashboard-supporting-item { grid-area: auto; }
 }
 @media (max-width: 640px) {
   .dashboard-masthead h1 { font-size: clamp(2.15rem,9vw,2.6rem); }
@@ -449,13 +412,6 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
   .dashboard-load-chart .chart-frame.chart-frame-short { height: 77px; }
   .dashboard-recovery .chart-frame, .wellness-sleep .chart-frame { height: 120px; }
   .dashboard-overview-grid .next-session-day { margin: 13px 0 10px; }
-  .analysis-masthead { display: block; }
-  .analysis-masthead h1 { font-size: 2.55rem; }
-  .analysis-header-tools { justify-content: space-between; margin-top: 14px; }
-  .analysis-page .dashboard-supporting-grid.analysis-grid { display: grid; grid-template-columns: 1fr; grid-template-areas: none; }
-  .analysis-page .analysis-grid > .dashboard-supporting-item { grid-area: auto; grid-column: auto; }
-  .analysis-grid .dashboard-supporting-item .chart-frame,
-  .analysis-grid .dashboard-supporting-item .chart-frame.chart-frame-short { height: 205px; }
   .planner-goal-card, .planner-controls-card { padding: 18px !important; }
   .planner-goal-card { min-height: 0; }
   .planner-goal-card > form { width: 100%; }
@@ -469,7 +425,6 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
   .planner-long-term > summary { min-height: 45px; }
   .planner-empty-state::before { opacity: .09; background-size: 18rem auto; }
   .planner-week-heading { font-size: 1.65rem; }
-  .analysis-link { font-size: .74rem; }
 }
 
 
@@ -491,9 +446,3 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 
 
 /* Keep the taller intensity visualization independent of the expanded history row. */
-@media (min-width: 891px) {
-  .analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] { align-self: start; }
-  .analysis-grid .dashboard-supporting-item[data-widget-name="intensity"] .chart-card {
-    height: auto; min-height: 460px;
-  }
-}
