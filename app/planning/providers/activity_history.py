@@ -132,7 +132,7 @@ class ActivityHistoryProvider(MetricProvider[ActivityHistoryResult | None]):
                 ftp=self._to_optional_float(row["activity_ftp"]),
             )
             for row in exploded.to_dicts()
-            if isfinite(float(row['activity_durations'])) and isfinite(float(row['activity_tss']))
+            if isfinite(float(row["activity_durations"])) and isfinite(float(row["activity_tss"]))
         ]
 
         return ActivityHistoryResult(activities=entries, has_data=bool(entries))
