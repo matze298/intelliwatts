@@ -376,6 +376,10 @@ def test_capture_ui_reference_screenshots(browser_server: BrowserServer, monkeyp
                             axis.ticks.every(tick => !String(tick.label).includes('NaN'))
                         )
                     )""")
+                # Full-page capture of fixed navigation must start at scroll origin.
+                # Opening the history preview can otherwise position the sidebar
+                # halfway down the stitched screenshot.
+                page.evaluate("window.scrollTo(0, 0)")
                 page.evaluate("document.fonts.ready")
                 page.wait_for_timeout(400)
                 page.screenshot(
