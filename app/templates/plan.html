@@ -151,13 +151,15 @@
             <input type="hidden" name="week_start" value="{{ selected_week_start }}">
         </form>
 
-        {% if long_term_summary_html %}
-        {% call render_disclosure("Long-term plan", details_class="planner-card mb-6 rounded-xl p-6") %}
+        {% call render_disclosure("Long-term plan", details_class="planner-long-term mb-6") %}
+            {% if long_term_summary_html %}
             <div class="prose max-w-none mt-4">
                 {{ long_term_summary_html }}
             </div>
+            {% else %}
+            <p class="planner-long-term-hint">Save your long-term goal to see the training horizon here.</p>
+            {% endif %}
         {% endcall %}
-        {% endif %}
 
         {% if plan_html %}
         <section class="planner-card mb-6 rounded-xl p-6">
