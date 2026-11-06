@@ -302,3 +302,38 @@ html[data-theme="dark"] .theme-toggle-thumb {
   .theme-toggle-thumb { width: 7px; height: 7px; }
 }
 @media (prefers-reduced-motion: reduce) { .theme-toggle-thumb { transition: none; } }
+
+
+/* Contrast and responsive refinements from the actual Chromium capture. */
+html[data-theme="dark"] .planner-controls-card .control-surface .grid > div:has(> input[type="checkbox"]) {
+  background: #173e39 !important;
+  border: 1px solid #345b54 !important;
+  border-radius: 9px;
+}
+html[data-theme="dark"] .planner-controls-card .control-surface label[for="use_wellness"] {
+  color: #d8f5e7 !important;
+  opacity: 1;
+}
+html[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: .8;
+}
+html[data-theme="dark"] input[type="date"] { color-scheme: dark; }
+.wellness-reading {
+  display: flex; align-items: baseline; gap: 7px;
+  margin: 4px 0 1px; font-variant-numeric: tabular-nums;
+}
+.wellness-reading[hidden] { display: none !important; }
+.wellness-reading strong {
+  color: #196f60; font-size: 1.28rem; font-weight: 800; letter-spacing: -.04em;
+  line-height: 1.1;
+}
+.wellness-reading span { color: var(--iw-muted); font-size: .66rem; font-weight: 750; }
+html[data-theme="dark"] .wellness-reading strong { color: #71e8bb; }
+html[data-theme="dark"] .wellness-sleep .wellness-reading strong { color: #8cc8ff; }
+html[data-theme="dark"] [aria-label="Resting heart rate"] .wellness-reading strong { color: #ff9e89; }
+@media (max-width: 640px) {
+  .dashboard-supporting-item .control-toggle-group { flex-wrap: nowrap; gap: 4px; }
+  .dashboard-supporting-item .control-toggle { min-height: 33px; padding: 5px 8px; font-size: .72rem; }
+  .dashboard-supporting-item .chart-card > .flex.justify-between { align-items: start; gap: 9px; }
+}
