@@ -261,3 +261,45 @@ def test_theme_preference_persists_across_pages(browser_server: BrowserServer) -
         expect(page.locator("html")).to_have_attribute("data-theme", "light")
         expect(page.locator("#theme-toggle")).to_have_attribute("aria-pressed", "false")
         browser.close()
+
+
+def test_recovery_charts_have_readable_height_at_desktop_and_mobile(browser_server: BrowserServer) -> None:
+    """Recovery charts receive more space without changing Training Load height."""
+    # Use CSS probes so missing external Chart.js does not turn frames into fallbacks.
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.route(
+            "https://cdn.jsdelivr.net/**",
+            lambda route: route.fulfill(status=200, body="", content_type="application/javascript"),
+        )
+        page.goto(f"{browser_server.base_url}/login", wait_until="domcontentloaded")
+        page.get_by_label("Master password").fill(get_settings().APP_PASSWORD)
+        page.get_by_role("button", name="Sign in").click()
+        page.goto(f"{browser_server.base_url}/dashboard", wait_until="domcontentloaded")
+        expect(page.get_by_role("heading", name="Recovery signals")).to_be_visible()
+
+        for width, minimum_height in ((1440, 195), (390, 210)):
+            page.set_viewport_size({"width": width, "height": 900})
+            measurements = page.evaluate(
+                """() => {
+                    const measure = (selector) => {
+                        const container = document.querySelector(selector);
+                        const probe = document.createElement('div');
+                        probe.className = 'chart-frame';
+                        container.append(probe);
+                        const height = probe.getBoundingClientRect().height;
+                        probe.remove();
+                        return height;
+                    };
+                    return {
+                        recovery: measure('.dashboard-recovery'),
+                        trainingLoad: measure('.dashboard-load-chart')
+                    };
+                }"""
+            )
+            assert measurements["recovery"] >= minimum_height
+            assert measurements["recovery"] > measurements["trainingLoad"]
+            assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
+
+        browser.close()
