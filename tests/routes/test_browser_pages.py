@@ -231,3 +231,33 @@ def _load_settings_and_save_preferences(page: Page, base_url: str) -> None:
     page.get_by_label("Enable developer mode").check()
     page.get_by_role("button", name="Save Preferences").click()
     expect(page.get_by_text("LLM prompt")).to_be_visible()
+
+
+def test_theme_preference_persists_across_pages(browser_server: BrowserServer) -> None:
+    """The theme switch persists its explicit choice across navigation."""
+    # GIVEN a light-system-preference browser session authenticated to the app.
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        context = browser.new_context(color_scheme="light")
+        page = context.new_page()
+        page.goto(f"{browser_server.base_url}/login", wait_until="domcontentloaded")
+        page.get_by_label("Master password").fill(get_settings().APP_PASSWORD)
+        page.get_by_role("button", name="Sign in").click()
+        expect(page.get_by_role("heading", name="Goal & planning horizon")).to_be_visible()
+        expect(page.locator("html")).to_have_attribute("data-theme", "light")
+
+        # WHEN the athlete enables dark mode and navigates around the app.
+        page.locator("#theme-toggle").click()
+        expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+        expect(page.locator("#theme-toggle")).to_have_attribute("aria-pressed", "true")
+        page.goto(f"{browser_server.base_url}/dashboard?days=42", wait_until="domcontentloaded")
+        expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+        page.goto(f"{browser_server.base_url}/settings", wait_until="domcontentloaded")
+        expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+        assert page.evaluate("localStorage.getItem('intelliwatts-theme')") == "dark"
+
+        # THEN toggling back restores light mode and the accessible state.
+        page.locator("#theme-toggle").click()
+        expect(page.locator("html")).to_have_attribute("data-theme", "light")
+        expect(page.locator("#theme-toggle")).to_have_attribute("aria-pressed", "false")
+        browser.close()
