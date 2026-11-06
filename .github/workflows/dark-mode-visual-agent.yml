@@ -1,0 +1,56 @@
+name: One-off agent visual baseline
+
+on:
+  push:
+    branches:
+      - feature/dark-mode
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    if: github.event.head_commit.message == 'chore: capture current main baseline once'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: intelliwatts
+          POSTGRES_PASSWORD: intelliwatts
+          POSTGRES_DB: intelliwatts_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U intelliwatts -d intelliwatts_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Install test dependencies
+        run: uv sync --extra dev --extra test
+      - name: Install Chromium
+        run: uv run playwright install --with-deps chromium
+      - name: Capture actual application via Playwright
+        run: uv run pytest tests/routes/test_dark_mode_baseline.py -q
+      - uses: actions/upload-artifact@v6
+        with:
+          name: main-light-playwright-baseline
+          path: docs/screenshots/dark-mode-baseline-*.png
+      - name: Commit synthetic-data screenshots to PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/dark-mode-baseline-*.png
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: capture latest-main Playwright baseline"
+            git push
+          fi
