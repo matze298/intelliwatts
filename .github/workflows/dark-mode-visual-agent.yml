@@ -1,4 +1,4 @@
-name: One-off agent visual baseline
+name: One-off agent dark-mode visual capture
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 jobs:
   capture:
     if: >-
-      github.event.head_commit.message == 'chore: capture current main baseline once'
+      github.event.head_commit.message == 'chore: capture dark screenshots'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -44,14 +44,14 @@ jobs:
         run: uv run pytest tests/routes/test_dark_mode_baseline.py -q
       - uses: actions/upload-artifact@v6
         with:
-          name: main-light-playwright-baseline
-          path: docs/screenshots/dark-mode-baseline-*.png
+          name: dark-mode-playwright
+          path: docs/screenshots/dark-mode-actual-*.png
       - name: Commit synthetic-data screenshots to PR branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/screenshots/dark-mode-baseline-*.png
+          git add docs/screenshots/dark-mode-actual-*.png
           if ! git diff --cached --quiet; then
-            git commit -m "docs: capture latest-main Playwright baseline"
+            git commit -m "docs: record real dark-mode Playwright screenshots"
             git push
           fi
