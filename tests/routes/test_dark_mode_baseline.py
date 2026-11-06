@@ -130,6 +130,20 @@ def test_capture_dark_mode(browser_server: BrowserServer, monkeypatch: object) -
                         const chart = Chart.getChart(document.querySelector("#pmcChart"));
                         return chart.options.scales.y.ticks.color === "#a6c5bd";
                     }""")
+                    assert page.locator("#hrv-reading").is_visible()
+                    if width == 390:
+                        assert page.evaluate("""() => {
+                            const hours = document.querySelector('#toggle-hours').getBoundingClientRect();
+                            const tss = document.querySelector('#toggle-tss').getBoundingClientRect();
+                            const hr = document.querySelector('#toggle-hr').getBoundingClientRect();
+                            const power = document.querySelector('#toggle-power').getBoundingClientRect();
+                            return Math.abs(hours.top-tss.top)<5 && Math.abs(hr.top-power.top)<5;
+                        }""")
+                elif name == "planner":
+                    assert page.evaluate("""() => {
+                        const label = document.querySelector('label[for="use_wellness"]');
+                        return label && getComputedStyle(label).color === 'rgb(216, 245, 231)';
+                    }""")
                 page.evaluate("document.fonts.ready")
                 page.evaluate("window.scrollTo(0,0)")
                 page.screenshot(
