@@ -1,12 +1,23 @@
 <div class="wellness-grid">
- <section class="chart-card" aria-label="Heart rate variability"><h3 class="text-lg mt-0 mb-1">Heart rate variability</h3><p class="text-sm text-slate-600">Milliseconds · daily and 7-day average</p><div class="chart-frame chart-frame-short mt-3"><canvas id="hrvChart" aria-label="Heart rate variability trend"></canvas></div></section>
- <section class="chart-card" aria-label="Resting heart rate"><h3 class="text-lg mt-0 mb-1">Resting heart rate</h3><p class="text-sm text-slate-600">Beats per minute · daily and 7-day average</p><div class="chart-frame chart-frame-short mt-3"><canvas id="restChart" aria-label="Resting heart rate trend"></canvas></div></section>
+ <section class="chart-card" aria-label="Heart rate variability"><h3 class="text-lg mt-0 mb-1">Heart rate variability</h3><p class="text-sm text-slate-600">Milliseconds · daily and 7-day average</p><div class="wellness-reading" id="hrv-reading" hidden aria-label="Latest seven-day HRV average"><strong>–</strong><span>ms · 7-day avg</span></div><div class="chart-frame chart-frame-short mt-3"><canvas id="hrvChart" aria-label="Heart rate variability trend"></canvas></div></section>
+ <section class="chart-card" aria-label="Resting heart rate"><h3 class="text-lg mt-0 mb-1">Resting heart rate</h3><p class="text-sm text-slate-600">Beats per minute · daily and 7-day average</p><div class="wellness-reading" id="rest-reading" hidden aria-label="Latest seven-day resting heart rate average"><strong>–</strong><span>bpm · 7-day avg</span></div><div class="chart-frame chart-frame-short mt-3"><canvas id="restChart" aria-label="Resting heart rate trend"></canvas></div></section>
 </div>
-{% if widget.data.sleep_rating %}<section class="chart-card wellness-sleep" aria-label="Sleep rating"><h3 class="text-lg mt-0 mb-1">Sleep quality</h3><p class="text-sm text-slate-600">Daily score · 0–100</p><div class="chart-frame chart-frame-short mt-3"><canvas id="sleepRatingChart" aria-label="Sleep rating trend"></canvas></div></section>{% else %}<p class="wellness-sleep-empty">Sleep rating is not available for this period.</p>{% endif %}
+{% if widget.data.sleep_rating %}<section class="chart-card wellness-sleep" aria-label="Sleep rating"><h3 class="text-lg mt-0 mb-1">Sleep quality</h3><p class="text-sm text-slate-600">Daily score · 0–100</p><div class="wellness-reading" id="sleep-reading" hidden aria-label="Latest seven-day sleep quality average"><strong>–</strong><span>score · 7-day avg</span></div><div class="chart-frame chart-frame-short mt-3"><canvas id="sleepRatingChart" aria-label="Sleep rating trend"></canvas></div></section>{% else %}<p class="wellness-sleep-empty">Sleep rating is not available for this period.</p>{% endif %}
 <script>
 (() => {
  const data = {{ widget.data | tojson }};
  const options = {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:7,color:'#405560',padding:14}},tooltip:{mode:'index',intersect:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:6,maxRotation:0,minRotation:0,color:'#647681'}},y:{grid:{color:'#edf0ea'},ticks:{color:'#647681'}}}};
+ const showLatest = (id, values) => {
+   const element = document.getElementById(id);
+   if (!element || !Array.isArray(values)) return;
+   const latest = values.findLast(value => typeof value === 'number' && Number.isFinite(value));
+   if (latest === undefined) return;
+   element.querySelector('strong').textContent = new Intl.NumberFormat('en', {maximumFractionDigits: 0}).format(latest);
+   element.hidden = false;
+ };
+ showLatest('hrv-reading', data.hrv_7d);
+ showLatest('rest-reading', data.resting_hr_7d);
+ showLatest('sleep-reading', data.sleep_rating_7d);
  const draw = (id,sets, suggested={}) => {const c=document.getElementById(id);if(c && typeof Chart!=='undefined')new Chart(c,{type:'line',data:{labels:data.dates,datasets:sets},options:{...options,scales:{...options.scales,y:{...options.scales.y,...suggested}}}});};
  draw('hrvChart',[{label:'Daily HRV · ms',data:data.hrv,borderColor:'#89bdb5',pointRadius:1.5,tension:.25},{label:'7-day average · ms',data:data.hrv_7d,borderColor:'#18786e',pointRadius:0,borderWidth:2.5,tension:.25}]);
  draw('restChart',[{label:'Daily resting HR · bpm',data:data.resting_hr,borderColor:'#e6ad9e',pointRadius:1.5,tension:.25},{label:'7-day average · bpm',data:data.resting_hr_7d,borderColor:'#d97761',pointRadius:0,borderWidth:2.5,tension:.25}]);
