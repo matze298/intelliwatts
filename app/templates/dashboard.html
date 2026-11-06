@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/static/intelliwatts-ui.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/static/chart-quality.js"></script>
+    <script src="/static/dashboard-empty-charts.js" defer></script>
 </head>
 <body>
 <main class="container dashboard-shell">
@@ -21,7 +22,7 @@
     <header class="dashboard-masthead">
         <div>
             <p class="eyebrow">Your training, in perspective</p>
-            <h1 class="mt-2 mb-2">Build your next<br><em>strong season.</em></h1>
+            <h1 class="mt-2 mb-2">Build your next <em>strong season.</em></h1>
             <p class="dashboard-lede">A clear read on your training load, recovery, and the work ahead.</p>
         </div>
         <div class="dashboard-tools">
@@ -34,7 +35,7 @@
         </div>
     </header>
 
-    <section aria-labelledby="training-heading" class="mb-10">
+    <section aria-labelledby="training-heading" class="training-section mb-10">
         <div class="dashboard-section-heading"><div><p class="eyebrow">The big picture</p><h2 id="training-heading">Your training rhythm</h2></div><span class="section-note">Last {{ display_days }} days</span></div>
         {% set basic_widgets = analysis.widgets | rejectattr("custom_template") | list %}
         {% if basic_widgets %}<div class="dashboard-metrics">{% for widget in basic_widgets %}{{ render_widget(widget) }}{% endfor %}</div>{% endif %}
@@ -60,7 +61,7 @@
         {% endif %}
     </section>
 
-    <section aria-labelledby="recovery-heading" class="mb-10">
+    <section aria-labelledby="recovery-heading" class="recovery-section mb-10">
         <div class="dashboard-section-heading"><div><p class="eyebrow">Recovery</p><h2 id="recovery-heading">Recovery signals</h2></div><span class="section-note">Wellness trends</span></div>
         {% set recovery_widgets = analysis.widgets | selectattr("name", "equalto", "wellness") | list %}
         <div class="dashboard-recovery">{% for widget in recovery_widgets %}{{ render_widget(widget) }}{% else %}
@@ -70,9 +71,9 @@
 
     {% set supporting_widgets = analysis.widgets | selectattr("custom_template") | rejectattr("name", "equalto", "pmc") | rejectattr("name", "equalto", "wellness") | list %}
     {% if supporting_widgets %}
-    <section aria-labelledby="analysis-heading" class="mb-8">
-        <div class="dashboard-section-heading"><div><p class="eyebrow">Explore</p><h2 id="analysis-heading">Supporting detail</h2></div><span class="section-note">Volume, power &amp; distribution</span></div>
-        <div class="dashboard-supporting-grid">{% for widget in supporting_widgets %}<div class="dashboard-supporting-item">{{ render_widget(widget) }}</div>{% endfor %}</div>
+    <section aria-labelledby="analysis-heading" class="supporting-section mb-8">
+        <div class="dashboard-section-heading"><div><p class="eyebrow">Explore</p><h2 id="analysis-heading">Supporting detail</h2></div><a href="/analysis?days={{ display_days }}" class="analysis-link">Open detailed analysis <span aria-hidden="true">↗</span></a></div>
+        <div class="dashboard-supporting-grid">{% for widget in supporting_widgets %}<div class="dashboard-supporting-item" data-widget-name="{{ widget.name }}">{{ render_widget(widget) }}</div>{% endfor %}</div>
     </section>
     {% endif %}
 </main>
@@ -84,25 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     value.textContent = `${slider.value} days`;
     slider.addEventListener('input', () => { value.textContent = `${slider.value} days`; });
     slider.addEventListener('change', () => { window.location.href = `/dashboard?days=${slider.value}`; });
-    document.querySelectorAll('.chart-card canvas').forEach((canvas) => {
-        const chart = typeof Chart === 'undefined' ? null : Chart.getChart(canvas);
-        const hasValues = chart?.data.datasets.some((dataset) =>
-            Array.isArray(dataset.data) && dataset.data.some((point) => point !== null && point !== undefined)
-        );
-        if (hasValues) return;
-        const frame = canvas.closest('.chart-frame') || canvas.parentElement;
-        if (!frame || frame.querySelector('.chart-unavailable')) return;
-        canvas.hidden = true;
-        frame.classList.add('chart-fallback');
-        canvas.parentElement.querySelector('[data-chart-total]')?.setAttribute('hidden', '');
-        frame.closest('.chart-card')?.querySelector('.control-toggle-group')?.setAttribute('hidden', '');
-        const fallback = document.createElement('p');
-        fallback.className = 'chart-unavailable';
-        fallback.textContent = typeof Chart === 'undefined'
-            ? 'Charts are temporarily unavailable. Your other dashboard data is still available.'
-            : 'No measurements are available for this period.';
-        frame.append(fallback);
-    });
+
 });
 </script>
 </body>
