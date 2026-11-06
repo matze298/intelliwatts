@@ -224,10 +224,10 @@ A standalone Playwright capture script produces desktop (1440 px) and mobile (39
 
 ```bash
 export INTELLIWATTS_SCREENSHOT_PASSWORD="your-local-app-password"
-uv run python scripts/capture_ui_screenshots.py --base-url http://127.0.0.1:8000
+uv run python scripts/capture_ui_screenshots.py --base-url http://127.0.0.1:8000 --theme dark
 ```
 
-Captures are written to `artifacts/ui-screenshots/`, which is gitignored. **Screenshots can contain personal fitness and health data**: inspect them before sharing or attaching them to a PR. The script is opt-in and runs only when invoked manually.
+Use `--theme light` for light-mode screenshots or omit `--theme` to use the system preference. Captures are written to `artifacts/ui-screenshots/`, which is gitignored. **Screenshots can contain personal fitness and health data**: inspect them before sharing or attaching them to a PR. The script is opt-in and runs only when invoked manually.
 
 ## Troubleshooting
 
