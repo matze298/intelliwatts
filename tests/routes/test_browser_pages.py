@@ -345,6 +345,7 @@ def test_capture_ui_reference_screenshots(browser_server: BrowserServer, monkeyp
                     page.get_by_label("Target date:").fill("2026-12-07")
                     page.get_by_label("Weekly max hours").fill("2")
                     page.get_by_label("Weekly max sessions").fill("1")
+                    page.locator(".planner-week-heading").click()  # Blur the edited field before capture.
                     expect(page.locator(".planner-long-term summary")).to_be_visible()
                     if width == 390:
                         field_bounds = page.locator("#max_hours").bounding_box()
@@ -363,6 +364,13 @@ def test_capture_ui_reference_screenshots(browser_server: BrowserServer, monkeyp
                     )
                     assert page.evaluate("IWCharts.weekLabel('28.09', false)") != "Date unavailable"
                     expect(page.get_by_text("NaN", exact=True)).to_have_count(0)
+                    if screen in {"dashboard", "analysis"}:
+                        older = page.locator(".activity-history-more")
+                        expect(older).to_be_visible()
+                        assert not older.evaluate("(item) => item.open")
+                        older.locator("summary").first.click()
+                        assert older.evaluate("(item) => item.open")
+                        older.locator("summary").first.click()
                     assert page.evaluate("""() => Object.values(Chart.instances).every(chart =>
                         Object.values(chart.scales).every(axis =>
                             axis.ticks.every(tick => !String(tick.label).includes('NaN'))
