@@ -1,6 +1,6 @@
 """Tests for the intervals client."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -139,3 +139,20 @@ def test_publish_rejects_partial_success_response(requests_mock: Mocker) -> None
     # THEN reject the partial response so delivery is not marked fully published
     with pytest.raises(ValueError, match=r"events.*count"):
         client.publish_workout_events(payload)
+
+
+def test_calendar_events_fetches_selected_week_read_only(requests_mock: Mocker) -> None:
+    """The client reads only the selected date window and validates its shape."""
+    client = IntervalsClient(api_key="test_key", athlete_id="test_id", session=requests.Session())
+    matcher = requests_mock.get(
+        f"{BASE_URL}/athlete/test_id/events",
+        json=[{"category": "WORKOUT", "type": "Soccer", "start_date_local": "2026-11-10T18:00:00"}],
+    )
+
+    events = client.calendar_events(oldest=date(2026, 11, 9), newest=date(2026, 11, 15))
+
+    assert len(events) == 1
+    assert matcher.call_count == 1
+    request = requests_mock.request_history[-1]
+    assert request.method == "GET"
+    assert request.qs == {"oldest": ["2026-11-09"], "newest": ["2026-11-15"]}
