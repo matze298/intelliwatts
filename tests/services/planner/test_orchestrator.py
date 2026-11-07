@@ -308,9 +308,15 @@ async def test_update_training_plan_uses_history(
         patch("app.services.planner.orchestrator.Session", return_value=session),
         patch("app.services.planner.orchestrator.get_monday", return_value=monday),
         patch("app.services.planner.orchestrator.datetime") as mock_datetime,
+        patch(
+            "app.services.planner.orchestrator._fresh_revision_context",
+            new_callable=AsyncMock,
+            return_value="Fresh: Soccer yesterday; HRV below personal baseline",
+        ) as mock_fresh_context,
     ):
         mock_datetime.now.return_value = datetime(2026, 4, 21, tzinfo=UTC)
         await update_training_plan(user, "make it harder")
+    mock_fresh_context.assert_awaited_once()
 
     # THEN: Generate_plan should be called with the extended message history.
     mock_generate_plan.assert_called_once()
@@ -318,7 +324,8 @@ async def test_update_training_plan_uses_history(
     assert len(passed_messages) == 4
     assert passed_messages[2]["role"] == "assistant"
     assert "Initial Plan" in passed_messages[2]["content"]
-    assert passed_messages[3]["content"].startswith("make it harder\n\nWorkout date rules")
+    assert passed_messages[3]["content"].startswith("make it harder\n\nLatest recorded context")
+    assert "Soccer yesterday; HRV below personal baseline" in passed_messages[3]["content"]
     assert "Today's date is 2026-04-21" in passed_messages[3]["content"]
     assert "2026-04-20 to 2026-04-26" in passed_messages[3]["content"]
     assert "existing workouts already assigned to past dates may be retained unchanged" in passed_messages[3]["content"]
