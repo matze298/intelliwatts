@@ -128,7 +128,8 @@ def browser_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
         orchestrator,
     ):
         monkeypatch.setattr(module, "engine", test_engine, raising=False)
-    monkeypatch.setattr(web_routes, "IntervalsClient", FixtureIntervalsClient)
+    monkeypatch.setattr("app.services.dashboard_data.IntervalsClient", FixtureIntervalsClient)
+    monkeypatch.setattr("app.routes.dashboard._today", lambda: date(2026, 4, 1))
     monkeypatch.setattr(web_routes, "_today", lambda: date(2026, 4, 1))
     app.dependency_overrides[get_settings] = lambda: settings
     app.state.settings = {"settings": settings, "models": ["test-model"]}
