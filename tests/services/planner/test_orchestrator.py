@@ -1,7 +1,7 @@
 """Tests for the planner orchestration service."""
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
@@ -391,3 +391,52 @@ async def test_update_training_plan_fallback_uses_selected_week(session: Session
     mock_generate_weekly_plan.assert_awaited_once_with(user, ANY, week_start=selected_week)
     assert result["week_start"] == selected_week
     assert phase.user_id == user.id
+
+
+@pytest.mark.asyncio
+async def test_fresh_revision_context_uses_latest_completed_activity_and_calendar() -> None:
+    """Only a concise recent snapshot is appended on revision, not full raw history."""
+    from app.services.planner.orchestrator import _fresh_revision_context
+
+    phase = TrainingPhase(
+        user_id=uuid.uuid4(),
+        primary_goal="Build FTP",
+        start_date=date(2026, 11, 2),
+        end_date=date(2026, 12, 20),
+        target_date=date(2026, 12, 20),
+    )
+    analysis = MagicMock()
+    analysis.daily_records = [
+        {
+            "date": (date(2026, 9, 1) + timedelta(days=index)).isoformat(),
+            "training_stress": 70 if index % 7 == 2 else 30,
+            "duration_h": 1.5 if index % 7 == 2 else 0.5,
+            "types": ["Soccer"] if index % 7 == 2 else ["Ride"],
+            "sleep_score": 81,
+            "hrv": 59.0,
+            "resting_hr": 49.0,
+        }
+        for index in range(65)
+    ]
+    client = MagicMock()
+    with (
+        patch("app.services.planner.orchestrator._make_intervals_client", return_value=client),
+        patch("app.services.planner.orchestrator._get_analysis", return_value=analysis),
+        patch(
+            "app.services.planner.orchestrator.load_week_commitments",
+            return_value="Scheduled calendar commitments: 2026-11-10 Planned Soccer",
+        ),
+    ):
+        context = await _fresh_revision_context(
+            settings=MagicMock(ANALYSIS_DAYS=120),
+            phase=phase,
+            artifact=None,
+            week_start=date(2026, 11, 9),
+        )
+
+    assert "Recent 14d completed load" in context
+    assert "Other completed sports in last 14d: Soccer" in context
+    assert "Last recorded 7 days" in context
+    assert "Scheduled calendar commitments" in context
+    assert "prior 56d" in context
+    assert len(context) < 2300
