@@ -85,7 +85,7 @@ def _plain_text(value: object, default: str) -> str:
     """
     if not isinstance(value, str) or not value.strip():
         return default
-    return " ".join(value.split())[:65]
+    return " ".join(value.replace("\\n", " ").replace("\\r", " ").split())[:65]
 
 
 def _duration_label(seconds: object) -> str:
