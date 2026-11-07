@@ -9,6 +9,7 @@ from collections.abc import Awaitable, Callable
 from copy import copy
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, NamedTuple
+from urllib.parse import urlencode
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -251,6 +252,8 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
     selected_week_start: str = "",
     error: str | None = None,
     selected_model: LanguageModel | None = None,
+    delivery_links: tuple[object, ...] = (),
+    publish_notice: str | None = None,
 ) -> HTMLResponse:
     """Render the planner page with shared context.
 
@@ -272,6 +275,8 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
             "long_term_summary_html": long_term_summary_html,
             "delivery_status": delivery_status,
             "delivery_last_error": delivery_last_error,
+            "delivery_links": delivery_links,
+            "publish_notice": publish_notice,
             "summary": summary,
             "prompt": prompt,
             "primary_goal": primary_goal,
@@ -380,6 +385,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_profile)]) -
     prompt = None
     delivery_status = None
     delivery_last_error = None
+    delivery_links: tuple[object, ...] = ()
 
     with Session(engine) as session:
         raw_week_start = str(request.query_params.get("week_start", "")).strip()
@@ -396,6 +402,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_profile)]) -
         prompt = loaded.prompt
         delivery_status = loaded.delivery_status
         delivery_last_error = loaded.delivery_last_error
+        delivery_links = getattr(loaded, "delivery_links", ())
         selected_week_start = week_selection.selected_week_start or loaded.week_start
     else:
         selected_week_start = week_selection.selected_week_start
@@ -407,6 +414,8 @@ def home(request: Request, user: Annotated[User | None, Depends(get_profile)]) -
         long_term_summary_html=long_term_summary_html,
         delivery_status=delivery_status,
         delivery_last_error=delivery_last_error,
+        delivery_links=delivery_links,
+        publish_notice=request.query_params.get("publish") if request.query_params.get("publish") in {"success", "failed"} else None,
         summary=None,
         prompt=prompt,
         primary_goal=week_selection.primary_goal,
@@ -850,6 +859,12 @@ async def publish_workout(
             )
         client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session_factory)
 
-        publish_workout_delivery(session, plan, client)
+        try:
+            publish_workout_delivery(session, plan, client)
+            result = "success"
+        except (requests.RequestException, IntervalsResponseError):
+            _LOGGER.exception("Intervals.icu workout publication failed")
+            result = "failed"
 
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    query = urlencode({"week_start": week_start.isoformat(), "publish": result})
+    return RedirectResponse(url=f"/?{query}", status_code=status.HTTP_303_SEE_OTHER)
