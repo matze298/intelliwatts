@@ -53,7 +53,7 @@ def published_workout_links(delivery: WorkoutDelivery) -> tuple[PublishedWorkout
             continue
         try:
             workout_date = date.fromisoformat(staged["start_date_local"][:10]).isoformat()
-        except (ValueError, KeyError, TypeError):
+        except ValueError, KeyError, TypeError:
             continue
         week_query = urlencode({"w": workout_date})
         links.append(
@@ -80,7 +80,9 @@ class LoadedPlan(NamedTuple):
     delivery_links: tuple[PublishedWorkoutLink, ...] = ()
 
 
-def load_user_plan(user: User, *, week_start: date | None = None, include_weekly_plan: bool = True) -> LoadedPlan:
+def load_user_plan(  # ruff: ignore[too-many-locals]
+    user: User, *, week_start: date | None = None, include_weekly_plan: bool = True
+) -> LoadedPlan:
     """Loads the training plan for a user for the selected or current week.
 
     Args:
