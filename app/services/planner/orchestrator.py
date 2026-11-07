@@ -140,7 +140,7 @@ async def update_training_plan(
                 artifact=get_current_long_term_plan_artifact(session, phase_id=phase.id),
                 week_start=monday,
             )
-        except (requests.RequestException, ValueError):
+        except requests.RequestException, ValueError:
             # Keep revising saved plans if Intervals.icu is temporarily unavailable.
             latest_context = "Fresh Intervals.icu context unavailable; use saved plan and athlete feedback."
         history.append({
