@@ -9,6 +9,7 @@ import requests
 
 from app.intervals.client import IntervalsClient, IntervalsResponseError
 
+
 def load_week_commitments(client: IntervalsClient, *, week_start: date, today: date) -> str:
     """Fetch existing upcoming calendar commitments without blocking planning on API errors.
 
@@ -28,9 +29,7 @@ def load_week_commitments(client: IntervalsClient, *, week_start: date, today: d
     return format_week_commitments(events, oldest=oldest, newest=newest)
 
 
-def format_week_commitments(  # ruff: ignore[complex-structure]
-    events: list[object], *, oldest: date, newest: date
-) -> str:
+def format_week_commitments(events: list[object], *, oldest: date, newest: date) -> str:
     """Keep only planned WORKOUT details relevant to the chosen week.
 
     Returns:
@@ -64,8 +63,9 @@ def format_week_commitments(  # ruff: ignore[complex-structure]
     output.sort(key=itemgetter(0))
     if not output:
         return "No scheduled workouts found in the selected week."
-    return "Scheduled workouts (not completed training; non-cycling entries do not use cycling hours/sessions): " + "; ".join(
-        line for _, line in output
+    return (
+        "Scheduled workouts (not completed training; non-cycling entries do not use cycling hours/sessions): "
+        + "; ".join(line for _, line in output)
     )
 
 
