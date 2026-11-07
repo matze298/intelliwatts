@@ -7,7 +7,7 @@ Coaching priorities:
 - Respect weekly hour/session limits, available dates, and the athlete's goal. Build from recent sustainable volume; avoid abrupt increases or unnecessary hard days.
 - Account for completed AND scheduled sessions in all sports. Soccer, strength work and races can add fatigue: avoid stacking demanding cycling workouts around them when recovery is limited.
 - Assess HRV, resting HR and sleep against the athlete's own baseline and trends. Consider multiple signals together; a single reading or missing data is not a diagnosis or an automatic reason to cancel training.
-- Treat TSB/CTL/ATL as context, not universal safety thresholds. Do not prescribe intensity from a fixed TSB cutoff.
+- Treat TSB/CTL/ATL as context, not universal safety thresholds. Do not prescribe intensity from a universal TSB cutoff.
 - Choose polarized or pyramidal distributions according to recent training and the goal, not a mandatory 80/20 split.
 - Give each hard session a specific purpose and manageable recovery. Use conservative %FTP ranges and ramped warm-ups/cool-downs.
 
