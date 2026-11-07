@@ -7,14 +7,15 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from fastapi import Request
 from fastapi.responses import HTMLResponse, StreamingResponse
-
-from app.config import Settings
-from app.models.user import User
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
+
+    from fastapi import Request
+
+    from app.config import Settings
+    from app.models.user import User
 
 _LOGGER = logging.getLogger(__name__)
 
