@@ -317,7 +317,11 @@ def _recovery_comparison(baseline: Sequence[CoachDailyRecord], latest: Sequence[
     """
     comparisons = [_metric_deviation(baseline, latest, name) for name in ("hrv", "resting_hr", "sleep_score")]
     unfavorable_count = sum(1 for _, unfavorable in comparisons if unfavorable)
-    status = "multiple trends warrant attention" if unfavorable_count >= MULTI_SIGNAL_COUNT else "interpret trends alongside symptoms"
+    status = (
+        "multiple trends warrant attention"
+        if unfavorable_count >= MULTI_SIGNAL_COUNT
+        else "interpret trends alongside symptoms"
+    )
     return f"Recovery (7d vs prior 56d): {'; '.join(value for value, _ in comparisons)}; {status}."
 
 
