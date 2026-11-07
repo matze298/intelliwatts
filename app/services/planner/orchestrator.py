@@ -100,7 +100,7 @@ async def update_training_plan(
     return {"plan": llm_response.plan, "plan_id": saved_plan_id, "week_start": monday}
 
 
-async def generate_weekly_plan(
+async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
     user: User,
     settings: Settings | None = None,
     *,
