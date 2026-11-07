@@ -520,7 +520,7 @@ def test_dashboard_flow_passes_days_filter(  # ruff: ignore[too-many-arguments, 
 
 
 @pytest.mark.parametrize(
-    ("global_cache_hours", "cache_name", "duration"),
+    "cache_case",
     [
         (0, "dashboard_intervals_cache", timedelta(minutes=15)),
         (2, "intervals_cache", timedelta(hours=2)),
@@ -533,12 +533,11 @@ def test_dashboard_uses_short_lived_interval_cache(
     mock_compute: MagicMock,
     mock_client_class: MagicMock,
     mock_cached_session: MagicMock,
-    global_cache_hours: int,
-    cache_name: str,
-    duration: timedelta,
+    cache_case: tuple[int, str, timedelta],
 ) -> None:
     """The Dashboard caches repeated GETs and respects the existing global cache."""
     # GIVEN a configured dashboard cache and a mocked remote client.
+    global_cache_hours, cache_name, duration = cache_case
     user = User(id=uuid.uuid4())
     settings = MagicMock(spec=Settings)
     settings.INTERVALS_API_KEY = "test_api_key"
@@ -557,9 +556,7 @@ def test_dashboard_uses_short_lived_interval_cache(
 
     # THEN it uses a reusable per-URL cache instead of fetching an entire year.
     assert response.status_code == 200
-    mock_cached_session.assert_called_once_with(
-        cache_name, backend="sqlite", expire_after=duration
-    )
+    mock_cached_session.assert_called_once_with(cache_name, backend="sqlite", expire_after=duration)
     assert mock_client_class.call_args.kwargs["session"] is mock_cached_session.return_value
     mock_client_class.return_value.activities.assert_called_once_with(days=120)
     mock_client_class.return_value.wellness.assert_called_once_with(days=120)
