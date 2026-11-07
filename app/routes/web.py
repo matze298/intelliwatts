@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
+from collections.abc import Awaitable, Callable
 from copy import copy
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, NamedTuple
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from requests_cache import CachedSession
 from sqlmodel import Session, select
@@ -17,7 +20,7 @@ from sqlmodel import Session, select
 from app.config import LanguageModel, Settings, get_settings
 from app.db import engine
 from app.intervals.analysis import compute_analysis
-from app.intervals.client import IntervalsClient
+from app.intervals.client import IntervalsClient, IntervalsResponseError
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPhase, TrainingPlan
@@ -300,6 +303,56 @@ def _render_invalid_model_selection(request: Request, user: User, week_start: st
         prompt=loaded.prompt,
         selected_week_start=week_start,
         error="The selected language model is not supported.",
+    )
+
+
+def _stream_planner_action(
+    request: Request,
+    user: User,
+    settings: Settings,
+    action: Callable[[Request, User, Settings], Awaitable[HTMLResponse]],
+) -> StreamingResponse:
+    """Stream real backend milestones and return rendered planner HTML when complete.
+
+    Returns:
+        A newline-delimited event stream consumed by the in-place Planner UI.
+    """
+    queue: asyncio.Queue[dict[str, str] | None] = asyncio.Queue()
+
+    def progress(message: str) -> None:
+        queue.put_nowait({"kind": "stage", "message": message})
+
+    async def execute() -> None:
+        request.state.planner_progress = progress
+        try:
+            result = await action(request, user, settings)
+            queue.put_nowait({"kind": "complete", "html": result.body.decode("utf-8")})
+        except Exception:
+            _LOGGER.exception("Planner generation stream failed")
+            queue.put_nowait({
+                "kind": "error",
+                "message": "Plan generation failed. Your existing plan is still available; please try again.",
+            })
+        finally:
+            queue.put_nowait(None)
+
+    async def events():
+        # Work continues to save or stage the plan even if a browser tab disconnects.
+        task = asyncio.create_task(execute())
+        try:
+            while True:
+                item = await queue.get()
+                if item is None:
+                    break
+                yield f"data: {json.dumps(item, ensure_ascii=False)}\\n\\n".replace("\\\\n", "\\n")
+        finally:
+            if task.done():
+                await task
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
 
 
@@ -624,6 +677,11 @@ async def generate(
         weekly_hours=weekly_hours,
         weekly_sessions=weekly_sessions,
         week_start=week_selection.selected_week_start,
+        **(
+            {"progress": request.state.planner_progress}
+            if hasattr(request.state, "planner_progress")
+            else {}
+        ),
     )
 
     plan_html = render_markdown(result["plan"])
@@ -685,7 +743,17 @@ async def update(
             error=week_error,
         )
 
-    result = await update_training_plan(user=user, feedback=feedback, settings=settings, week_start=week_start)
+    result = await update_training_plan(
+        user=user,
+        feedback=feedback,
+        settings=settings,
+        week_start=week_start,
+        **(
+            {"progress": request.state.planner_progress}
+            if hasattr(request.state, "planner_progress")
+            else {}
+        ),
+    )
 
     plan_html = render_markdown(result["plan"])
     loaded = load_user_plan(user, week_start=result["week_start"])
@@ -709,6 +777,28 @@ async def update(
         week_options=week_options,
         selected_week_start=result["week_start"].isoformat(),
     )
+
+
+@planner_router.post("/generate/stream")
+async def stream_generate(
+    request: Request,
+    user: Annotated[User, Depends(get_profile)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> StreamingResponse:
+    """Generate a plan while streaming server-reported milestones."""
+    await request.form()
+    return _stream_planner_action(request, user, settings, generate)
+
+
+@planner_router.post("/update/stream")
+async def stream_update(
+    request: Request,
+    user: Annotated[User, Depends(get_profile)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> StreamingResponse:
+    """Revise a plan while streaming server-reported milestones."""
+    await request.form()
+    return _stream_planner_action(request, user, settings, update)
 
 
 @planner_router.post("/publish-workout", response_class=HTMLResponse)
