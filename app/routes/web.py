@@ -553,11 +553,13 @@ async def generate(
         The weekly plan and summary as HTML.
     """
     input_data = await request.form()
-    selected_model = _selected_language_model(input_data.get("language_model"), settings.LANGUAGE_MODEL)
-    if selected_model is None:
-        return _render_invalid_model_selection(request, user, str(input_data.get("week_start", "")))
-
-    settings = settings.model_copy(update={"LANGUAGE_MODEL": selected_model})
+    raw_model = input_data.get("language_model")
+    selected_model = None
+    if raw_model:
+        selected_model = _selected_language_model(raw_model, settings.LANGUAGE_MODEL)
+        if selected_model is None:
+            return _render_invalid_model_selection(request, user, str(input_data.get("week_start", "")))
+        settings = settings.model_copy(update={"LANGUAGE_MODEL": selected_model})
     raw_week_start = str(input_data.get("week_start", "")).strip()
 
     weekly_hours, weekly_sessions, limit_error = _parse_weekly_limits(
