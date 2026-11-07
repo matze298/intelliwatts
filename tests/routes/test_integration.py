@@ -1091,7 +1091,10 @@ async def test_planner_stream_reports_backend_milestones_without_llm() -> None:
         fake_action,
     )
     chunks = [chunk async for chunk in response.body_iterator]
-    messages = [json.loads(chunk.removeprefix("data: ").strip()) for chunk in chunks]
+    messages = [
+        json.loads((chunk if isinstance(chunk, str) else bytes(chunk).decode("utf-8")).removeprefix("data: ").strip())
+        for chunk in chunks
+    ]
 
     assert response.media_type == "text/event-stream"
     assert [message["kind"] for message in messages] == ["stage", "stage", "complete"]
