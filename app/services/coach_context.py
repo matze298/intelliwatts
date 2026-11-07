@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
 from operator import attrgetter
-from statistics import fmean
+from statistics import fmean, pstdev
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
@@ -18,14 +19,11 @@ WEEKLY_SUMMARY_DAYS = LOOKBACK_WEEKS * WEEK_LENGTH_DAYS
 DAILY_LEDGER_DAYS = 14
 RECENT_BRIEF_DAYS = 14
 RECOVERY_WINDOW_DAYS = 7
-HARD_SESSION_TSS_THRESHOLD = 70.0
-PRODUCTIVE_WEEK_TSS_THRESHOLD = 400.0
-SLEEP_RECOVERY_THRESHOLD = 70.0
-HRV_RECOVERY_THRESHOLD = 50.0
-RHR_RECOVERY_THRESHOLD = 52.0
-SLEEP_DROP_THRESHOLD = 10.0
-HRV_DROP_THRESHOLD = 5.0
-RHR_RISE_THRESHOLD = 4.0
+BASELINE_LOOKBACK_DAYS = 56
+MIN_BASELINE_SAMPLES = 10
+# Used only to identify a noteworthy change, never to cancel a session automatically.
+MIN_RELATIVE_CHANGE = {"hrv": 0.05, "resting_hr": 0.05, "sleep_score": 0.08}
+CYCLING_TYPES = {"ride", "virtualride", "ebikeride", "gravelride", "mountainbikeride", "handcycle"}
 
 DailyRecordInput = Mapping[str, object]
 
@@ -67,11 +65,9 @@ class WeeklySummaryRow:
     total_hours: float
     total_tss: float
     sessions: int
-    hard_sessions: int
     avg_sleep_score: float | None
     avg_hrv: float | None
     avg_resting_hr: float | None
-    note: str
 
 
 @dataclass(frozen=True)
@@ -94,7 +90,7 @@ class CoachContext:
                 (
                     f"- {row.week_start} to {row.week_end}: "
                     f"{row.total_hours:.1f}h, {row.total_tss:.0f} TSS, "
-                    f"{row.sessions} sessions, {row.hard_sessions} hard, {row.note}"
+                    f"{row.sessions} sessions"
                 )
                 for row in self.weekly_summaries
             ])
@@ -145,7 +141,7 @@ def build_coach_context(
         phase=phase,
         artifact=artifact,
         week_start=week_start,
-        records=recent_records[-RECENT_BRIEF_DAYS:],
+        records=parsed_records,
     )
     return CoachContext(
         weekly_summaries=weekly_summaries,
@@ -202,27 +198,18 @@ def _summarize_window(
     total_hours = _sum_values(records, "duration_h")
     total_tss = _sum_values(records, "training_stress")
     sessions = sum(1 for record in records if record.training_stress > 0.0)
-    hard_sessions = sum(1 for record in records if record.training_stress >= HARD_SESSION_TSS_THRESHOLD)
     avg_sleep_score = _mean_values(records, "sleep_score")
     avg_hrv = _mean_values(records, "hrv")
     avg_resting_hr = _mean_values(records, "resting_hr")
-    note = _build_week_note(
-        total_tss=total_tss,
-        avg_sleep_score=avg_sleep_score,
-        avg_hrv=avg_hrv,
-        avg_resting_hr=avg_resting_hr,
-    )
     return WeeklySummaryRow(
         week_start=window_start.isoformat(),
         week_end=window_end.isoformat(),
         total_hours=round(total_hours, 1),
         total_tss=round(total_tss, 1),
         sessions=sessions,
-        hard_sessions=hard_sessions,
         avg_sleep_score=avg_sleep_score,
         avg_hrv=avg_hrv,
         avg_resting_hr=avg_resting_hr,
-        note=note,
     )
 
 
@@ -256,126 +243,116 @@ def _build_brief_context(
     week_start: date,
     records: Sequence[CoachDailyRecord],
 ) -> str:
-    """Build a compact narrative for the weekly brief.
+    """Summarize recent load and individual recovery trends without absolute cutoffs.
 
     Returns:
-        A compact training brief string.
+        A short coaching context with observed trends, not a medical assessment.
     """
     if not records:
-        return f"Recent training context is limited; plan the week conservatively for {phase.primary_goal}."
+        return f"Recent training data unavailable; plan conservatively for {phase.primary_goal}."
 
-    total_hours = _sum_values(records, "duration_h")
-    total_tss = _sum_values(records, "training_stress")
-    avg_sleep_score = _mean_values(records, "sleep_score")
-    avg_hrv = _mean_values(records, "hrv")
-    avg_resting_hr = _mean_values(records, "resting_hr")
-    fatigue_signal = _week_recovery_signal(
-        avg_sleep_score=avg_sleep_score,
-        avg_hrv=avg_hrv,
-        avg_resting_hr=avg_resting_hr,
-    )
+    recent = records[-RECENT_BRIEF_DAYS:]
+    baseline, latest = _split_recovery_windows(records)
+    total_hours = _sum_values(recent, "duration_h")
+    total_tss = _sum_values(recent, "training_stress")
+    baseline_text = _recovery_comparison(baseline, latest)
+    sports_text = _other_sports_summary(recent)
     block_hint = _current_block_hint(artifact, week_start)
     return (
-        f"Recent 14d load: {total_hours:.1f}h and {total_tss:.0f} TSS. "
-        f"Recovery signal: {fatigue_signal}. "
-        f"Avg sleep {avg_sleep_score:.1f}/100, HRV {avg_hrv:.1f}, RHR {avg_resting_hr:.1f}. "
-        f"{block_hint}"
+        f"Recent 14d completed load: {total_hours:.1f}h, {total_tss:.0f} TSS. "
+        f"{baseline_text} {sports_text} {block_hint}"
     )
 
 
-def _build_week_note(
-    *,
-    total_tss: float,
-    avg_sleep_score: float | None,
-    avg_hrv: float | None,
-    avg_resting_hr: float | None,
-) -> str:
-    """Build a short weekly coaching note.
+def _split_recovery_windows(
+    records: Sequence[CoachDailyRecord],
+) -> tuple[list[CoachDailyRecord], list[CoachDailyRecord]]:
+    """Compare recent seven days with preceding eight weeks of available history.
 
     Returns:
-        A concise recovery note.
+        The baseline and recent non-overlapping daily records.
     """
-    if avg_sleep_score is not None and avg_sleep_score < SLEEP_RECOVERY_THRESHOLD:
-        return "recovery softened"
-    if avg_hrv is not None and avg_hrv < HRV_RECOVERY_THRESHOLD:
-        return "fatigue elevated"
-    if total_tss >= PRODUCTIVE_WEEK_TSS_THRESHOLD:
-        return "productive build"
-    if avg_resting_hr is not None and avg_resting_hr > RHR_RECOVERY_THRESHOLD:
-        return "recovery guarded"
-    return "stable training load"
+    if not records:
+        return [], []
+    latest_date = records[-1].date
+    cutoff = latest_date - timedelta(days=RECOVERY_WINDOW_DAYS)
+    oldest_baseline_date = cutoff - timedelta(days=BASELINE_LOOKBACK_DAYS)
+    baseline = [record for record in records if oldest_baseline_date < record.date <= cutoff]
+    latest = [record for record in records if cutoff < record.date <= latest_date]
+    return baseline, latest
+
+
+def _metric_deviation(
+    baseline: Sequence[CoachDailyRecord],
+    latest: Sequence[CoachDailyRecord],
+    field: str,
+) -> tuple[str, bool]:
+    """Return a baseline comparison and whether a meaningful unfavorable change is present.
+
+    Returns:
+        A formatted metric and a descriptive trend signal.
+    """
+    older = [_to_optional_float(getattr(record, field)) for record in baseline]
+    recent = [_to_optional_float(getattr(record, field)) for record in latest]
+    historical = [v for v in older if v is not None and v > 0]
+    current = [v for v in recent if v is not None and v > 0]
+    if len(historical) < MIN_BASELINE_SAMPLES or len(current) < 3:
+        return f"{field} insufficient baseline", False
+    average = fmean(historical)
+    current_average = fmean(current)
+    typical_variation = pstdev(historical)
+    limit = max(typical_variation, average * MIN_RELATIVE_CHANGE[field])
+    delta = current_average - average
+    unfavorable = delta < -limit if field != "resting_hr" else delta > limit
+    return f"{field} {current_average:.1f} vs baseline {average:.1f} (n={len(historical)})", unfavorable
+
+
+def _recovery_comparison(
+    baseline: Sequence[CoachDailyRecord], latest: Sequence[CoachDailyRecord]
+) -> str:
+    """Summarize individualized recovery indicators without prescribing restrictions.
+
+    Returns:
+        Descriptive baseline comparisons with a cautious combined interpretation.
+    """
+    comparisons = [_metric_deviation(baseline, latest, name) for name in ("hrv", "resting_hr", "sleep_score")]
+    unfavorable_count = sum(1 for _, unfavorable in comparisons if unfavorable)
+    status = "multiple trends warrant attention" if unfavorable_count >= 2 else "interpret trends alongside symptoms"
+    return f"Recovery (7d vs prior 56d): {'; '.join(value for value, _ in comparisons)}; {status}."
 
 
 def _signal_for_day(record: CoachDailyRecord, records: Sequence[CoachDailyRecord]) -> str:
-    """Derive a compact readiness label for one day.
+    """Describe daily training without turning noisy HRV readings into commands.
 
     Returns:
-        A short readiness signal for the day.
+        An observed activity/recovery label.
     """
-    sleep_score = _to_optional_float(record.sleep_score)
-    hrv = record.hrv
-    resting_hr = record.resting_hr
-    training_stress = record.training_stress
-    recent_window = records[-RECOVERY_WINDOW_DAYS:]
-    recent_sleep = _mean_values(recent_window, "sleep_score")
-    recent_hrv = _mean_values(recent_window, "hrv")
-    recent_rhr = _mean_values(recent_window, "resting_hr")
-
-    signal = "normal_readiness"
-    if training_stress <= 0:
-        signal = "rest_day"
-    elif _is_recovery_compromised(
-        sleep_scores=(sleep_score, recent_sleep),
-        hrv_scores=(hrv, recent_hrv),
-        resting_hr_scores=(resting_hr, recent_rhr),
-    ):
-        signal = "recovery_compromised"
-    elif training_stress >= HARD_SESSION_TSS_THRESHOLD:
-        signal = "hard_day"
-    return signal
+    if record.duration_h <= 0 and record.training_stress <= 0:
+        return "rest_day"
+    past = [item for item in records if item.date <= record.date]
+    baseline, recent = _split_recovery_windows(past)
+    if sum(unfavorable for _, unfavorable in (
+        _metric_deviation(baseline, recent, field) for field in ("hrv", "resting_hr", "sleep_score")
+    )) >= 2:
+        return "recovery_watch"
+    return "training_logged"
 
 
-def _week_recovery_signal(
-    *,
-    avg_sleep_score: float | None,
-    avg_hrv: float | None,
-    avg_resting_hr: float | None,
-) -> str:
-    """Summarize whether recovery is supporting a build week.
+def _other_sports_summary(records: Sequence[CoachDailyRecord]) -> str:
+    """Count completed non-cycling sports without claiming they all have equal stress.
 
     Returns:
-        A short recovery signal.
+        A compact historical sport-frequency note.
     """
-    if avg_sleep_score is not None and avg_sleep_score < SLEEP_RECOVERY_THRESHOLD:
-        return "recovery is soft"
-    if avg_hrv is not None and avg_hrv < HRV_RECOVERY_THRESHOLD:
-        return "recovery is guarded"
-    if avg_resting_hr is not None and avg_resting_hr > RHR_RECOVERY_THRESHOLD:
-        return "recovery is guarded"
-    return "recovery is acceptable"
-
-
-def _is_recovery_compromised(
-    *,
-    sleep_scores: tuple[float | None, float | None],
-    hrv_scores: tuple[float | None, float | None],
-    resting_hr_scores: tuple[float | None, float | None],
-) -> bool:
-    """Return whether the current day should be treated as compromised recovery.
-
-    Returns:
-        ``True`` when the daily recovery signal is materially worse than recent history.
-    """
-    sleep_score, recent_sleep = sleep_scores
-    hrv, recent_hrv = hrv_scores
-    resting_hr, recent_rhr = resting_hr_scores
-    if sleep_score is not None and sleep_score < SLEEP_RECOVERY_THRESHOLD - 5:
-        return True
-    if recent_sleep is not None and sleep_score is not None and sleep_score < recent_sleep - SLEEP_DROP_THRESHOLD:
-        return True
-    if recent_hrv is not None and hrv is not None and hrv < recent_hrv - HRV_DROP_THRESHOLD:
-        return True
-    return recent_rhr is not None and resting_hr is not None and resting_hr > recent_rhr + RHR_RISE_THRESHOLD
+    counts: Counter[str] = Counter()
+    for record in records:
+        for kind in record.activity_type.split(" + "):
+            if kind and kind.casefold() not in CYCLING_TYPES and kind != "Rest":
+                counts[kind] += 1
+    if not counts:
+        return "No other completed sports recorded in the last 14d."
+    label = ", ".join(f"{sport} ({count}d)" for sport, count in counts.most_common(4))
+    return f"Other completed sports in last 14d: {label}; consider their recovery demands."
 
 
 def _current_block_hint(artifact: LongTermPlanArtifact | None, week_start: date) -> str:
@@ -454,7 +431,7 @@ def _primary_activity_type(record: DailyRecordInput) -> str:
     """
     types = record.get("types")
     if isinstance(types, list) and types:
-        return str(types[0])
+        return " + ".join(dict.fromkeys(str(kind) for kind in types if kind))
     if isinstance(types, str) and types:
         return types
     return "Rest"
