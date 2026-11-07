@@ -149,8 +149,9 @@ async def update_training_plan(
                 f"{feedback}\n\n"
                 f"Latest recorded context (supersedes older observations):\n{latest_context}\n\n"
                 f"{date_rules}\n"
-                "Revise conservatively: honor all sports, personal recovery trends and weekly limits; "
-                "preserve completed or past workouts."
+                "Revise conservatively: cycling-only hour and session limits; "
+                "other sports affect recovery/timing, never the cycling budget. "
+                "Preserve completed or past workouts."
             ),
         })
 
