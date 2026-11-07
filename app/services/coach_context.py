@@ -466,7 +466,9 @@ def _cycling_totals(record: DailyRecordInput) -> tuple[float, float, int]:
     if stress is None and len(types) == 1:
         stress = [record.get("training_stress")]
 
-    cycling_hours = sum((_to_optional_float(durations[index]) or 0.0) for index in cycling_indices) if durations else 0.0
+    cycling_hours = (
+        sum((_to_optional_float(durations[index]) or 0.0) for index in cycling_indices) if durations else 0.0
+    )
     cycling_tss = sum((_to_optional_float(stress[index]) or 0.0) for index in cycling_indices) if stress else 0.0
     return cycling_hours, cycling_tss, len(cycling_indices)
 
