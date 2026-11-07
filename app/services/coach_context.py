@@ -41,6 +41,9 @@ class CoachDailyRecord:
     sleep_score: int | None
     hrv: float | None
     resting_hr: float | None
+    cycling_duration_h: float = 0.0
+    cycling_training_stress: float = 0.0
+    cycling_sessions: int = 0
 
 
 @dataclass(frozen=True)
@@ -86,7 +89,7 @@ class CoachContext:
         Returns:
             The formatted coach context text.
         """
-        lines = ["Weekly summaries:"]
+        lines = ["Cycling-only weekly summaries (other sports do not consume cycling hours/sessions):"]
         if self.weekly_summaries:
             lines.extend([
                 (
@@ -99,7 +102,7 @@ class CoachContext:
         else:
             lines.append("- No recent training data available.")
 
-        lines.extend(["", "14-day daily ledger:"])
+        lines.extend(["", "14-day activity ledger (all sports, for recovery context only):"])
         if self.daily_ledger:
             lines.extend([
                 (
@@ -197,9 +200,9 @@ def _summarize_window(
     Returns:
         A single weekly summary row.
     """
-    total_hours = _sum_values(records, "duration_h")
-    total_tss = _sum_values(records, "training_stress")
-    sessions = sum(1 for record in records if record.training_stress > 0.0)
+    total_hours = _sum_values(records, "cycling_duration_h")
+    total_tss = _sum_values(records, "cycling_training_stress")
+    sessions = sum(record.cycling_sessions for record in records)
     avg_sleep_score = _mean_values(records, "sleep_score")
     avg_hrv = _mean_values(records, "hrv")
     avg_resting_hr = _mean_values(records, "resting_hr")
@@ -255,13 +258,13 @@ def _build_brief_context(
 
     recent = records[-RECENT_BRIEF_DAYS:]
     baseline, latest = _split_recovery_windows(records)
-    total_hours = _sum_values(recent, "duration_h")
-    total_tss = _sum_values(recent, "training_stress")
+    cycling_hours = _sum_values(recent, "cycling_duration_h")
+    cycling_tss = _sum_values(recent, "cycling_training_stress")
     baseline_text = _recovery_comparison(baseline, latest)
     sports_text = _other_sports_summary(recent)
     block_hint = _current_block_hint(artifact, week_start)
     return (
-        f"Recent 14d completed load: {total_hours:.1f}h, {total_tss:.0f} TSS. "
+        f"Recent 14d completed cycling: {cycling_hours:.1f}h, {cycling_tss:.0f} cycling TSS. "
         f"{baseline_text} {sports_text} {block_hint}"
     )
 
@@ -417,6 +420,7 @@ def _parse_record(record: DailyRecordInput) -> CoachDailyRecord | None:
     parsed_date = _parse_date(record.get("date"))
     if parsed_date is None:
         return None
+    cycling_hours, cycling_tss, cycling_sessions = _cycling_totals(record)
     return CoachDailyRecord(
         date=parsed_date,
         training_stress=_to_optional_float(record.get("training_stress")) or 0.0,
@@ -425,7 +429,46 @@ def _parse_record(record: DailyRecordInput) -> CoachDailyRecord | None:
         sleep_score=_to_optional_int(record.get("sleep_score")),
         hrv=_to_optional_float(record.get("hrv")),
         resting_hr=_to_optional_float(record.get("resting_hr")),
+        cycling_duration_h=cycling_hours,
+        cycling_training_stress=cycling_tss,
+        cycling_sessions=cycling_sessions,
     )
+
+
+def _cycling_totals(record: DailyRecordInput) -> tuple[float, float, int]:
+    """Split cycling volume from a day containing one or more sports.
+
+    Returns:
+        Cycling-only hours, training stress and number of sessions.
+    """
+    raw_types = record.get("types")
+    if isinstance(raw_types, str):
+        types = [raw_types]
+    elif isinstance(raw_types, list):
+        types = [kind if isinstance(kind, str) else "" for kind in raw_types]
+    else:
+        return 0.0, 0.0, 0
+
+    cycling_indices = [index for index, kind in enumerate(types) if kind.casefold() in CYCLING_TYPES]
+    if not cycling_indices:
+        return 0.0, 0.0, 0
+
+    raw_durations = record.get("activity_durations")
+    raw_stress = record.get("activity_tss")
+    durations = raw_durations if isinstance(raw_durations, list) and len(raw_durations) == len(types) else None
+    stress = raw_stress if isinstance(raw_stress, list) and len(raw_stress) == len(types) else None
+
+    # For a single recorded cycling activity, daily totals are unambiguous.
+    # On mixed-sport days with missing per-activity metrics, do not attribute
+    # soccer/strength time to cycling by guessing its share of the total.
+    if durations is None and len(types) == 1:
+        durations = [record.get("duration_h")]
+    if stress is None and len(types) == 1:
+        stress = [record.get("training_stress")]
+
+    cycling_hours = sum((_to_optional_float(durations[index]) or 0.0) for index in cycling_indices) if durations else 0.0
+    cycling_tss = sum((_to_optional_float(stress[index]) or 0.0) for index in cycling_indices) if stress else 0.0
+    return cycling_hours, cycling_tss, len(cycling_indices)
 
 
 def _primary_activity_type(record: DailyRecordInput) -> str:
