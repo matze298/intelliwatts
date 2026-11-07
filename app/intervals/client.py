@@ -1,6 +1,6 @@
 """Client for intervals.icu."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, cast
 
 import requests
@@ -88,6 +88,21 @@ class IntervalsClient:
         )
         r.raise_for_status()
         return self._json_list(r, endpoint="wellness")
+
+    def calendar_events(self, *, oldest: date, newest: date) -> list[object]:
+        """Get existing planned sessions and races in a bounded calendar week.
+
+        Returns:
+            Read-only Intervals.icu calendar event objects.
+        """
+        r = self.session.get(
+            f"{BASE_URL}/athlete/{self.athlete_id}/events",
+            auth=("API_KEY", self.api_key),
+            params={"oldest": oldest.isoformat(), "newest": newest.isoformat()},
+            timeout=10,
+        )
+        r.raise_for_status()
+        return self._json_list(r, endpoint="calendar events")
 
     def power_curves(self, curves: str = "90d", activity_type: str = "Ride") -> dict[str, Any]:
         """Get the power curves for the athlete.
