@@ -152,6 +152,7 @@ async def test_generate_weekly_plan(  # ruff: ignore[too-many-arguments, too-man
     assert messages[1]["content"] == result["summary"]
     assert "2026-06-01 to 2026-06-07" in messages[1]["content"]
     assert "Do not create, move, or schedule any NEW workout" in messages[1]["content"]
+    assert "long-term training phase starts on 2026-05-05" in messages[1]["content"]
     assert result["plan"] == "test plan"
     assert result["summary"].startswith("Formatted prompt\n\nWorkout date rules")
     mock_stage_workout_delivery.assert_called_once()
@@ -321,6 +322,7 @@ async def test_update_training_plan_uses_history(
     assert "Today's date is 2026-04-21" in passed_messages[3]["content"]
     assert "2026-04-20 to 2026-04-26" in passed_messages[3]["content"]
     assert "existing workouts already assigned to past dates may be retained unchanged" in passed_messages[3]["content"]
+    assert "long-term training phase starts on 2026-04-20" in passed_messages[3]["content"]
 
     # THEN: The plan and its history should be updated in the database.
     plan = session.exec(select(TrainingPlan)).one()
