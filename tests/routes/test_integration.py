@@ -727,7 +727,7 @@ async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
             context.app,
             method="POST",
             path="/update",
-            body=b"feedback=Make+Tuesday+easier&week_start=2026-05-18",
+            body=b"feedback=Make+Tuesday+easier&week_start=2026-05-11",
         ),
         context.route_user,
         context.settings,
