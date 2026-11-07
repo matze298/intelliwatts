@@ -5,10 +5,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from collections.abc import Awaitable, Callable
 from copy import copy
 from datetime import UTC, date, datetime, timedelta
-from typing import Annotated, NamedTuple
+from typing import TYPE_CHECKING, Annotated, NamedTuple
 from urllib.parse import urlencode
 
 import requests
@@ -46,6 +45,10 @@ from app.services.planner import (
 from app.services.workout_delivery import publish_workout_delivery
 from app.utils.datetime import get_monday
 from app.utils.markdown import render_markdown
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Awaitable, Callable
+
 
 router = APIRouter(tags=["web"])
 
@@ -331,7 +334,7 @@ def _stream_planner_action(
         request.state.planner_progress = progress
         try:
             result = await action(request, user, settings)
-            queue.put_nowait({"kind": "complete", "html": result.body.decode("utf-8")})
+            queue.put_nowait({"kind": "complete", "html": bytes(result.body).decode("utf-8")})
         except Exception:
             _LOGGER.exception("Planner generation stream failed")
             queue.put_nowait({
@@ -341,7 +344,7 @@ def _stream_planner_action(
         finally:
             queue.put_nowait(None)
 
-    async def events():
+    async def events() -> AsyncIterator[str]:
         # Work continues to save or stage the plan even if a browser tab disconnects.
         task = asyncio.create_task(execute())
         try:
@@ -415,7 +418,9 @@ def home(request: Request, user: Annotated[User | None, Depends(get_profile)]) -
         delivery_status=delivery_status,
         delivery_last_error=delivery_last_error,
         delivery_links=delivery_links,
-        publish_notice=request.query_params.get("publish") if request.query_params.get("publish") in {"success", "failed"} else None,
+        publish_notice=request.query_params.get("publish")
+        if request.query_params.get("publish") in {"success", "failed"}
+        else None,
         summary=None,
         prompt=prompt,
         primary_goal=week_selection.primary_goal,
@@ -686,11 +691,7 @@ async def generate(
         weekly_hours=weekly_hours,
         weekly_sessions=weekly_sessions,
         week_start=week_selection.selected_week_start,
-        **(
-            {"progress": request.state.planner_progress}
-            if hasattr(request.state, "planner_progress")
-            else {}
-        ),
+        **({"progress": request.state.planner_progress} if hasattr(request.state, "planner_progress") else {}),
     )
 
     plan_html = render_markdown(result["plan"])
@@ -794,7 +795,11 @@ async def stream_generate(
     user: Annotated[User, Depends(get_profile)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> StreamingResponse:
-    """Generate a plan while streaming server-reported milestones."""
+    """Generate a plan while streaming server-reported milestones.
+
+    Returns:
+        The progress event stream and final rendered planner response.
+    """
     await request.form()
     return _stream_planner_action(request, user, settings, generate)
 
@@ -805,7 +810,11 @@ async def stream_update(
     user: Annotated[User, Depends(get_profile)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> StreamingResponse:
-    """Revise a plan while streaming server-reported milestones."""
+    """Revise a plan while streaming server-reported milestones.
+
+    Returns:
+        The progress event stream and final rendered planner response.
+    """
     await request.form()
     return _stream_planner_action(request, user, settings, update)
 
@@ -862,7 +871,7 @@ async def publish_workout(
         try:
             publish_workout_delivery(session, plan, client)
             result = "success"
-        except (requests.RequestException, IntervalsResponseError):
+        except requests.RequestException, IntervalsResponseError:
             _LOGGER.exception("Intervals.icu workout publication failed")
             result = "failed"
 
