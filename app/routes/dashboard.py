@@ -1,6 +1,6 @@
 """Dashboard page routing and view rendering."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -18,7 +18,7 @@ router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="app/templates")
 
 
-def _today():
+def _today() -> date:
     """Return the current UTC date for the next-workout preview."""
     return datetime.now(UTC).date()
 
@@ -53,5 +53,3 @@ def dashboard(
             "settings": request.app.state.settings,
         },
     )
-
-
