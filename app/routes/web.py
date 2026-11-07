@@ -344,7 +344,7 @@ def _stream_planner_action(
                 item = await queue.get()
                 if item is None:
                     break
-                yield f"data: {json.dumps(item, ensure_ascii=False)}\\n\\n".replace("\\\\n", "\\n")
+                yield "data: " + json.dumps(item, ensure_ascii=False) + chr(10) * 2
         finally:
             if task.done():
                 await task
