@@ -26,7 +26,7 @@ from app.services.long_term_planner import (
 )
 from app.services.planner.analysis import get_analysis
 from app.services.planner.persistence import save_and_stage_weekly_plan
-from app.services.planner.prompt import PromptSummaryContext, build_prompt_summary
+from app.services.planner.prompt import PromptSummaryContext, build_prompt_summary, workout_date_guidance
 from app.utils.datetime import get_monday
 
 if TYPE_CHECKING:
@@ -81,7 +81,12 @@ async def update_training_plan(
                 ),
             },
         ]
-        history.append({"role": LLMRole.USER, "content": feedback})
+        date_rules = workout_date_guidance(
+            week_start=monday,
+            today=datetime.now(UTC).date(),
+            existing_plan=True,
+        )
+        history.append({"role": LLMRole.USER, "content": f"{feedback}\n\n{date_rules}"})
 
         _report(progress, "Requesting a revised plan from the selected model")
         llm_response = await run_in_threadpool(
@@ -169,6 +174,13 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
                 task_prompt=settings.USER_PROMPT,
             )
         )
+
+    # Add dates at request time, not in static settings or stored prompt templates.
+    # This rule also applies when athletes override the default coach prompt.
+    full_summary = (
+        f"{full_summary}\n\n"
+        f"{workout_date_guidance(week_start=target_week_start, today=datetime.now(UTC).date(), existing_plan=False)}"
+    )
 
     _report(progress, "Requesting structured workouts from the selected model")
     llm_response = await run_in_threadpool(
