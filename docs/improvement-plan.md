@@ -18,6 +18,7 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 
 - [x] **Redesign the existing UI:** Establish the selected light style style with a shared navigation shell and semantic colors across sign-in, planner, dashboard and settings. Remove the legacy theme selector and alternate styles.
 - [x] **Clarify the planner and dashboard:** Lead with training trends and recovery, preview the next saved structured workout, and clarify the planner's selected week, status, units and missing data across screen sizes.
+- [x] **Review longer trends:** Let the Dashboard request up to one year of activity/wellness history on demand, with a short-lived, configurable API cache to avoid repeated identical Intervals.icu requests.
 - [x] **Inspect and verify with Playwright:** Previewed sign-in, planner, dashboard and settings templates at desktop and mobile widths; checked responsive overflow, chart fallback states, dashboard range interaction and browser errors.
 
 ## 4. Make changes easier to maintain

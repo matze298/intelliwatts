@@ -551,6 +551,11 @@ def dashboard(
     Returns:
         The dashboard page as HTML.
     """
+    # The normal Dashboard retains its short default window. A larger API
+    # request is only issued when the athlete explicitly selects a longer range.
+    display_days = max(7, min(365, days if days is not None else settings.DASHBOARD_DAYS))
+    lookback_days = max(settings.ANALYSIS_DAYS, display_days)
+
     session = requests.Session()
     if settings.CACHE_INTERVALS_HOURS > 0:
         session = CachedSession(
@@ -558,16 +563,20 @@ def dashboard(
             backend="sqlite",
             expire_after=timedelta(hours=settings.CACHE_INTERVALS_HOURS),
         )
+    elif settings.DASHBOARD_CACHE_MINUTES > 0:
+        # Cache identical Intervals.icu queries across Dashboard reloads/range changes.
+        # Request URLs include the oldest date, so distinct windows stay independent.
+        session = CachedSession(
+            "dashboard_intervals_cache",
+            backend="sqlite",
+            expire_after=timedelta(minutes=settings.DASHBOARD_CACHE_MINUTES),
+        )
 
     client = IntervalsClient(
         settings.INTERVALS_API_KEY,
         settings.INTERVALS_ATHLETE_ID,
         session=session,
     )
-    # Fetch enough history to fill the selected display window, including when
-    # it exceeds the default LLM analysis period (e.g. 42- or 90-day charts).
-    display_days = max(7, min(90, days if days is not None else settings.DASHBOARD_DAYS))
-    lookback_days = max(settings.ANALYSIS_DAYS, display_days)
     raw_activities = client.activities(days=lookback_days)
     activities = parse_activities(raw_activities)
 

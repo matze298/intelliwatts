@@ -38,7 +38,7 @@ The Dashboard contains the training analysis in one place. It includes:
 | Session history | The most recent five activities, with an expandable list of older sessions |
 | Plan context | The next planned workout, or a prompt to create a plan when none is available |
 
-The analysis-window control supports **7 to 90 days**. Charts retain missing measurements as missing data rather than treating them as zero. Sport labels are human-readable; for example, an Intervals.icu `Ride` is displayed as **Cycling**.
+The analysis-window control supports **7 to 365 days**. It fetches longer Intervals.icu activity and wellness history **on demand** when a longer range is selected; normal Dashboard visits do not request a whole year. Identical Dashboard API requests are cached for 15 minutes by default, configurable with `DASHBOARD_CACHE_MINUTES=0` to disable caching or `CACHE_INTERVALS_HOURS` to use the global cache. Charts retain missing measurements as missing data rather than treating them as zero. Sport labels are human-readable; for example, an Intervals.icu `Ride` is displayed as **Cycling**.
 
 ### Settings
 
@@ -109,6 +109,7 @@ Set the required values. Keep the real `.env` file out of source control.
 | `GROQ_API_KEY` | Groq credential, if using Groq |
 | `GEMINI_API_KEY` | Gemini credential, if using Gemini |
 | `CACHE_INTERVALS_HOURS` | Number of hours to cache Intervals.icu API responses (default: 0) |
+| `DASHBOARD_CACHE_MINUTES` | Dashboard-only short cache when global caching is off (default: 15; set to 0 to disable) |
 | `ANALYSIS_DAYS` | History window for coach context (default: 120) |
 | `DASHBOARD_DAYS` | Default Dashboard display window (default: 42) |
 

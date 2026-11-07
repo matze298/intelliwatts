@@ -4,7 +4,7 @@ import asyncio
 import json
 import uuid
 from contextlib import AsyncExitStack
-from datetime import date
+from datetime import date, timedelta
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, NamedTuple, cast
 from unittest.mock import MagicMock, patch
@@ -122,6 +122,7 @@ def _build_weekly_planner_route_context() -> WeeklyPlannerRouteContext:
     settings.INTERVALS_API_KEY = "test_api_key"
     settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
     settings.CACHE_INTERVALS_HOURS = 0
+    settings.DASHBOARD_CACHE_MINUTES = 0
     settings.ANALYSIS_DAYS = 120
     settings.LANGUAGE_MODEL = "test-model"
     settings.SYSTEM_PROMPT = "system default"
@@ -436,6 +437,7 @@ def test_dashboard_flow(  # ruff: ignore[too-many-arguments, too-many-positional
     settings.INTERVALS_API_KEY = "test_api_key"
     settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
     settings.CACHE_INTERVALS_HOURS = 0
+    settings.DASHBOARD_CACHE_MINUTES = 0
     settings.ANALYSIS_DAYS = 120
     settings.DASHBOARD_DAYS = 42
     resp = web_routes.dashboard(build_request(app, method="GET", path="/dashboard"), user, settings)
@@ -466,6 +468,10 @@ def test_dashboard_flow(  # ruff: ignore[too-many-arguments, too-many-positional
     assert "Weekly Plan" not in body_text
 
 
+@pytest.mark.parametrize(
+    ("requested_days", "expected_display_days", "expected_fetch_days"),
+    [(7, 7, 120), (21, 21, 120), (90, 90, 120), (180, 180, 180), (365, 365, 365), (500, 365, 365), (-5, 7, 120)],
+)
 @patch("app.routes.web.IntervalsClient")
 @patch("app.routes.web.parse_activities")
 @patch("app.routes.web.parse_wellness_list")
@@ -474,38 +480,87 @@ def test_dashboard_flow_passes_days_filter(  # ruff: ignore[too-many-arguments, 
     mock_compute: MagicMock,
     mock_parse_w: MagicMock,
     mock_parse_a: MagicMock,
-    mock_client_class: MagicMock,  # ruff: ignore[unused-function-argument]
+    mock_client_class: MagicMock,
     mock_activities: list[ParsedActivity],
     mock_wellness: list[ParsedWellness],
+    requested_days: int,
+    expected_display_days: int,
+    expected_fetch_days: int,
 ) -> None:
-    """Tests that the dashboard forwards the slider days window to analysis."""
-    # GIVEN an authenticated user and mocked analysis inputs
+    """The requested Dashboard window sets an on-demand Intervals.icu lookback."""
+    # GIVEN an authenticated user and mocked Intervals.icu analysis inputs.
     user = User(id=uuid.uuid4())
-
     mock_parse_a.return_value = mock_activities
     mock_parse_w.return_value = mock_wellness
     mock_analysis = MagicMock()
     mock_analysis.widgets = []
-    mock_analysis.to_dict.return_value = {
-        "provider_results": {},
-        "widgets": [],
-    }
+    mock_analysis.to_dict.return_value = {"provider_results": {}, "widgets": []}
     mock_compute.return_value = mock_analysis
 
-    # WHEN requesting the dashboard with a specific days value
     settings = MagicMock(spec=Settings)
     settings.INTERVALS_API_KEY = "test_api_key"
     settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
     settings.CACHE_INTERVALS_HOURS = 0
+    settings.DASHBOARD_CACHE_MINUTES = 0
     settings.ANALYSIS_DAYS = 120
     settings.DASHBOARD_DAYS = 42
-    resp = web_routes.dashboard(build_request(app, method="GET", path="/dashboard"), user, settings, days=21)
 
-    # THEN the selected days window is forwarded to compute_analysis
+    # WHEN the athlete requests any window, including an entire year.
+    resp = web_routes.dashboard(
+        build_request(app, method="GET", path="/dashboard"), user, settings, days=requested_days
+    )
+
+    # THEN only the necessary history is requested, and selections are bounded.
     assert resp.status_code == 200
+    mock_client_class.return_value.activities.assert_called_once_with(days=expected_fetch_days)
+    mock_client_class.return_value.wellness.assert_called_once_with(days=expected_fetch_days)
     mock_compute.assert_called_once()
-    assert mock_compute.call_args.kwargs["display_days"] == 21
-    assert "No dashboard data yet" in bytes(resp.body).decode()
+    assert mock_compute.call_args.kwargs["display_days"] == expected_display_days
+    assert f'value="{expected_display_days}"' in bytes(resp.body).decode()
+    assert 'max="365"' in bytes(resp.body).decode()
+
+
+@pytest.mark.parametrize(
+    "cache_case",
+    [
+        (0, "dashboard_intervals_cache", timedelta(minutes=15)),
+        (2, "intervals_cache", timedelta(hours=2)),
+    ],
+)
+@patch("app.routes.web.CachedSession")
+@patch("app.routes.web.IntervalsClient")
+@patch("app.routes.web.compute_analysis")
+def test_dashboard_uses_short_lived_interval_cache(
+    mock_compute: MagicMock,
+    mock_client_class: MagicMock,
+    mock_cached_session: MagicMock,
+    cache_case: tuple[int, str, timedelta],
+) -> None:
+    """The Dashboard caches repeated GETs and respects the existing global cache."""
+    # GIVEN a configured dashboard cache and a mocked remote client.
+    global_cache_hours, cache_name, duration = cache_case
+    user = User(id=uuid.uuid4())
+    settings = MagicMock(spec=Settings)
+    settings.INTERVALS_API_KEY = "test_api_key"
+    settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
+    settings.CACHE_INTERVALS_HOURS = global_cache_hours
+    settings.DASHBOARD_CACHE_MINUTES = 15
+    settings.ANALYSIS_DAYS = 120
+    settings.DASHBOARD_DAYS = 42
+    mock_analysis = MagicMock()
+    mock_analysis.widgets = []
+    mock_analysis.to_dict.return_value = {"provider_results": {}, "widgets": []}
+    mock_compute.return_value = mock_analysis
+
+    # WHEN the Dashboard requests its usual short view.
+    response = web_routes.dashboard(build_request(app, method="GET", path="/dashboard"), user, settings)
+
+    # THEN it uses a reusable per-URL cache instead of fetching an entire year.
+    assert response.status_code == 200
+    mock_cached_session.assert_called_once_with(cache_name, backend="sqlite", expire_after=duration)
+    assert mock_client_class.call_args.kwargs["session"] is mock_cached_session.return_value
+    mock_client_class.return_value.activities.assert_called_once_with(days=120)
+    mock_client_class.return_value.wellness.assert_called_once_with(days=120)
 
 
 @pytest.mark.asyncio
