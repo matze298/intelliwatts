@@ -116,6 +116,24 @@ class IntervalsClient:
             raise IntervalsResponseError(msg)
         return payload
 
+    def delete_workout_events(self, external_ids: list[str]) -> None:
+        """Remove previously published IntelliWatts events no longer in the plan.
+
+        Only explicit external IDs from our saved publication receipts are removed.
+
+        Raises:
+            IntervalsResponseError: If Intervals.icu rejects the delete response.
+        """
+        if not external_ids:
+            return
+        response = self.session.put(
+            f"{BASE_URL}/athlete/{self.athlete_id}/events/bulk-delete",
+            auth=("API_KEY", self.api_key),
+            json=[{"external_id": external_id} for external_id in external_ids],
+            timeout=15,
+        )
+        response.raise_for_status()
+
     def publish_workout_events(self, events: list[WorkoutDeliveryPayload]) -> list[WorkoutDeliveryResult]:
         """Create or update planned workouts on the calendar.
 
@@ -125,6 +143,8 @@ class IntervalsClient:
         Raises:
             IntervalsResponseError: if the API response is malformed or incomplete.
         """
+        if not events:
+            return []
         r = self.session.post(
             f"{BASE_URL}/athlete/{self.athlete_id}/events/bulk",
             auth=("API_KEY", self.api_key),
