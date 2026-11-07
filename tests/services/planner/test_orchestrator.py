@@ -1,7 +1,7 @@
 """Tests for the planner orchestration service."""
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,6 +20,7 @@ from app.services.planner import (
     PlanData,
     generate_weekly_plan,
     get_or_create_active_phase,
+    orchestrator,
     save_and_stage_weekly_plan,
     save_training_plan,
     update_training_plan,
@@ -141,7 +142,7 @@ async def test_generate_weekly_plan(  # ruff: ignore[too-many-arguments, too-man
     mock_derive_weekly_brief.assert_called_once()
     assert mock_derive_weekly_brief.call_args.kwargs["week_start"] == target_week_start
     mock_user_prompt.assert_called_once_with(
-        constraints="- Max Hours: 10.0\n- Max Sessions: 5\n- Primary Goal: Peak for hill climb",
+        constraints="- Max Cycling Hours: 10.0\n- Max Cycling Sessions: 5\n- Non-cycling sports do not consume this cycling budget; use them only for recovery and scheduling.\n- Primary Goal: Peak for hill climb",
         weekly_brief="Weekly Brief:\n- Goal: Peak for hill climb\n- Current Block: Build",
         coach_context="Coach Context:\n- 42-day weekly summaries",
         specialist_context="FTP Trajectory:\n- Starting FTP: 250.0W",
@@ -308,9 +309,15 @@ async def test_update_training_plan_uses_history(
         patch("app.services.planner.orchestrator.Session", return_value=session),
         patch("app.services.planner.orchestrator.get_monday", return_value=monday),
         patch("app.services.planner.orchestrator.datetime") as mock_datetime,
+        patch(
+            "app.services.planner.orchestrator._fresh_revision_context",
+            new_callable=AsyncMock,
+            return_value="Fresh: Soccer yesterday; HRV below personal baseline",
+        ) as mock_fresh_context,
     ):
         mock_datetime.now.return_value = datetime(2026, 4, 21, tzinfo=UTC)
         await update_training_plan(user, "make it harder")
+    mock_fresh_context.assert_awaited_once()
 
     # THEN: Generate_plan should be called with the extended message history.
     mock_generate_plan.assert_called_once()
@@ -318,7 +325,8 @@ async def test_update_training_plan_uses_history(
     assert len(passed_messages) == 4
     assert passed_messages[2]["role"] == "assistant"
     assert "Initial Plan" in passed_messages[2]["content"]
-    assert passed_messages[3]["content"].startswith("make it harder\n\nWorkout date rules")
+    assert passed_messages[3]["content"].startswith("make it harder\n\nLatest recorded context")
+    assert "Soccer yesterday; HRV below personal baseline" in passed_messages[3]["content"]
     assert "Today's date is 2026-04-21" in passed_messages[3]["content"]
     assert "2026-04-20 to 2026-04-26" in passed_messages[3]["content"]
     assert "existing workouts already assigned to past dates may be retained unchanged" in passed_messages[3]["content"]
@@ -384,3 +392,50 @@ async def test_update_training_plan_fallback_uses_selected_week(session: Session
     mock_generate_weekly_plan.assert_awaited_once_with(user, ANY, week_start=selected_week)
     assert result["week_start"] == selected_week
     assert phase.user_id == user.id
+
+
+@pytest.mark.asyncio
+async def test_fresh_revision_context_uses_latest_completed_activity_and_calendar() -> None:
+    """Only a concise recent snapshot is appended on revision, not full raw history."""
+    phase = TrainingPhase(
+        user_id=uuid.uuid4(),
+        primary_goal="Build FTP",
+        start_date=date(2026, 11, 2),
+        end_date=date(2026, 12, 20),
+        target_date=date(2026, 12, 20),
+    )
+    analysis = MagicMock()
+    analysis.daily_records = [
+        {
+            "date": (date(2026, 9, 1) + timedelta(days=index)).isoformat(),
+            "training_stress": 70 if index % 7 == 2 else 30,
+            "duration_h": 1.5 if index % 7 == 2 else 0.5,
+            "types": ["Soccer"] if index % 7 == 2 else ["Ride"],
+            "sleep_score": 81,
+            "hrv": 59.0,
+            "resting_hr": 49.0,
+        }
+        for index in range(65)
+    ]
+    client = MagicMock()
+    with (
+        patch("app.services.planner.orchestrator._make_intervals_client", return_value=client),
+        patch("app.services.planner.orchestrator._get_analysis", return_value=analysis),
+        patch(
+            "app.services.planner.orchestrator.load_week_commitments",
+            return_value="Scheduled calendar commitments: 2026-11-10 Planned Soccer",
+        ),
+    ):
+        context = await orchestrator._fresh_revision_context(
+            settings=MagicMock(ANALYSIS_DAYS=120),
+            phase=phase,
+            artifact=None,
+            week_start=date(2026, 11, 9),
+        )
+
+    assert "Recent 14d completed cycling" in context
+    assert "Other completed sports in last 14d: Soccer" in context
+    assert "Last recorded 7 days" in context
+    assert "Scheduled calendar commitments" in context
+    assert "prior 56d" in context
+    assert len(context) < 2300

@@ -44,7 +44,7 @@ def test_build_prompt_summary_uses_user_prompt(mock_user_prompt: MagicMock) -> N
     # THEN: The helper should pass through the normalized planning sections.
     assert result == "Formatted prompt"
     mock_user_prompt.assert_called_once_with(
-        constraints="- Max Hours: 8.0\n- Max Sessions: 4\n- Primary Goal: Peak for hill climb",
+        constraints="- Max Cycling Hours: 8.0\n- Max Cycling Sessions: 4\n- Non-cycling sports do not consume this cycling budget; use them only for recovery and scheduling.\n- Primary Goal: Peak for hill climb",
         weekly_brief="Weekly brief",
         coach_context="Coach context",
         specialist_context="Specialist context",
