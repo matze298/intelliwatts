@@ -373,3 +373,25 @@ html[data-theme="dark"] [aria-label="Resting heart rate"] .wellness-reading stro
     border-radius: 13px;
   }
 }
+
+
+/* Planner publishing and progress states in dark appearance. */
+html[data-theme="dark"] .planner-flash-success { border-color: #3f8068; background: #143b32; color: #a2f1cf; }
+html[data-theme="dark"] .planner-flash-error { border-color: #9a5c54; background: #3b2426; color: #ffc2b9; }
+html[data-theme="dark"] .planner-delivery-links > li { border-color: #315553; }
+html[data-theme="dark"] .planner-delivery-links small { color: #9dc5b8; }
+html[data-theme="dark"] .planner-delivery-actions a { color: #82eec3; }
+html[data-theme="dark"] .planner-progress {
+  background: #112f2e; border-color: #396154;
+  box-shadow: 0 10px 24px #03111542; color: #d7f6e6;
+}
+html[data-theme="dark"] .planner-progress-heading { border-color: #345b51; }
+html[data-theme="dark"] .planner-progress-heading strong { color: #e9fff2; }
+html[data-theme="dark"] #planner-progress-state { color: #83e9c1; }
+html[data-theme="dark"] .planner-progress-steps li { color: #a1c9b8; }
+html[data-theme="dark"] .planner-progress-steps li time { color: #87b3a4; }
+html[data-theme="dark"] .planner-progress-steps .planner-step-active { color: #c4ffe5; }
+html[data-theme="dark"] .planner-progress-steps .planner-step-complete::before { color: #76e8b8; }
+html[data-theme="dark"] .planner-progress-steps .planner-step-failed { color: #ffb1a4; }
+html[data-theme="dark"] .planner-progress-error { background: #332629; border-color: #7f514d; }
+html[data-theme="dark"] .planner-progress-error #planner-progress-state { color: #ffb1a4; }

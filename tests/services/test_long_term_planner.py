@@ -257,11 +257,11 @@ def test_generate_long_term_artifact_for_short_phase_keeps_block_lengths_consist
     # WHEN generating the long-term artifact
     artifact = generate_long_term_plan_artifact(session, phase=phase)
 
-    # THEN the block weeks should match the phase duration exactly
-    assert artifact.structured_data["duration_weeks"] == 2
+    # THEN week 1 includes the partial week containing May 15 and the final week is retained
+    assert artifact.structured_data["duration_weeks"] == 3
     blocks = artifact.structured_data["blocks"]
-    assert [block["name"] for block in blocks] == ["Build", "Peak"]
-    assert sum(block["weeks"] for block in blocks) == 2
+    assert [block["name"] for block in blocks] == ["Base", "Build", "Peak"]
+    assert sum(block["weeks"] for block in blocks) == 3
 
 
 def test_derive_weekly_brief_uses_current_macro_block(session: Session) -> None:
@@ -321,6 +321,78 @@ def test_get_long_term_week_options_includes_current_week_and_excludes_past_week
     assert options[0].label == "Week 2 of 4 - 2026-05-11"
     assert options[1].label == "Week 3 of 4 - 2026-05-18"
     assert options[2].label == "Week 4 of 4 - 2026-05-25"
+
+
+def test_phase_created_on_saturday_starts_with_the_current_monday(session: Session) -> None:
+    """The selected first week includes the Saturday on which the goal was saved."""
+    # GIVEN a goal saved Saturday November 7, with a Tuesday target in December.
+    phase = TrainingPhase(
+        user_id=uuid.uuid4(),
+        primary_goal="Build FTP",
+        start_date=date(2026, 11, 7),
+        end_date=date(2026, 12, 8),
+        target_date=date(2026, 12, 8),
+        status="active",
+    )
+    session.add(phase)
+    session.commit()
+    artifact = generate_long_term_plan_artifact(session, phase=phase)
+
+    # WHEN selecting planning weeks on Saturday, week one must be November 2.
+    options = get_long_term_week_options(phase=phase, artifact=artifact, today=date(2026, 11, 7))
+
+    # THEN the remaining weeks continue through December 7; none are dropped.
+    assert [option.week_start for option in options] == [
+        date(2026, 11, 2),
+        date(2026, 11, 9),
+        date(2026, 11, 16),
+        date(2026, 11, 23),
+        date(2026, 11, 30),
+        date(2026, 12, 7),
+    ]
+    assert options[0].label == "Week 1 of 6 - 2026-11-02"
+    assert options[1].label == "Week 2 of 6 - 2026-11-09"
+    assert artifact.structured_data["duration_weeks"] == 6
+    assert "Week 1: 2026-11-02" in artifact.summary_markdown
+    assert web.is_week_in_long_term_plan(phase=phase, artifact=artifact, week_start=date(2026, 11, 2))
+
+    first = derive_weekly_brief(
+        phase=phase, artifact=artifact, analysis_context="Recovery stable", week_start=date(2026, 11, 2)
+    )
+    second = derive_weekly_brief(
+        phase=phase, artifact=artifact, analysis_context="Recovery stable", week_start=date(2026, 11, 9)
+    )
+    assert "Macro Progress: week 1 of 6" in first
+    assert "Macro Progress: week 2 of 6" in second
+
+
+def test_legacy_artifact_uses_corrected_calendar_week_count(session: Session) -> None:
+    """Already saved artifacts gain current-week selection without a DB migration."""
+    phase = TrainingPhase(
+        user_id=uuid.uuid4(),
+        primary_goal="Build FTP",
+        start_date=date(2026, 11, 7),
+        end_date=date(2026, 12, 8),
+        target_date=date(2026, 12, 8),
+        status="active",
+    )
+    session.add(phase)
+    session.commit()
+    artifact = generate_long_term_plan_artifact(session, phase=phase)
+    artifact.structured_data = {
+        **artifact.structured_data,
+        "duration_weeks": 5,
+        "blocks": [{"name": "Base", "focus": "Aerobic durability", "weeks": 5}],
+    }
+
+    options = get_long_term_week_options(phase=phase, artifact=artifact, today=date(2026, 11, 7))
+    assert len(options) == 6
+    assert options[0].week_start == date(2026, 11, 2)
+    assert options[-1].week_start == date(2026, 12, 7)
+    brief = derive_weekly_brief(
+        phase=phase, artifact=artifact, analysis_context="Recovery stable", week_start=date(2026, 12, 7)
+    )
+    assert "Macro Progress: week 6 of 6" in brief
 
 
 def test_regeneration_preserves_history_and_surfaces_latest_artifact(session: Session) -> None:

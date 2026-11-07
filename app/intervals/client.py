@@ -125,6 +125,8 @@ class IntervalsClient:
         Raises:
             IntervalsResponseError: if the API response is malformed or incomplete.
         """
+        if not events:
+            return []
         r = self.session.post(
             f"{BASE_URL}/athlete/{self.athlete_id}/events/bulk",
             auth=("API_KEY", self.api_key),

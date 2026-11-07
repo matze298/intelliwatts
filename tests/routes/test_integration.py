@@ -1,6 +1,7 @@
 """Integration test for the athlete's journey."""
 
 import asyncio
+import json
 import uuid
 from contextlib import AsyncExitStack
 from datetime import date
@@ -10,6 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, delete, select
 from starlette.requests import Request
@@ -725,7 +727,7 @@ async def test_long_term_weekly_workflow_keeps_macro_artifact_stable(
             context.app,
             method="POST",
             path="/update",
-            body=b"feedback=Make+Tuesday+easier&week_start=2026-05-18",
+            body=b"feedback=Make+Tuesday+easier&week_start=2026-05-11",
         ),
         context.route_user,
         context.settings,
@@ -1042,3 +1044,62 @@ def test_settings_page_renders_preferences(monkeypatch: pytest.MonkeyPatch) -> N
     assert "LLM prompts" in body
     assert "system default" in body
     assert "user default" in body
+
+
+@pytest.mark.asyncio
+async def test_publish_redirects_to_selected_week(
+    selected_week_route_context: SelectedWeekRouteContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A successful Intervals publish retains the week the athlete was viewing."""
+    context = selected_week_route_context.planner
+    publish_mock = MagicMock()
+    monkeypatch.setattr(web_routes, "publish_workout_delivery", publish_mock)
+    monkeypatch.setattr(web_routes, "IntervalsClient", MagicMock())
+
+    response = await web_routes.publish_workout(
+        build_request(
+            context.app,
+            method="POST",
+            path="/publish-workout",
+            body=b"week_start=2026-05-18",
+        ),
+        context.route_user,
+        context.settings,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/?week_start=2026-05-18&publish=success"
+    publish_mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_planner_stream_reports_backend_milestones_without_llm() -> None:
+    """In-place generation sends actual backend events, not timer-based copy."""
+    context = _build_weekly_planner_route_context()
+    request = build_request(context.app, method="POST", path="/update/stream", body=b"feedback=Reduce+load")
+
+    async def fake_action(request: Request, _user: User, _settings: Settings) -> HTMLResponse:
+        request.state.planner_progress("Checking the current training week")
+        await asyncio.sleep(0)
+        request.state.planner_progress("Saving the plan")
+        return HTMLResponse("<main id='planner-plan-body'>Saved</main>")
+
+    response = web_routes._stream_planner_action(
+        request,
+        context.route_user,
+        context.settings,
+        fake_action,
+    )
+    chunks = [chunk async for chunk in response.body_iterator]
+    messages = [
+        json.loads((chunk if isinstance(chunk, str) else bytes(chunk).decode("utf-8")).removeprefix("data: ").strip())
+        for chunk in chunks
+    ]
+
+    assert response.media_type == "text/event-stream"
+    assert [message["kind"] for message in messages] == ["stage", "stage", "complete"]
+    assert [message["message"] for message in messages[:2]] == [
+        "Checking the current training week",
+        "Saving the plan",
+    ]
+    assert "planner-plan-body" in messages[2]["html"]

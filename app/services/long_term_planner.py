@@ -112,8 +112,7 @@ def _build_long_term_artifact_content(
     Returns:
         A structured summary payload, rendered markdown, and prompt history.
     """
-    total_days = max((phase.target_date - phase.start_date).days, 1)
-    total_weeks = max((total_days + 6) // 7, 1)
+    total_weeks = _phase_duration_weeks(phase)
     blocks = _allocate_long_term_blocks(total_weeks)
 
     structured_data: LongTermPlanStructuredData = {
@@ -130,6 +129,7 @@ def _build_long_term_artifact_content(
         "# Long-term plan\n\n"
         f"Goal: {phase.primary_goal}\n\n"
         f"Target date: {phase.target_date.isoformat()}\n\n"
+        f"Week 1: {_get_long_term_week_start(phase, 0).isoformat()}\n\n"
         "## Blocks\n\n"
         f"{block_lines}\n"
     )
@@ -199,8 +199,16 @@ def _get_current_block(blocks: list[LongTermPlanBlock], week_index: int) -> Long
 
 
 def _phase_duration_weeks(phase: TrainingPhase) -> int:
-    """Return the fallback phase duration in weeks."""
-    return max(((phase.target_date - phase.start_date).days + 6) // 7, 1)
+    """Count Monday-based training weeks up to (but not beyond) the goal date.
+
+    The partial week when a goal is saved is week 1.
+
+    Returns:
+        The number of calendar weeks covered by the long-term phase.
+    """
+    first_monday = phase.start_date - timedelta(days=phase.start_date.weekday())
+    days_to_goal = (phase.target_date - first_monday).days
+    return max((days_to_goal + 6) // 7, 1)
 
 
 def _get_structured_data(artifact: LongTermPlanArtifact | None) -> LongTermPlanStructuredData | None:
@@ -214,26 +222,28 @@ def _get_structured_data(artifact: LongTermPlanArtifact | None) -> LongTermPlanS
     return artifact.structured_data
 
 
-def _get_total_weeks(phase: TrainingPhase, artifact: LongTermPlanArtifact | None) -> int:
-    """Return the long-term plan duration in weeks."""
-    structured_data = _get_structured_data(artifact)
-    if structured_data is None:
-        return _phase_duration_weeks(phase)
-    return structured_data["duration_weeks"]
+def _get_total_weeks(phase: TrainingPhase, _artifact: LongTermPlanArtifact | None) -> int:
+    """Return calendar-aligned weeks for both existing and newly created plans."""
+    # Existing artifacts may have been calculated using the first *future* Monday.
+    # Derive the week count from phase dates instead of stale persisted counts.
+    return _phase_duration_weeks(phase)
 
 
-def _get_blocks(artifact: LongTermPlanArtifact | None) -> list[LongTermPlanBlock]:
-    """Return type-safe macro blocks for an artifact."""
+def _get_blocks(artifact: LongTermPlanArtifact | None, total_weeks: int) -> list[LongTermPlanBlock]:
+    """Return blocks aligned to the effective calendar-based week count."""
     structured_data = _get_structured_data(artifact)
     if structured_data is None:
         return []
-    return structured_data["blocks"]
+    blocks = structured_data["blocks"]
+    if sum(block["weeks"] for block in blocks) != total_weeks:
+        return _allocate_long_term_blocks(total_weeks)
+    return blocks
 
 
 def _get_long_term_week_start(phase: TrainingPhase, week_index: int) -> date:
     """Return the Monday start date for a 0-based long-term plan week."""
-    days_until_monday = (7 - phase.start_date.weekday()) % 7
-    return phase.start_date + timedelta(days=days_until_monday + week_index * 7)
+    first_monday = phase.start_date - timedelta(days=phase.start_date.weekday())
+    return first_monday + timedelta(weeks=week_index)
 
 
 def get_long_term_week_options(
@@ -284,9 +294,10 @@ def derive_weekly_brief(
     Returns:
         A concise weekly brief combining macro and recent-analysis context.
     """
-    blocks = _get_blocks(artifact)
     total_weeks = _get_total_weeks(phase, artifact)
-    week_index = max((week_start - phase.start_date).days // 7, 0)
+    blocks = _get_blocks(artifact, total_weeks)
+    first_monday = _get_long_term_week_start(phase, 0)
+    week_index = max((week_start - first_monday).days // 7, 0)
     current_block = _get_current_block(blocks, week_index)
 
     current_block_summary = "Current Block: Not set yet"

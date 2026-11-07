@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 from copy import copy
 from datetime import UTC, date, datetime, timedelta
-from typing import Annotated, NamedTuple
+from typing import TYPE_CHECKING, Annotated, NamedTuple
+from urllib.parse import urlencode
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from requests_cache import CachedSession
 from sqlmodel import Session, select
@@ -17,7 +20,7 @@ from sqlmodel import Session, select
 from app.config import LanguageModel, Settings, get_settings
 from app.db import engine
 from app.intervals.analysis import compute_analysis
-from app.intervals.client import IntervalsClient
+from app.intervals.client import IntervalsClient, IntervalsResponseError
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPhase, TrainingPlan
@@ -42,6 +45,10 @@ from app.services.planner import (
 from app.services.workout_delivery import publish_workout_delivery
 from app.utils.datetime import get_monday
 from app.utils.markdown import render_markdown
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Awaitable, Callable
+
 
 router = APIRouter(tags=["web"])
 
@@ -248,6 +255,8 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
     selected_week_start: str = "",
     error: str | None = None,
     selected_model: LanguageModel | None = None,
+    delivery_links: tuple[object, ...] = (),
+    publish_notice: str | None = None,
 ) -> HTMLResponse:
     """Render the planner page with shared context.
 
@@ -269,6 +278,8 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
             "long_term_summary_html": long_term_summary_html,
             "delivery_status": delivery_status,
             "delivery_last_error": delivery_last_error,
+            "delivery_links": delivery_links,
+            "publish_notice": publish_notice,
             "summary": summary,
             "prompt": prompt,
             "primary_goal": primary_goal,
@@ -303,6 +314,56 @@ def _render_invalid_model_selection(request: Request, user: User, week_start: st
     )
 
 
+def _stream_planner_action(
+    request: Request,
+    user: User,
+    settings: Settings,
+    action: Callable[[Request, User, Settings], Awaitable[HTMLResponse]],
+) -> StreamingResponse:
+    """Stream real backend milestones and return rendered planner HTML when complete.
+
+    Returns:
+        A newline-delimited event stream consumed by the in-place Planner UI.
+    """
+    queue: asyncio.Queue[dict[str, str] | None] = asyncio.Queue()
+
+    def progress(message: str) -> None:
+        queue.put_nowait({"kind": "stage", "message": message})
+
+    async def execute() -> None:
+        request.state.planner_progress = progress
+        try:
+            result = await action(request, user, settings)
+            queue.put_nowait({"kind": "complete", "html": bytes(result.body).decode("utf-8")})
+        except Exception:
+            _LOGGER.exception("Planner generation stream failed")
+            queue.put_nowait({
+                "kind": "error",
+                "message": "Plan generation failed. Your existing plan is still available; please try again.",
+            })
+        finally:
+            queue.put_nowait(None)
+
+    async def events() -> AsyncIterator[str]:
+        # Work continues to save or stage the plan even if a browser tab disconnects.
+        task = asyncio.create_task(execute())
+        try:
+            while True:
+                item = await queue.get()
+                if item is None:
+                    break
+                yield "data: " + json.dumps(item, ensure_ascii=False) + chr(10) * 2
+        finally:
+            if task.done():
+                await task
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+    )
+
+
 def _selected_language_model(value: object, default: LanguageModel) -> LanguageModel | None:
     """Parse the selected language model, returning None for unsupported values.
 
@@ -327,6 +388,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_profile)]) -
     prompt = None
     delivery_status = None
     delivery_last_error = None
+    delivery_links: tuple[object, ...] = ()
 
     with Session(engine) as session:
         raw_week_start = str(request.query_params.get("week_start", "")).strip()
@@ -343,6 +405,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_profile)]) -
         prompt = loaded.prompt
         delivery_status = loaded.delivery_status
         delivery_last_error = loaded.delivery_last_error
+        delivery_links = getattr(loaded, "delivery_links", ())
         selected_week_start = week_selection.selected_week_start or loaded.week_start
     else:
         selected_week_start = week_selection.selected_week_start
@@ -354,6 +417,10 @@ def home(request: Request, user: Annotated[User | None, Depends(get_profile)]) -
         long_term_summary_html=long_term_summary_html,
         delivery_status=delivery_status,
         delivery_last_error=delivery_last_error,
+        delivery_links=delivery_links,
+        publish_notice=request.query_params.get("publish")
+        if request.query_params.get("publish") in {"success", "failed"}
+        else None,
         summary=None,
         prompt=prompt,
         primary_goal=week_selection.primary_goal,
@@ -624,6 +691,7 @@ async def generate(
         weekly_hours=weekly_hours,
         weekly_sessions=weekly_sessions,
         week_start=week_selection.selected_week_start,
+        **({"progress": request.state.planner_progress} if hasattr(request.state, "planner_progress") else {}),
     )
 
     plan_html = render_markdown(result["plan"])
@@ -685,7 +753,13 @@ async def update(
             error=week_error,
         )
 
-    result = await update_training_plan(user=user, feedback=feedback, settings=settings, week_start=week_start)
+    result = await update_training_plan(
+        user=user,
+        feedback=feedback,
+        settings=settings,
+        week_start=week_start,
+        **({"progress": request.state.planner_progress} if hasattr(request.state, "planner_progress") else {}),
+    )
 
     plan_html = render_markdown(result["plan"])
     loaded = load_user_plan(user, week_start=result["week_start"])
@@ -709,6 +783,36 @@ async def update(
         week_options=week_options,
         selected_week_start=result["week_start"].isoformat(),
     )
+
+
+@planner_router.post("/generate/stream")
+async def stream_generate(
+    request: Request,
+    user: Annotated[User, Depends(get_profile)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> StreamingResponse:
+    """Generate a plan while streaming server-reported milestones.
+
+    Returns:
+        The progress event stream and final rendered planner response.
+    """
+    await request.form()
+    return _stream_planner_action(request, user, settings, generate)
+
+
+@planner_router.post("/update/stream")
+async def stream_update(
+    request: Request,
+    user: Annotated[User, Depends(get_profile)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> StreamingResponse:
+    """Revise a plan while streaming server-reported milestones.
+
+    Returns:
+        The progress event stream and final rendered planner response.
+    """
+    await request.form()
+    return _stream_planner_action(request, user, settings, update)
 
 
 @planner_router.post("/publish-workout", response_class=HTMLResponse)
@@ -760,6 +864,12 @@ async def publish_workout(
             )
         client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session_factory)
 
-        publish_workout_delivery(session, plan, client)
+        try:
+            publish_workout_delivery(session, plan, client)
+            result = "success"
+        except requests.RequestException, IntervalsResponseError:
+            _LOGGER.exception("Intervals.icu workout publication failed")
+            result = "failed"
 
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    query = urlencode({"week_start": week_start.isoformat(), "publish": result})
+    return RedirectResponse(url=f"/?{query}", status_code=status.HTTP_303_SEE_OTHER)

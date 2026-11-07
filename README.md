@@ -16,12 +16,12 @@
 ### Training planner
 
 - **Long-term goal:** Define the main training objective and target date.
-- **Planning horizon:** View the long-term plan and select the week to work on.
+- **Planning horizon:** View the long-term plan and select the week to work on. Week 1 begins on the Monday of the week when the goal was saved, including a partial first week.
 - **Weekly limits:** Set available training hours and the maximum number of planned sessions.
 - **Recovery context:** Choose whether readiness and wellness signals are included in plan generation.
 - **Model selection:** Select a configured OpenAI, Groq, or Gemini model.
 - **Weekly workout generation:** Create a structured weekly plan based on the goal, selected week, constraints, and available context.
-- **Review, update, and publish:** Inspect the generated plan, request an update, and publish the selected workout to Intervals.icu.
+- **Review, update, and publish:** Inspect the generated plan, request an update without leaving the page, and publish the selected week's workouts to Intervals.icu. The Planner displays backend-reported generation stages, publishing status, and confirmed Intervals.icu workout/calendar links.
 
 ### Performance dashboard
 
@@ -56,8 +56,8 @@ Charts adjust their axis labels, gridlines, legends, and tooltips to remain legi
 2. **Check the Dashboard.** Review training load, recent activities, recovery signals, and the current analysis window.
 3. **Set your goal.** On the Plan page, enter the target and date, then save the long-term goal.
 4. **Configure the week.** Select the planning week and define the weekly hours, session limit, model, and optional wellness context.
-5. **Generate and review.** Generate the weekly plan, check the proposed workout and any available long-term context, and update it if needed.
-6. **Publish.** Use the publish action to send the selected workout to Intervals.icu when it is ready.
+5. **Generate and review.** Generate the weekly plan, follow the live progress messages, check the proposed workouts and long-term context, and revise the plan in place if needed.
+6. **Publish.** Use the publish action to send all structured workouts for the selected week to Intervals.icu. Review the delivery status and open the returned workout links. Generating or updating a plan saves a local draft; publishing is a separate action.
 
 The Planner, Dashboard, and Settings are available from the main navigation. On smaller screens the navigation moves into the page header.
 
