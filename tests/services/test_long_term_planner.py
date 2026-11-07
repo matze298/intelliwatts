@@ -615,6 +615,48 @@ async def test_long_term_goal_accepts_current_week_monday(
 
 
 @pytest.mark.asyncio
+async def test_saving_existing_earlier_start_date_preserves_its_value(
+    patch_planner_engines: None,  # ruff: ignore[unused-function-argument]
+    monkeypatch: pytest.MonkeyPatch,
+    planner_test_engine: Engine,
+    planner_user: User,
+    test_app: FastAPI,
+) -> None:
+    """An already saved goal can retain its older start when its target is edited."""
+    monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 11, 7))
+    with Session(planner_test_engine) as session:
+        phase = replace_active_phase(
+            session,
+            user_id=planner_user.id,
+            primary_goal="Build FTP",
+            start_date=date(2026, 10, 12),
+            target_date=date(2026, 12, 20),
+        )
+        generate_long_term_plan_artifact(session, phase=phase)
+        session.commit()
+
+    response = await web.long_term_plan(
+        build_request(
+            test_app,
+            method="POST",
+            path="/long-term-plan",
+            body=b"primary_goal=Build+FTP&start_date=2026-10-12&target_date=2027-01-10",
+        ),
+        planner_user,
+    )
+
+    assert response.status_code == 303
+    with Session(planner_test_engine) as session:
+        active = session.exec(
+            select(TrainingPhase).where(
+                TrainingPhase.user_id == planner_user.id, TrainingPhase.status == "active"
+            )
+        ).one()
+    assert active.start_date == date(2026, 10, 12)
+    assert active.target_date == date(2027, 1, 10)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("form_body", "error_message"),
     [
@@ -660,6 +702,9 @@ async def test_long_term_plan_post_validates_bad_input(  # ruff: ignore[too-many
     body_text = bytes(response.body).decode()
     assert response.status_code == 200
     assert error_message in body_text
+    if b"start_date=" in form_body:
+        submitted = form_body.decode().split("start_date=", 1)[1].split("&", 1)[0]
+        assert f'name="start_date" value="{submitted}"' in body_text
 
     with Session(planner_test_engine) as session:
         phases = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == planner_user.id)).all()
