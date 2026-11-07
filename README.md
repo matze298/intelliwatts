@@ -180,6 +180,11 @@ IntelliWatts uses **Python + FastAPI** for the backend and **Jinja2 + Tailwind C
 | `app/routes/` | FastAPI HTTP routes |
 | `app/planning/` and `app/services/` | Planning and application services |
 | `app/intervals/` | Intervals.icu client, parsing and analytics |
+| `app/routes/web.py` | Planner routes, goal and workout lifecycle |
+| `app/routes/dashboard.py` | Dashboard page and date-range view |
+| `app/routes/settings_page.py` | Profile-backed settings page |
+| `app/routes/planner_stream.py` | Streaming planner progress events |
+| `app/services/dashboard_data.py` | Dashboard-only Intervals.icu retrieval and cache |
 | `app/models/` | Persistent data models |
 | `app/templates/` | Jinja2 templates and shared UI macros |
 | `app/static/` | CSS, JavaScript and logo artwork |

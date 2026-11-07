@@ -8,7 +8,8 @@ from starlette.requests import Request
 
 from app import profile as profile_module
 from app.main import app
-from app.routes import web
+from app.routes import dashboard as dashboard_page
+from app.routes import settings_page, web
 from app.services import long_term_planner, plan_loader
 
 if TYPE_CHECKING:
@@ -28,3 +29,19 @@ def test_planner_and_settings_render_without_login(monkeypatch: pytest.MonkeyPat
     assert b"Weekly planning limits" in response.body
     assert b"/login" not in response.body
     assert web.settings(request, profile).status_code == 200
+
+
+def test_dashboard_and_settings_routes_are_registered_once() -> None:
+    """Dashboard and Settings retain their exact endpoints in the composed web router."""
+    # GIVEN the two extracted page routers.
+    dashboard_endpoints = [
+        (getattr(route, "path", None), getattr(route, "endpoint", None)) for route in dashboard_page.router.routes
+    ]
+    settings_endpoints = [
+        (getattr(route, "path", None), getattr(route, "endpoint", None)) for route in settings_page.router.routes
+    ]
+
+    # THEN both pages are registered once, and web includes both child routers.
+    assert dashboard_endpoints == [("/dashboard", web.dashboard)]
+    assert settings_endpoints == [("/settings", web.settings)]
+    assert len(web.router.routes) == 2

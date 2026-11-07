@@ -1,13 +1,10 @@
-"""Web routes for the app."""
+"""Planner web routes, including generation, revisions, and workout publishing."""
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
-from copy import copy
 from datetime import UTC, date, datetime, timedelta
-from typing import TYPE_CHECKING, Annotated, NamedTuple
+from typing import Annotated, NamedTuple
 from urllib.parse import urlencode
 
 import requests
@@ -19,15 +16,16 @@ from sqlmodel import Session, select
 
 from app.config import LanguageModel, Settings, get_settings
 from app.db import engine
-from app.intervals.analysis import compute_analysis
 from app.intervals.client import IntervalsClient, IntervalsResponseError
-from app.intervals.parser.activity import parse_activities
-from app.intervals.parser.wellness import parse_wellness_list
 from app.models.plan import TrainingPhase, TrainingPlan
 from app.models.user import User
 from app.profile import get_profile
+from app.routes.dashboard import dashboard
+from app.routes.dashboard import router as dashboard_router
 from app.routes.planner_errors import PlannerErrorRoute
-from app.services.dashboard import get_next_workout
+from app.routes.planner_stream import stream_planner_action as _stream_planner_action
+from app.routes.settings_page import router as settings_page_router
+from app.routes.settings_page import settings
 from app.services.long_term_planner import (
     LongTermWeekOption,
     generate_long_term_plan_artifact,
@@ -46,9 +44,7 @@ from app.services.workout_delivery import publish_workout_delivery
 from app.utils.datetime import get_monday
 from app.utils.markdown import render_markdown
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable, Callable
-
+__all__ = ["dashboard", "settings"]
 
 router = APIRouter(tags=["web"])
 
@@ -222,23 +218,6 @@ def _resolve_home_week_selection(session: Session, user: User | None, raw_week_s
     return WeekSelection(primary_goal, target_date, week_options, selected_week_start, None)
 
 
-def _settings_page_context(request: Request, user: User) -> dict[str, object]:
-    """Build the settings page context for the current user.
-
-    Returns:
-        A template context dictionary for the unified settings page.
-    """
-    app_settings = request.app.state.settings
-    prompt_settings = copy(app_settings["settings"])
-    prompt_settings.SYSTEM_PROMPT = user.system_prompt_override or app_settings["settings"].SYSTEM_PROMPT
-    prompt_settings.USER_PROMPT = user.user_prompt_override or app_settings["settings"].USER_PROMPT
-    return {
-        "user": user,
-        "settings": {**app_settings, "settings": prompt_settings},
-        "developer_mode_enabled": user.developer_mode_enabled,
-    }
-
-
 def _render_plan_page(  # ruff: ignore[too-many-arguments]
     request: Request,
     *,
@@ -318,56 +297,6 @@ def _render_invalid_model_selection(request: Request, user: User, week_start: st
         prompt=loaded.prompt,
         selected_week_start=week_start,
         error="The selected language model is not supported.",
-    )
-
-
-def _stream_planner_action(
-    request: Request,
-    user: User,
-    settings: Settings,
-    action: Callable[[Request, User, Settings], Awaitable[HTMLResponse]],
-) -> StreamingResponse:
-    """Stream real backend milestones and return rendered planner HTML when complete.
-
-    Returns:
-        A newline-delimited event stream consumed by the in-place Planner UI.
-    """
-    queue: asyncio.Queue[dict[str, str] | None] = asyncio.Queue()
-
-    def progress(message: str) -> None:
-        queue.put_nowait({"kind": "stage", "message": message})
-
-    async def execute() -> None:
-        request.state.planner_progress = progress
-        try:
-            result = await action(request, user, settings)
-            queue.put_nowait({"kind": "complete", "html": bytes(result.body).decode("utf-8")})
-        except Exception:
-            _LOGGER.exception("Planner generation stream failed")
-            queue.put_nowait({
-                "kind": "error",
-                "message": "Plan generation failed. Your existing plan is still available; please try again.",
-            })
-        finally:
-            queue.put_nowait(None)
-
-    async def events() -> AsyncIterator[str]:
-        # Work continues to save or stage the plan even if a browser tab disconnects.
-        task = asyncio.create_task(execute())
-        try:
-            while True:
-                item = await queue.get()
-                if item is None:
-                    break
-                yield "data: " + json.dumps(item, ensure_ascii=False) + chr(10) * 2
-        finally:
-            if task.done():
-                await task
-
-    return StreamingResponse(
-        events(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
 
 
@@ -537,83 +466,6 @@ async def long_term_plan(  # ruff: ignore[too-many-return-statements, complex-st
         session.commit()
 
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-
-
-@router.get("/dashboard", response_class=HTMLResponse)
-def dashboard(
-    request: Request,
-    user: Annotated[User, Depends(get_profile)],
-    settings: Annotated[Settings, Depends(get_settings)],
-    days: int | None = None,
-) -> HTMLResponse:
-    """Dashboard page for the app.
-
-    Returns:
-        The dashboard page as HTML.
-    """
-    # The normal Dashboard retains its short default window. A larger API
-    # request is only issued when the athlete explicitly selects a longer range.
-    display_days = max(7, min(365, days if days is not None else settings.DASHBOARD_DAYS))
-    lookback_days = max(settings.ANALYSIS_DAYS, display_days)
-
-    session = requests.Session()
-    if settings.CACHE_INTERVALS_HOURS > 0:
-        session = CachedSession(
-            "intervals_cache",
-            backend="sqlite",
-            expire_after=timedelta(hours=settings.CACHE_INTERVALS_HOURS),
-        )
-    elif settings.DASHBOARD_CACHE_MINUTES > 0:
-        # Cache identical Intervals.icu queries across Dashboard reloads/range changes.
-        # Request URLs include the oldest date, so distinct windows stay independent.
-        session = CachedSession(
-            "dashboard_intervals_cache",
-            backend="sqlite",
-            expire_after=timedelta(minutes=settings.DASHBOARD_CACHE_MINUTES),
-        )
-
-    client = IntervalsClient(
-        settings.INTERVALS_API_KEY,
-        settings.INTERVALS_ATHLETE_ID,
-        session=session,
-    )
-    raw_activities = client.activities(days=lookback_days)
-    activities = parse_activities(raw_activities)
-
-    raw_wellness = client.wellness(days=lookback_days)
-    wellness = parse_wellness_list(raw_wellness)
-
-    analysis = compute_analysis(
-        activities,
-        display_days=display_days,
-        wellness_data=wellness,
-        client=client,
-    )
-    current_plan = load_user_plan(user)
-    next_workout = get_next_workout(current_plan.workout_data, _today())
-
-    return templates.TemplateResponse(
-        request,
-        "dashboard.html",
-        {
-            "user": user,
-            "analysis": analysis.to_dict(),
-            "display_days": display_days,
-            "next_workout": next_workout,
-            "has_weekly_plan": current_plan.plan_html is not None,
-            "settings": request.app.state.settings,
-        },
-    )
-
-
-@router.get("/settings", response_class=HTMLResponse)
-def settings(request: Request, user: Annotated[User, Depends(get_profile)]) -> HTMLResponse:
-    """Settings page for the app.
-
-    Returns:
-        The settings page as HTML.
-    """
-    return templates.TemplateResponse(request, "settings.html", _settings_page_context(request, user))
 
 
 @planner_router.post("/generate", response_class=HTMLResponse)
@@ -881,3 +733,8 @@ async def publish_workout(
 
     query = urlencode({"week_start": week_start.isoformat(), "publish": result})
     return RedirectResponse(url=f"/?{query}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# Keep the public web router stable while delegating separate pages to focused routers.
+router.include_router(dashboard_router)
+router.include_router(settings_page_router)
