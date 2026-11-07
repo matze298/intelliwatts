@@ -11,7 +11,13 @@ from app.services.planner.calendar import format_week_commitments, load_week_com
 def test_calendar_context_includes_scheduled_sports_and_races() -> None:
     """Only scheduled sports and races within the chosen week enter the prompt."""
     events: list[object] = [
-        {"category": "WORKOUT", "start_date_local": "2026-11-10T17:30:00", "type": "Soccer", "name": "Club training", "moving_time": 5400},
+        {
+            "category": "WORKOUT",
+            "start_date_local": "2026-11-10T17:30:00",
+            "type": "Soccer",
+            "name": "Club training",
+            "moving_time": 5400,
+        },
         {"category": "RACE_A", "start_date_local": "2026-11-14T09:00:00", "type": "Ride", "name": "Road race"},
         {"category": "NOTE", "start_date_local": "2026-11-11T00:00:00", "name": "Private note"},
         {"category": "WORKOUT", "start_date_local": "2026-11-08T00:00:00", "type": "WeightTraining"},
