@@ -441,8 +441,7 @@ def home(request: Request, user: Annotated[User | None, Depends(get_profile)]) -
     )
 
 
-
-def _render_long_term_goal_error(
+def _render_long_term_goal_error(  # ruff: ignore[too-many-arguments]
     request: Request,
     user: User,
     *,
@@ -474,7 +473,7 @@ def _render_long_term_goal_error(
 
 
 @planner_router.post("/long-term-plan", response_class=HTMLResponse)
-async def long_term_plan(
+async def long_term_plan(  # ruff: ignore[too-many-return-statements, complex-structure]
     request: Request,
     user: Annotated[User, Depends(get_profile)],
 ) -> Response:
