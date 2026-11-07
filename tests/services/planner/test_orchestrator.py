@@ -147,9 +147,13 @@ async def test_generate_weekly_plan(  # ruff: ignore[too-many-arguments, too-man
         specialist_context="FTP Trajectory:\n- Starting FTP: 250.0W",
         task_prompt="custom user prompt",
     )
-    assert mock_generate_plan.call_args.kwargs["messages"][0]["content"] == "custom system prompt"
+    messages = mock_generate_plan.call_args.kwargs["messages"]
+    assert messages[0]["content"] == "custom system prompt"
+    assert messages[1]["content"] == result["summary"]
+    assert "2026-06-01 to 2026-06-07" in messages[1]["content"]
+    assert "Do not create, move, or schedule any NEW workout" in messages[1]["content"]
     assert result["plan"] == "test plan"
-    assert result["summary"] == "Formatted prompt"
+    assert result["summary"].startswith("Formatted prompt\n\nWorkout date rules")
     mock_stage_workout_delivery.assert_called_once()
 
 
@@ -240,7 +244,7 @@ async def test_generate_weekly_plan_uses_loaded_settings(  # ruff: ignore[too-ma
     # THEN: The loaded settings should flow through the planner pipeline.
     mock_intervals_client.assert_called_once_with("test_api_key", "test_athlete_id", session=ANY)
     assert result["plan"] == "test plan"
-    assert result["summary"] == "Formatted prompt"
+    assert result["summary"].startswith("Formatted prompt\n\nWorkout date rules")
     mock_stage_workout_delivery.assert_called_once()
 
 
@@ -313,7 +317,10 @@ async def test_update_training_plan_uses_history(
     assert len(passed_messages) == 4
     assert passed_messages[2]["role"] == "assistant"
     assert "Initial Plan" in passed_messages[2]["content"]
-    assert passed_messages[3]["content"] == "make it harder"
+    assert passed_messages[3]["content"].startswith("make it harder\n\nWorkout date rules")
+    assert "Today's date is 2026-04-21" in passed_messages[3]["content"]
+    assert "2026-04-20 to 2026-04-26" in passed_messages[3]["content"]
+    assert "existing workouts already assigned to past dates may be retained unchanged" in passed_messages[3]["content"]
 
     # THEN: The plan and its history should be updated in the database.
     plan = session.exec(select(TrainingPlan)).one()
