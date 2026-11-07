@@ -39,5 +39,3 @@ def settings(request: Request, user: Annotated[User, Depends(get_profile)]) -> H
         The settings page as HTML.
     """
     return templates.TemplateResponse(request, "settings.html", _settings_page_context(request, user))
-
-
