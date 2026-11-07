@@ -14,7 +14,7 @@ from app.utils.datetime import get_monday, get_utc_now
 from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
-    from datetime import date, datetime
+    from datetime import datetime
 
     from sqlalchemy.sql.elements import ColumnElement
 
