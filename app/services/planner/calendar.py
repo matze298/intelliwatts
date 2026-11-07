@@ -27,7 +27,7 @@ def load_week_commitments(client: IntervalsClient, *, week_start: date, today: d
 
     try:
         events = client.calendar_events(oldest=oldest, newest=newest)
-    except (requests.RequestException, IntervalsResponseError, ValueError):
+    except requests.RequestException, IntervalsResponseError, ValueError:
         return "Upcoming calendar events unavailable; do not assume there are none."
 
     return format_week_commitments(events, oldest=oldest, newest=newest)
