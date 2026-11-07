@@ -121,7 +121,61 @@ def test_publish_workout_delivery_updates_status(workout_session: Session, train
     # WHEN the plan is restaged after an edit
     restaged = stage_workout_delivery(workout_session, training_plan)
 
-    # THEN stale publish metadata should be cleared
+    # THEN previous receipts remain available to reconcile removed workouts on republish.
     assert restaged.status == WorkoutDeliveryStatus.DRAFT
-    assert restaged.published_payload == []
-    assert restaged.published_at is None
+    assert restaged.published_payload == [{"id": 123, "external_id": f"{training_plan.id}-0"}]
+    assert restaged.published_at is not None
+
+
+def test_republish_removes_only_previously_published_obsolete_workouts(
+    workout_session: Session, training_plan: TrainingPlan
+) -> None:
+    """Republishing removes old plan events, never unrelated athlete events."""
+    # GIVEN a published plan with two events whose revised draft contains just the first.
+    staged = stage_workout_delivery(workout_session, training_plan)
+    client = MagicMock(spec=IntervalsClient)
+    kept = staged.staged_payload[0]
+    old_external_id = f"{training_plan.id}-1"
+    staged.published_payload = [
+        {"id": 123, "external_id": kept["external_id"]},
+        {"id": 124, "external_id": old_external_id},
+    ]
+    staged.status = WorkoutDeliveryStatus.PUBLISHED
+    workout_session.add(staged)
+    workout_session.commit()
+    stage_workout_delivery(workout_session, training_plan)
+    client.publish_workout_events.return_value = [{"id": 123, "external_id": kept["external_id"]}]
+
+    # WHEN the updated plan is republished
+    delivery = publish_workout_delivery(workout_session, training_plan, client)
+
+    # THEN only our obsolete event's external ID is deleted.
+    assert delivery.status == WorkoutDeliveryStatus.PUBLISHED
+    client.publish_workout_events.assert_called_once()
+    client.delete_workout_events.assert_called_once_with([old_external_id])
+
+
+def test_publish_error_preserves_receipts_for_safe_retry(
+    workout_session: Session, training_plan: TrainingPlan
+) -> None:
+    """Failed reconciliation must not lose the IDs needed to retry cleanup."""
+    staged = stage_workout_delivery(workout_session, training_plan)
+    old_id = f"{training_plan.id}-1"
+    staged.published_payload = [{"id": 124, "external_id": old_id}]
+    staged.status = WorkoutDeliveryStatus.PUBLISHED
+    workout_session.add(staged)
+    workout_session.commit()
+    stage_workout_delivery(workout_session, training_plan)
+
+    client = MagicMock(spec=IntervalsClient)
+    client.publish_workout_events.return_value = [{"id": 123, "external_id": staged.staged_payload[0]["external_id"]}]
+    client.delete_workout_events.side_effect = RuntimeError("Intervals unavailable")
+
+    with pytest.raises(RuntimeError, match="Intervals unavailable"):
+        publish_workout_delivery(workout_session, training_plan, client)
+
+    failed = workout_session.get(type(staged), staged.id)
+    assert failed is not None
+    assert failed.status == WorkoutDeliveryStatus.FAILED
+    assert failed.published_payload == [{"id": 124, "external_id": old_id}]
+    assert failed.last_error == "Intervals unavailable"
