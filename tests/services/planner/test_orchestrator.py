@@ -7,7 +7,6 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 import pytest
 from sqlmodel import Session, select
 
-import app.services.planner.orchestrator as orchestrator
 from app.models.plan import (
     LongTermPlanArtifact,
     LongTermPlanBlock,
@@ -21,6 +20,7 @@ from app.services.planner import (
     PlanData,
     generate_weekly_plan,
     get_or_create_active_phase,
+    orchestrator,
     save_and_stage_weekly_plan,
     save_training_plan,
     update_training_plan,
