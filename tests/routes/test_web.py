@@ -38,7 +38,9 @@ def test_dashboard_and_settings_routes_are_registered_once() -> None:
     routes = [
         route
         for route in web.router.routes
-        if isinstance(route, APIRoute) and ("GET" in (route.methods or set())) and route.path in {"/dashboard", "/settings"}
+        if isinstance(route, APIRoute)
+        and ("GET" in (route.methods or set()))
+        and route.path in {"/dashboard", "/settings"}
     ]
 
     # THEN each expected URL still resolves to its original callable.
