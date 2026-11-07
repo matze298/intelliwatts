@@ -15,9 +15,11 @@ from app.models.plan import (
     SQLModel,
     TrainingPhase,
     TrainingPlan,
+    WorkoutDelivery,
+    WorkoutDeliveryStatus,
 )
 from app.models.user import User
-from app.services.plan_loader import load_user_plan
+from app.services.plan_loader import load_user_plan, published_workout_links
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -224,3 +226,31 @@ def test_load_user_plan_none(session: Session) -> None:
     assert loaded.delivery_status is None
     assert loaded.delivery_last_error is None
     assert session.exec(select(TrainingPhase).where(TrainingPhase.user_id == user.id)).all() == []
+
+
+def test_published_workout_links_uses_confirmed_intervals_event_ids() -> None:
+    """Only confirmed Intervals.icu event IDs become clickable workout links."""
+    delivery = WorkoutDelivery(
+        training_plan_id=uuid.uuid4(),
+        status=WorkoutDeliveryStatus.PUBLISHED,
+        staged_payload=[
+            {
+                "category": "WORKOUT",
+                "start_date_local": "2026-11-09T00:00:00",
+                "type": "Ride",
+                "name": "Tempo intervals",
+                "description": "Tempo set",
+                "external_id": "intelliwatts-1",
+            }
+        ],
+        published_payload=[{"id": 2345, "external_id": "intelliwatts-1"}],
+    )
+
+    links = published_workout_links(delivery)
+    assert len(links) == 1
+    assert links[0].name == "Tempo intervals"
+    assert links[0].event_url == "https://intervals.icu/?w=2026-11-09&event=2345"
+    assert links[0].calendar_url == "https://intervals.icu/?w=2026-11-09"
+
+    delivery.status = WorkoutDeliveryStatus.DRAFT
+    assert published_workout_links(delivery) == ()
