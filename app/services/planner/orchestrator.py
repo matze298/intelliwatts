@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -33,6 +34,13 @@ if TYPE_CHECKING:
 
 _get_analysis = get_analysis
 
+ProgressCallback = Callable[[str], None]
+
+
+def _report(progress: ProgressCallback | None, message: str) -> None:
+    if progress is not None:
+        progress(message)
+
 
 async def update_training_plan(
     user: User,
@@ -40,6 +48,7 @@ async def update_training_plan(
     settings: Settings | None = None,
     *,
     week_start: date | None = None,
+    progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """Updates the training plan based on user feedback.
 
@@ -49,6 +58,7 @@ async def update_training_plan(
     if settings is None:
         settings = get_settings()
 
+    _report(progress, "Loading the current training week")
     with Session(engine) as session:
         phase = get_or_create_active_phase(session, user.id)
         monday = week_start or get_monday(datetime.now(UTC).date())
@@ -57,7 +67,7 @@ async def update_training_plan(
         plan = session.exec(statement).first()
 
         if not plan:
-            return await generate_weekly_plan(user, settings, week_start=monday)
+            return await generate_weekly_plan(user, settings, week_start=monday, progress=progress)
 
         history = [
             *plan.prompt_history,
@@ -71,12 +81,14 @@ async def update_training_plan(
         ]
         history.append({"role": LLMRole.USER, "content": feedback})
 
+        _report(progress, "Requesting a revised plan from the selected model")
         llm_response = await run_in_threadpool(
             generate_plan,
             messages=history,
             language_model=settings.LANGUAGE_MODEL,
         )
 
+        _report(progress, "Saving the revision and staging workouts")
         saved_plan_id = save_and_stage_weekly_plan(
             session=session,
             phase_id=phase.id,
@@ -84,6 +96,7 @@ async def update_training_plan(
             llm_response=llm_response,
         )
 
+    _report(progress, "Revised plan ready for review")
     return {"plan": llm_response.plan, "plan_id": saved_plan_id, "week_start": monday}
 
 
@@ -94,6 +107,7 @@ async def generate_weekly_plan(
     weekly_hours: float | None = None,
     weekly_sessions: int | None = None,
     week_start: date | None = None,
+    progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """Generates the weekly plan.
 
@@ -120,9 +134,11 @@ async def generate_weekly_plan(
 
     client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session)
 
+    _report(progress, "Retrieving recent training and recovery data")
     analysis = await run_in_threadpool(_get_analysis, client, settings.ANALYSIS_DAYS)
     target_week_start = week_start or get_monday(datetime.now(UTC).date())
 
+    _report(progress, "Building goals, availability, and training constraints")
     with Session(engine) as db_session:
         phase = get_or_create_active_phase(db_session, user.id)
         artifact = get_current_long_term_plan_artifact(db_session, phase_id=phase.id)
@@ -152,6 +168,7 @@ async def generate_weekly_plan(
             )
         )
 
+    _report(progress, "Requesting structured workouts from the selected model")
     llm_response = await run_in_threadpool(
         generate_plan,
         messages=[
@@ -161,6 +178,7 @@ async def generate_weekly_plan(
         language_model=settings.LANGUAGE_MODEL,
     )
 
+    _report(progress, "Validating and saving the generated workouts")
     with Session(engine) as db_session:
         saved_plan_id = save_and_stage_weekly_plan(
             session=db_session,
@@ -169,6 +187,7 @@ async def generate_weekly_plan(
             llm_response=llm_response,
         )
 
+    _report(progress, "Plan saved and ready to review")
     return {
         "plan": llm_response.plan,
         "summary": full_summary,
