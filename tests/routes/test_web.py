@@ -28,3 +28,23 @@ def test_planner_and_settings_render_without_login(monkeypatch: pytest.MonkeyPat
     assert b"Weekly planning limits" in response.body
     assert b"/login" not in response.body
     assert web.settings(request, profile).status_code == 200
+
+
+def test_dashboard_and_settings_routes_are_registered_once() -> None:
+    """Extracted pages retain their existing paths without duplicate registrations."""
+    # GIVEN the application assembled from the public web and settings routers.
+    from fastapi.routing import APIRoute
+
+    # WHEN enumerating the registered GET handlers.
+    routes = [
+        route
+        for route in app.routes
+        if isinstance(route, APIRoute) and ("GET" in route.methods) and route.path in {"/dashboard", "/settings"}
+    ]
+
+    # THEN each expected URL still resolves to its original callable.
+    assert len(routes) == 2
+    assert {route.path: route.endpoint for route in routes} == {
+        "/dashboard": web.dashboard,
+        "/settings": web.settings,
+    }
