@@ -85,6 +85,7 @@ async def update_training_plan(
             week_start=monday,
             today=datetime.now(UTC).date(),
             existing_plan=True,
+            phase_start=phase.start_date,
         )
         history.append({"role": LLMRole.USER, "content": f"{feedback}\n\n{date_rules}"})
 
@@ -179,7 +180,12 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
     # This rule also applies when athletes override the default coach prompt.
     full_summary = (
         f"{full_summary}\n\n"
-        f"{workout_date_guidance(week_start=target_week_start, today=datetime.now(UTC).date(), existing_plan=False)}"
+        f"{workout_date_guidance(
+            week_start=target_week_start,
+            today=datetime.now(UTC).date(),
+            existing_plan=False,
+            phase_start=phase.start_date,
+        )}"
     )
 
     _report(progress, "Requesting structured workouts from the selected model")
