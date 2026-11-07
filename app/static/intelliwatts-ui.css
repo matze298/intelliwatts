@@ -495,3 +495,60 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
   .app-brand-art img { width: 72px; height: 72px; top: -9px; left: -8px; }
   .app-brand-name { font-size: 1.08rem; }
 }
+
+
+/* Planner delivery receipts and live, server-reported generation log. */
+.planner-flash {
+  margin: 0 0 16px; padding: 13px 16px; border-radius: 10px;
+  font-size: .87rem; font-weight: 650; line-height: 1.5;
+}
+.planner-flash-success { border: 1px solid #a4d8c0; background: #e7f6ed; color: #145c43; }
+.planner-flash-error { border: 1px solid #e5aea7; background: #fff0ed; color: #8a362c; }
+.planner-delivery-links { margin-top: 10px; display: grid; gap: 9px; }
+.planner-delivery-links > li {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 8px 15px; padding: 11px 0; border-bottom: 1px solid var(--iw-stroke);
+}
+.planner-delivery-links > li:last-child { border-bottom: 0; }
+.planner-delivery-links strong { display: block; font-size: .87rem; }
+.planner-delivery-links small { display: block; margin-top: 2px; color: var(--iw-muted); font-size: .75rem; }
+.planner-delivery-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.planner-delivery-actions a { font-size: .8rem; font-weight: 750; color: var(--iw-green); }
+.planner-delivery-actions a:hover { text-decoration: underline; }
+.planner-progress {
+  margin: 0 0 18px; padding: 19px 21px; border-radius: 13px;
+  border: 1px solid #b8d6c9; background: #f3faf5;
+  color: var(--iw-ink); box-shadow: var(--iw-shadow);
+}
+.planner-progress-heading {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; padding-bottom: 13px; border-bottom: 1px solid #d4e6db;
+}
+.planner-progress-heading strong { font-size: .96rem; }
+#planner-progress-state { color: #267c5b; font-weight: 750; font-size: .75rem; }
+.planner-progress-steps { display: grid; gap: 10px; margin: 13px 0 0; padding: 0; list-style: none; }
+.planner-progress-steps li {
+  display: grid; grid-template-columns: 68px 13px minmax(0, 1fr);
+  align-items: baseline; gap: 11px; font-size: .83rem; color: #516f62;
+}
+.planner-progress-steps li::before {
+  content: "·"; grid-column: 2; grid-row: 1;
+  font-weight: 900; color: #408b6a; font-size: 1.05rem;
+}
+.planner-progress-steps li time {
+  grid-column: 1; grid-row: 1; color: #708b7e; font-size: .72rem;
+  font-variant-numeric: tabular-nums;
+}
+.planner-progress-steps li span { grid-column: 3; grid-row: 1; }
+.planner-progress-steps .planner-step-active { color: #11583d; font-weight: 800; }
+.planner-progress-steps .planner-step-active::before { content: "›"; color: #14946a; }
+.planner-progress-steps .planner-step-complete::before { content: "✓"; color: #138d5d; }
+.planner-progress-steps .planner-step-failed { color: #9b3e32; }
+.planner-progress-steps .planner-step-failed::before { content: "×"; color: #c45547; }
+.planner-progress-error { border-color: #e2b3aa; background: #fff5f1; }
+.planner-progress-error #planner-progress-state { color: #9d4539; }
+@media (max-width: 640px) {
+  .planner-progress { padding: 15px; }
+  .planner-progress-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .planner-progress-steps li { grid-template-columns: 57px 10px minmax(0,1fr); gap: 8px; }
+}
