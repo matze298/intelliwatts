@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING
 
+from fastapi.routing import APIRoute
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, create_engine
 from starlette.requests import Request
@@ -33,13 +34,11 @@ def test_planner_and_settings_render_without_login(monkeypatch: pytest.MonkeyPat
 def test_dashboard_and_settings_routes_are_registered_once() -> None:
     """Extracted pages retain their existing paths without duplicate registrations."""
     # GIVEN the application assembled from the public web and settings routers.
-    from fastapi.routing import APIRoute
-
     # WHEN enumerating the registered GET handlers.
     routes = [
         route
         for route in app.routes
-        if isinstance(route, APIRoute) and ("GET" in route.methods) and route.path in {"/dashboard", "/settings"}
+        if isinstance(route, APIRoute) and ("GET" in (route.methods or set())) and route.path in {"/dashboard", "/settings"}
     ]
 
     # THEN each expected URL still resolves to its original callable.
