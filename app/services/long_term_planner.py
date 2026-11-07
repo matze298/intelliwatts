@@ -219,7 +219,7 @@ def _get_structured_data(artifact: LongTermPlanArtifact | None) -> LongTermPlanS
     return artifact.structured_data
 
 
-def _get_total_weeks(phase: TrainingPhase, artifact: LongTermPlanArtifact | None) -> int:
+def _get_total_weeks(phase: TrainingPhase, _artifact: LongTermPlanArtifact | None) -> int:
     """Return calendar-aligned weeks for both existing and newly created plans."""
     # Existing artifacts may have been calculated using the first *future* Monday.
     # Derive the week count from phase dates instead of stale persisted counts.
