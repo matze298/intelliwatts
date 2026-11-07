@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Any
+from operator import itemgetter
 
 import requests
 
@@ -33,7 +33,9 @@ def load_week_commitments(client: IntervalsClient, *, week_start: date, today: d
     return format_week_commitments(events, oldest=oldest, newest=newest)
 
 
-def format_week_commitments(events: list[object], *, oldest: date, newest: date) -> str:
+def format_week_commitments(  # ruff: ignore[complex-structure]
+    events: list[object], *, oldest: date, newest: date
+) -> str:
     """Keep only sport/date/duration details relevant to the chosen week.
 
     Returns:
@@ -66,7 +68,7 @@ def format_week_commitments(events: list[object], *, oldest: date, newest: date)
             detail += f", {duration}"
         output.append((event_date, detail))
 
-    output.sort(key=lambda pair: pair[0])
+    output.sort(key=itemgetter(0))
     if not output:
         return "No scheduled sports or races found in the selected week."
     compact = "; ".join(line for _, line in output[:MAX_EVENTS])
@@ -75,15 +77,23 @@ def format_week_commitments(events: list[object], *, oldest: date, newest: date)
     return "Scheduled calendar commitments (not completed training): " + compact
 
 
-def _plain_text(value: Any, default: str) -> str:
-    """Sanitize short external labels so calendar text cannot inject instructions."""
+def _plain_text(value: object, default: str) -> str:
+    """Sanitize external labels to short, single-line text.
+
+    Returns:
+        The sanitized label or its fallback.
+    """
     if not isinstance(value, str) or not value.strip():
         return default
     return " ".join(value.split())[:65]
 
 
-def _duration_label(seconds: Any) -> str:
-    """Format optional workout duration without inventing missing values."""
+def _duration_label(seconds: object) -> str:
+    """Format optional workout duration without inventing missing values.
+
+    Returns:
+        A readable duration, or empty when absent.
+    """
     if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or seconds <= 0:
         return ""
     return f"{round(seconds / 60)} min"
