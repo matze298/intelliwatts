@@ -1,16 +1,21 @@
 """On-demand Intervals.icu Dashboard analytics loading and API caching."""
 
+from __future__ import annotations
+
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
 import requests
 from requests_cache import CachedSession
 
-from app.config import Settings
 from app.intervals.analysis import compute_analysis
 from app.intervals.client import IntervalsClient
 from app.intervals.parser.activity import parse_activities
 from app.intervals.parser.wellness import parse_wellness_list
-from app.intervals.models import AnalysisResult
+
+if TYPE_CHECKING:
+    from app.config import Settings
+    from app.intervals.models import AnalysisResult
 
 
 def load_dashboard_analysis(settings: Settings, *, display_days: int) -> AnalysisResult:
