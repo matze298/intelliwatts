@@ -758,11 +758,7 @@ async def update(
         feedback=feedback,
         settings=settings,
         week_start=week_start,
-        **(
-            {"progress": request.state.planner_progress}
-            if hasattr(request.state, "planner_progress")
-            else {}
-        ),
+        **({"progress": request.state.planner_progress} if hasattr(request.state, "planner_progress") else {}),
     )
 
     plan_html = render_markdown(result["plan"])
