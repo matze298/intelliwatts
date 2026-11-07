@@ -53,8 +53,8 @@ def stage_workout_delivery(session: Session, plan: TrainingPlan) -> WorkoutDeliv
     if delivery:
         delivery.status = WorkoutDeliveryStatus.DRAFT
         delivery.staged_payload = payloads
-        # Keep prior Intervals receipts until the revised draft is actually published.
-        # Otherwise removed workouts cannot be cleaned up on the next publish.
+        delivery.published_payload = []
+        delivery.published_at = None
         delivery.last_error = None
         delivery.updated_at = now
     else:
@@ -94,18 +94,8 @@ def publish_workout_delivery(
     session.commit()
     session.refresh(delivery)
 
-    previous_external_ids = {
-        item["external_id"]
-        for item in delivery.published_payload
-        if isinstance(item.get("external_id"), str)
-    }
-    current_external_ids = {item["external_id"] for item in delivery.staged_payload}
-    obsolete_external_ids = sorted(previous_external_ids - current_external_ids)
-
     try:
         published_payload = client.publish_workout_events(delivery.staged_payload)
-        if obsolete_external_ids:
-            client.delete_workout_events(obsolete_external_ids)
     except Exception as exc:  # pragma: no cover - exercised in integration/unit tests
         delivery.status = WorkoutDeliveryStatus.FAILED
         delivery.last_error = str(exc)
