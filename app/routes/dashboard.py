@@ -1,18 +1,20 @@
 """Dashboard page routing and view rendering."""
 
 from datetime import UTC, date, datetime
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import Settings, get_settings
-from app.models.user import User
 from app.profile import get_profile
 from app.services.dashboard import get_next_workout
 from app.services.dashboard_data import load_dashboard_analysis
 from app.services.plan_loader import load_user_plan
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="app/templates")
