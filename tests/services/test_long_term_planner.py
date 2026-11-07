@@ -484,6 +484,7 @@ def test_home_page_renders_long_term_goal_inputs_and_current_summary(
     )
 
     # WHEN loading the home page
+    monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 15))
     response = web.home(build_request(test_app, method="GET", path="/"), planner_user)
 
     # THEN the long-term controls and current summary should be present
@@ -492,6 +493,8 @@ def test_home_page_renders_long_term_goal_inputs_and_current_summary(
     assert 'action="/long-term-plan"' in body
     assert 'name="primary_goal"' in body
     assert 'name="target_date"' in body
+    assert 'name="start_date" value="2026-05-15"' in body
+    assert "Week 1 starts on the Monday of your chosen start date." in body
     assert "required" in body
     assert "Long-term plan" in body
     assert "Current macro focus." in body
@@ -525,8 +528,90 @@ async def test_long_term_plan_post_redirects_after_success(
         phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == planner_user.id)).one()
 
     assert phase.primary_goal == "Peak for gravel race"
+    assert phase.start_date == date(2026, 5, 15)
     assert phase.target_date == date(2026, 9, 20)
     assert phase.status == "active"
+
+
+@pytest.mark.asyncio
+async def test_long_term_goal_can_be_postponed_to_selected_start_date(
+    patch_planner_engines: None,  # ruff: ignore[unused-function-argument]
+    monkeypatch: pytest.MonkeyPatch,
+    planner_test_engine: Engine,
+    planner_user: User,
+    test_app: FastAPI,
+) -> None:
+    """A future start postpones Week 1 without moving the target date."""
+    monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 11, 7))
+
+    response = await web.long_term_plan(
+        build_request(
+            test_app,
+            method="POST",
+            path="/long-term-plan",
+            body=b"primary_goal=Build+FTP&start_date=2026-11-19&target_date=2026-12-20",
+        ),
+        planner_user,
+    )
+
+    assert response.status_code == 303
+    with Session(planner_test_engine) as session:
+        phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == planner_user.id)).one()
+        artifact = session.exec(select(LongTermPlanArtifact).where(LongTermPlanArtifact.phase_id == phase.id)).one()
+        options = get_long_term_week_options(phase=phase, artifact=artifact, today=date(2026, 11, 7))
+
+    assert phase.start_date == date(2026, 11, 19)
+    assert phase.target_date == date(2026, 12, 20)
+    assert artifact.structured_data["start_date"] == "2026-11-19"
+    assert options[0].week_start == date(2026, 11, 16)
+    assert options[0].label == "Week 1 of 5 - 2026-11-16"
+    assert all(option.week_start >= date(2026, 11, 16) for option in options)
+
+    # The persisted date is prefilled when returning to the Planner.
+    monkeypatch.setattr(
+        "app.routes.web.load_user_plan",
+        lambda _user, **_kwargs: SimpleNamespace(
+            plan_html=None,
+            long_term_summary_html="Long-term summary",
+            prompt=None,
+            delivery_status=None,
+            delivery_last_error=None,
+            week_start=None,
+        ),
+    )
+    home = web.home(build_request(test_app, method="GET", path="/"), planner_user)
+    assert 'name="start_date" value="2026-11-19"' in bytes(home.body).decode()
+
+
+@pytest.mark.asyncio
+async def test_long_term_goal_accepts_current_week_monday(
+    patch_planner_engines: None,  # ruff: ignore[unused-function-argument]
+    monkeypatch: pytest.MonkeyPatch,
+    planner_test_engine: Engine,
+    planner_user: User,
+    test_app: FastAPI,
+) -> None:
+    """The Monday of this week remains a valid start even on Saturday."""
+    monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 11, 7))
+
+    response = await web.long_term_plan(
+        build_request(
+            test_app,
+            method="POST",
+            path="/long-term-plan",
+            body=b"primary_goal=Build+FTP&start_date=2026-11-02&target_date=2026-12-20",
+        ),
+        planner_user,
+    )
+
+    assert response.status_code == 303
+    with Session(planner_test_engine) as session:
+        phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == planner_user.id)).one()
+        artifact = session.exec(select(LongTermPlanArtifact).where(LongTermPlanArtifact.phase_id == phase.id)).one()
+        options = get_long_term_week_options(phase=phase, artifact=artifact, today=date(2026, 11, 7))
+    assert phase.start_date == date(2026, 11, 2)
+    assert options[0].label.startswith("Week 1")
+    assert options[0].week_start == date(2026, 11, 2)
 
 
 @pytest.mark.asyncio
@@ -538,6 +623,18 @@ async def test_long_term_plan_post_redirects_after_success(
         (b"primary_goal=Peak+for+race&target_date=bad-date", "Target date must be a valid date."),
         (b"primary_goal=Peak+for+race&target_date=2026-05-14", "Target date cannot be in the past."),
         (b"primary_goal=Peak+for+race&target_date=2026-05-15", "Target date must be after the start date."),
+        (
+            b"primary_goal=Peak+for+race&start_date=invalid&target_date=2026-09-20",
+            "Start date must be a valid date.",
+        ),
+        (
+            b"primary_goal=Peak+for+race&start_date=2026-05-10&target_date=2026-09-20",
+            "Start date must be in the current week or later.",
+        ),
+        (
+            b"primary_goal=Peak+for+race&start_date=2026-09-22&target_date=2026-09-20",
+            "Target date must be after the start date.",
+        ),
     ],
 )
 async def test_long_term_plan_post_validates_bad_input(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]
