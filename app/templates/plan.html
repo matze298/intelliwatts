@@ -149,6 +149,7 @@
             action="/generate"
             class="hidden"
             data-progress-message="Gathering recent training data and generating your plan. This can take a few minutes."
+            data-progress-messages="Reviewing your recent training…|Planning a week around your goal…|Balancing intensity and recovery…|Building structured workouts…|Checking the plan details…"
         >
             <input type="hidden" name="week_start" value="{{ selected_week_start }}">
         </form>
@@ -208,6 +209,7 @@
                     action="/update"
                     class="mt-4 space-y-4"
                     data-progress-message="Applying your feedback and updating the plan. This can take a couple of minutes."
+                    data-progress-messages="Reviewing your feedback…|Adjusting the training week…|Balancing the workouts…|Checking the updated plan…"
                 >
                     <input type="hidden" name="week_start" value="{{ selected_week_start }}">
                     <div>
@@ -254,18 +256,25 @@
         {% endif %}
     </main>
     <script>
-        for (const form of document.querySelectorAll("form[data-progress-message]")) {
+        for (const form of document.querySelectorAll("form[data-progress-messages]")) {
             form.addEventListener("submit", () => {
                 const button = document.querySelector(`button[form="${form.id}"]`);
                 const progress = document.getElementById("planner-progress");
+                const messages = form.dataset.progressMessages.split("|");
                 if (button) {
                     button.disabled = true;
                     button.setAttribute("aria-busy", "true");
                     button.textContent = button.dataset.loadingLabel || "Working…";
                 }
                 if (progress) {
-                    progress.textContent = form.dataset.progressMessage || "Working on your plan…";
+                    let messageIndex = 0;
+                    progress.textContent = messages[messageIndex];
                     progress.classList.remove("hidden");
+                    progress.setAttribute("aria-busy", "true");
+                    window.setInterval(() => {
+                        messageIndex = (messageIndex + 1) % messages.length;
+                        progress.textContent = messages[messageIndex];
+                    }, 4000);
                 }
             });
         }

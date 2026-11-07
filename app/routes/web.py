@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 from requests_cache import CachedSession
 from sqlmodel import Session, select
 
-from app.config import Settings, get_settings
+from app.config import LanguageModel, Settings, get_settings
 from app.db import engine
 from app.intervals.analysis import compute_analysis
 from app.intervals.client import IntervalsClient
@@ -247,12 +247,20 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
     week_options: list[LongTermWeekOption] | None = None,
     selected_week_start: str = "",
     error: str | None = None,
+    selected_model: LanguageModel | None = None,
 ) -> HTMLResponse:
     """Render the planner page with shared context.
 
     Returns:
         The rendered planner page.
     """
+    settings_context = request.app.state.settings
+    if selected_model is not None:
+        settings_context = {
+            **settings_context,
+            "settings": settings_context["settings"].model_copy(update={"LANGUAGE_MODEL": selected_model}),
+        }
+
     return templates.TemplateResponse(
         request,
         "plan.html",
@@ -268,10 +276,43 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
             "week_options": week_options or [],
             "selected_week_start": selected_week_start,
             "error": error,
-            "settings": request.app.state.settings,
+            "settings": settings_context,
             "user": user,
         },
     )
+
+
+def _render_invalid_model_selection(request: Request, user: User, week_start: str) -> HTMLResponse:
+    """Render the planner with an error when the submitted model is unsupported.
+
+    Returns:
+        The rendered planner page.
+    """
+    loaded = load_user_plan(user)
+    return _render_plan_page(
+        request,
+        user=user,
+        plan_html=loaded.plan_html,
+        long_term_summary_html=loaded.long_term_summary_html,
+        delivery_status=loaded.delivery_status,
+        delivery_last_error=loaded.delivery_last_error,
+        summary=None,
+        prompt=loaded.prompt,
+        selected_week_start=week_start,
+        error="The selected language model is not supported.",
+    )
+
+
+def _selected_language_model(value: object, default: LanguageModel) -> LanguageModel | None:
+    """Parse the selected language model, returning None for unsupported values.
+
+    Returns:
+        The selected model, or None for unsupported values.
+    """
+    try:
+        return LanguageModel(value or default)
+    except ValueError:
+        return None
 
 
 @planner_router.get("/", response_class=HTMLResponse)
@@ -512,12 +553,18 @@ async def generate(
         The weekly plan and summary as HTML.
     """
     input_data = await request.form()
-    raw_hours = input_data.get("max_hours")
-    raw_sessions = input_data.get("max_sessions")
+    raw_model = input_data.get("language_model")
+    selected_model = None
+    if raw_model:
+        selected_model = _selected_language_model(raw_model, settings.LANGUAGE_MODEL)
+        if selected_model is None:
+            return _render_invalid_model_selection(request, user, str(input_data.get("week_start", "")))
+        settings = settings.model_copy(update={"LANGUAGE_MODEL": selected_model})
     raw_week_start = str(input_data.get("week_start", "")).strip()
-    week_selection: WeekSelection | None = None
 
-    weekly_hours, weekly_sessions, limit_error = _parse_weekly_limits(raw_hours, raw_sessions)
+    weekly_hours, weekly_sessions, limit_error = _parse_weekly_limits(
+        input_data.get("max_hours"), input_data.get("max_sessions")
+    )
     if limit_error:
         loaded = load_user_plan(user)
         return _render_plan_page(
@@ -534,6 +581,7 @@ async def generate(
             week_options=[],
             selected_week_start=raw_week_start,
             error=limit_error,
+            selected_model=selected_model,
         )
 
     if weekly_hours is not None or weekly_sessions is not None:
@@ -567,6 +615,7 @@ async def generate(
                 week_options=week_selection.week_options,
                 selected_week_start=raw_week_start,
                 error=str(week_selection.error),
+                selected_model=selected_model,
             )
 
     result = await generate_weekly_plan(
@@ -597,6 +646,7 @@ async def generate(
         target_date=week_selection.target_date,
         week_options=week_selection.week_options,
         selected_week_start=result["week_start"].isoformat(),
+        selected_model=selected_model,
     )
 
 
