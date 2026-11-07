@@ -109,6 +109,7 @@ def browser_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
         OPENAI_API_KEY=None,
         GEMINI_API_KEY="test_gemini_api_key",
         CACHE_INTERVALS_HOURS=0,
+        DASHBOARD_CACHE_MINUTES=0,
         ANALYSIS_DAYS=30,
         DASHBOARD_DAYS=42,
         LANGUAGE_MODEL="test-model",
@@ -223,6 +224,18 @@ def _load_dashboard_and_change_range(page: Page, base_url: str) -> None:
     # THEN the dashboard should transition to the selected range URL and update its label.
     page.wait_for_url(f"{base_url}/dashboard?days=14")
     expect(page.locator("#daysValue")).to_have_text("14 days")
+
+    # A full-year selection updates the same Dashboard without touching the Planner.
+    expect(page.locator("#daysSlider")).to_have_attribute("max", "365")
+    page.locator("#daysSlider").evaluate(
+        """slider => {
+            slider.value = "365";
+            slider.dispatchEvent(new Event("input", { bubbles: true }));
+            slider.dispatchEvent(new Event("change", { bubbles: true }));
+        }"""
+    )
+    page.wait_for_url(f"{base_url}/dashboard?days=365")
+    expect(page.locator("#daysValue")).to_have_text("365 days")
 
 
 def _load_settings_and_save_preferences(page: Page, base_url: str) -> None:
