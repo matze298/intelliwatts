@@ -25,7 +25,7 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 
 - [x] **Reproduce asset builds:** Pin the Tailwind CLI, install from the npm lockfile in CI, and fail CI if rebuilding changes committed CSS.
 - [x] **Review CI dependencies:** Update workflow actions and add weekly Dependabot checks for GitHub Actions, alongside the existing npm and uv checks.
-- [ ] **Reduce concentrated responsibilities:** Split route handling, rendering and external-service setup in `app/routes/web.py` as those areas change. Separate coach-context normalization from presentation where that improves reuse and testing.
+- [x] **Reduce concentrated responsibilities:** Separate Dashboard and Settings routes, Dashboard API loading/cache, and planner SSE progress from `app/routes/web.py`, retaining the existing URLs and regression coverage. Coach-context normalization can be extracted separately when it next changes.
 - [ ] **Improve coaching context:** Prioritize planned-versus-completed training and recovery changes against an athlete's baseline, with clear missing-data indicators. Add richer signals only when their use in planning is defined.
 
 ## 5. Cycling-focused UI refresh
@@ -36,4 +36,4 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 - [x] Capture and attach desktop/mobile Playwright screenshots from the fixture-backed app.
 - [x] Review alignment against target mockups and tighten dashboard/planner vertical rhythm; retain all analytics on the Dashboard.
 - [x] Capture desktop/mobile Planner and Dashboard screenshots; provide a standalone agent script for manual visual QA outside Gatekeeper.
-- [ ] Review the live dashboard with real intervals.icu data after merging.
+- [x] Review the live dashboard with real Intervals.icu data after merging (confirmed by the athlete, including the 365-day range).
