@@ -35,12 +35,10 @@ def test_dashboard_and_settings_routes_are_registered_once() -> None:
     """Dashboard and Settings retain their exact endpoints in the composed web router."""
     # GIVEN the two extracted page routers.
     dashboard_endpoints = [
-        (getattr(route, "path", None), getattr(route, "endpoint", None))
-        for route in dashboard_page.router.routes
+        (getattr(route, "path", None), getattr(route, "endpoint", None)) for route in dashboard_page.router.routes
     ]
     settings_endpoints = [
-        (getattr(route, "path", None), getattr(route, "endpoint", None))
-        for route in settings_page.router.routes
+        (getattr(route, "path", None), getattr(route, "endpoint", None)) for route in settings_page.router.routes
     ]
 
     # THEN both pages are registered once, and web includes both child routers.
