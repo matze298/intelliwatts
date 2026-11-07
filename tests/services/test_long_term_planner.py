@@ -648,9 +648,7 @@ async def test_saving_existing_earlier_start_date_preserves_its_value(
     assert response.status_code == 303
     with Session(planner_test_engine) as session:
         active = session.exec(
-            select(TrainingPhase).where(
-                TrainingPhase.user_id == planner_user.id, TrainingPhase.status == "active"
-            )
+            select(TrainingPhase).where(TrainingPhase.user_id == planner_user.id, TrainingPhase.status == "active")
         ).one()
     assert active.start_date == date(2026, 10, 12)
     assert active.target_date == date(2027, 1, 10)
