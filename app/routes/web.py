@@ -20,12 +20,12 @@ from app.intervals.client import IntervalsClient, IntervalsResponseError
 from app.models.plan import TrainingPhase, TrainingPlan
 from app.models.user import User
 from app.profile import get_profile
-from app.routes.dashboard import dashboard as dashboard
+from app.routes.dashboard import dashboard
 from app.routes.dashboard import router as dashboard_router
 from app.routes.planner_errors import PlannerErrorRoute
 from app.routes.planner_stream import stream_planner_action as _stream_planner_action
 from app.routes.settings_page import router as settings_page_router
-from app.routes.settings_page import settings as settings
+from app.routes.settings_page import settings
 from app.services.long_term_planner import (
     LongTermWeekOption,
     generate_long_term_plan_artifact,
@@ -43,6 +43,8 @@ from app.services.planner import (
 from app.services.workout_delivery import publish_workout_delivery
 from app.utils.datetime import get_monday
 from app.utils.markdown import render_markdown
+
+__all__ = ["dashboard", "settings"]
 
 router = APIRouter(tags=["web"])
 
@@ -731,6 +733,7 @@ async def publish_workout(
 
     query = urlencode({"week_start": week_start.isoformat(), "publish": result})
     return RedirectResponse(url=f"/?{query}", status_code=status.HTTP_303_SEE_OTHER)
+
 
 # Keep the public web router stable while delegating separate pages to focused routers.
 router.include_router(dashboard_router)
