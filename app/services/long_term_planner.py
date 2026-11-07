@@ -202,6 +202,9 @@ def _phase_duration_weeks(phase: TrainingPhase) -> int:
     """Count Monday-based training weeks up to (but not beyond) the goal date.
 
     The partial week when a goal is saved is week 1.
+
+    Returns:
+        The number of calendar weeks covered by the long-term phase.
     """
     first_monday = phase.start_date - timedelta(days=phase.start_date.weekday())
     days_to_goal = (phase.target_date - first_monday).days
