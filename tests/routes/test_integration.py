@@ -301,10 +301,10 @@ def mock_llm_response() -> LLMResponse:
     )
 
 
-@patch("app.routes.web.IntervalsClient")
-@patch("app.routes.web.parse_activities")
-@patch("app.routes.web.parse_wellness_list")
-@patch("app.routes.web.compute_analysis")
+@patch("app.services.dashboard_data.IntervalsClient")
+@patch("app.services.dashboard_data.parse_activities")
+@patch("app.services.dashboard_data.parse_wellness_list")
+@patch("app.services.dashboard_data.compute_analysis")
 def test_dashboard_flow(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]
     mock_compute: MagicMock,
     mock_parse_w: MagicMock,
@@ -472,10 +472,10 @@ def test_dashboard_flow(  # ruff: ignore[too-many-arguments, too-many-positional
     ("requested_days", "expected_display_days", "expected_fetch_days"),
     [(7, 7, 120), (21, 21, 120), (90, 90, 120), (180, 180, 180), (365, 365, 365), (500, 365, 365), (-5, 7, 120)],
 )
-@patch("app.routes.web.IntervalsClient")
-@patch("app.routes.web.parse_activities")
-@patch("app.routes.web.parse_wellness_list")
-@patch("app.routes.web.compute_analysis")
+@patch("app.services.dashboard_data.IntervalsClient")
+@patch("app.services.dashboard_data.parse_activities")
+@patch("app.services.dashboard_data.parse_wellness_list")
+@patch("app.services.dashboard_data.compute_analysis")
 def test_dashboard_flow_passes_days_filter(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]
     mock_compute: MagicMock,
     mock_parse_w: MagicMock,
@@ -527,9 +527,9 @@ def test_dashboard_flow_passes_days_filter(  # ruff: ignore[too-many-arguments, 
         (2, "intervals_cache", timedelta(hours=2)),
     ],
 )
-@patch("app.routes.web.CachedSession")
-@patch("app.routes.web.IntervalsClient")
-@patch("app.routes.web.compute_analysis")
+@patch("app.services.dashboard_data.CachedSession")
+@patch("app.services.dashboard_data.IntervalsClient")
+@patch("app.services.dashboard_data.compute_analysis")
 def test_dashboard_uses_short_lived_interval_cache(
     mock_compute: MagicMock,
     mock_client_class: MagicMock,
