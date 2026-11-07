@@ -139,3 +139,19 @@ def test_publish_rejects_partial_success_response(requests_mock: Mocker) -> None
     # THEN reject the partial response so delivery is not marked fully published
     with pytest.raises(ValueError, match=r"events.*count"):
         client.publish_workout_events(payload)
+
+
+def test_delete_workout_events_only_targets_supplied_external_ids(requests_mock: Mocker) -> None:
+    """Remove only formerly published IntelliWatts event identifiers."""
+    client = IntervalsClient(api_key="test_key", athlete_id="test_id", session=requests.Session())
+    matcher = requests_mock.put(
+        f"{BASE_URL}/athlete/test_id/events/bulk-delete",
+        json={"deleted": 1},
+    )
+
+    client.delete_workout_events(["local-plan-1"])
+
+    assert matcher.call_count == 1
+    request = requests_mock.request_history[0]
+    assert request.method == "PUT"
+    assert request.json() == [{"external_id": "local-plan-1"}]
