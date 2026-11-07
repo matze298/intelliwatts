@@ -31,6 +31,7 @@ class Settings(BaseSettings):
         GROQ_API_KEY: API key for Groq.
         LANGUAGE_MODEL: The LLM model to use for planning.
         CACHE_INTERVALS_HOURS: How long to cache Intervals.icu API responses.
+        DASHBOARD_CACHE_MINUTES: Short-lived dashboard-only API cache when global caching is off.
         ANALYSIS_DAYS: Number of days of history to analyze for the coach.
         DASHBOARD_DAYS: Number of days to display on the dashboard.
         SYSTEM_PROMPT: The core coaching logic prompt.
@@ -76,6 +77,7 @@ class Settings(BaseSettings):
     # App configuration
     LANGUAGE_MODEL: LanguageModel
     CACHE_INTERVALS_HOURS: int = 0
+    DASHBOARD_CACHE_MINUTES: int = Field(default=15, ge=0)
     ANALYSIS_DAYS: int = 120
     DASHBOARD_DAYS: int = 42
 
