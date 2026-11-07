@@ -33,11 +33,11 @@ def test_planner_and_settings_render_without_login(monkeypatch: pytest.MonkeyPat
 
 def test_dashboard_and_settings_routes_are_registered_once() -> None:
     """Extracted pages retain their existing paths without duplicate registrations."""
-    # GIVEN the application assembled from the public web and settings routers.
+    # GIVEN the public web router assembled from separate Dashboard and Settings handlers.
     # WHEN enumerating the registered GET handlers.
     routes = [
         route
-        for route in app.routes
+        for route in web.router.routes
         if isinstance(route, APIRoute) and ("GET" in (route.methods or set())) and route.path in {"/dashboard", "/settings"}
     ]
 
