@@ -9,11 +9,6 @@ import requests
 
 from app.intervals.client import IntervalsClient, IntervalsResponseError
 
-RACE_CATEGORIES = {"RACE_A", "RACE_B", "RACE_C"}
-DISPLAY_CATEGORIES = RACE_CATEGORIES | {"WORKOUT"}
-MAX_EVENTS = 12
-
-
 def load_week_commitments(client: IntervalsClient, *, week_start: date, today: date) -> str:
     """Fetch existing upcoming calendar commitments without blocking planning on API errors.
 
@@ -36,7 +31,7 @@ def load_week_commitments(client: IntervalsClient, *, week_start: date, today: d
 def format_week_commitments(  # ruff: ignore[complex-structure]
     events: list[object], *, oldest: date, newest: date
 ) -> str:
-    """Keep only sport/date/duration details relevant to the chosen week.
+    """Keep only planned WORKOUT details relevant to the chosen week.
 
     Returns:
         A short calendar summary suitable for the coach's prompt.
@@ -45,8 +40,7 @@ def format_week_commitments(  # ruff: ignore[complex-structure]
     for event in events:
         if not isinstance(event, dict):
             continue
-        category = event.get("category")
-        if category not in DISPLAY_CATEGORIES:
+        if event.get("category") != "WORKOUT":
             continue
         raw_date = event.get("start_date_local")
         if not isinstance(raw_date, str):
@@ -60,8 +54,7 @@ def format_week_commitments(  # ruff: ignore[complex-structure]
         sport = _plain_text(event.get("type"), "Unspecified sport")
         name = _plain_text(event.get("name"), "")
         duration = _duration_label(event.get("moving_time"))
-        kind = "Race" if category in RACE_CATEGORIES else "Planned"
-        detail = f"{event_date.isoformat()} {kind} {sport}"
+        detail = f"{event_date.isoformat()} Planned {sport}"
         if name and name.casefold() != sport.casefold():
             detail += f" ({name})"
         if duration:
@@ -70,11 +63,10 @@ def format_week_commitments(  # ruff: ignore[complex-structure]
 
     output.sort(key=itemgetter(0))
     if not output:
-        return "No scheduled sports or races found in the selected week."
-    compact = "; ".join(line for _, line in output[:MAX_EVENTS])
-    if len(output) > MAX_EVENTS:
-        compact += f"; plus {len(output) - MAX_EVENTS} more events"
-    return "Scheduled calendar commitments (not completed training): " + compact
+        return "No scheduled workouts found in the selected week."
+    return "Scheduled workouts (not completed training; non-cycling entries do not use cycling hours/sessions): " + "; ".join(
+        line for _, line in output
+    )
 
 
 def _plain_text(value: object, default: str) -> str:
