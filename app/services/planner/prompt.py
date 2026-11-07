@@ -69,13 +69,13 @@ def workout_date_guidance(
     ]
     if phase_start is not None:
         earliest_new_workout = max(today, phase_start)
-        lines.extend(
-            [
-                f"- The long-term training phase starts on {phase_start.isoformat()}.",
+        lines.extend([
+            f"- The long-term training phase starts on {phase_start.isoformat()}.",
+            (
                 f"- The earliest date for NEW workouts is {earliest_new_workout.isoformat()}; "
-                "never schedule new workouts before that date, even if Week 1 begins on an earlier Monday.",
-            ]
-        )
+                "never schedule new workouts before that date, even if Week 1 begins on an earlier Monday."
+            ),
+        ])
     if existing_plan:
         lines.append(
             "- On an update, existing workouts already assigned to past dates may be retained "
