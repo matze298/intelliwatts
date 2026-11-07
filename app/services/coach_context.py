@@ -21,6 +21,8 @@ RECENT_BRIEF_DAYS = 14
 RECOVERY_WINDOW_DAYS = 7
 BASELINE_LOOKBACK_DAYS = 56
 MIN_BASELINE_SAMPLES = 10
+MIN_RECENT_SAMPLES = 3
+MULTI_SIGNAL_COUNT = 2
 # Used only to identify a noteworthy change, never to cancel a session automatically.
 MIN_RELATIVE_CHANGE = {"hrv": 0.05, "resting_hr": 0.05, "sleep_score": 0.08}
 CYCLING_TYPES = {"ride", "virtualride", "ebikeride", "gravelride", "mountainbikeride", "handcycle"}
@@ -296,7 +298,7 @@ def _metric_deviation(
     recent = [_to_optional_float(getattr(record, field)) for record in latest]
     historical = [v for v in older if v is not None and v > 0]
     current = [v for v in recent if v is not None and v > 0]
-    if len(historical) < MIN_BASELINE_SAMPLES or len(current) < 3:
+    if len(historical) < MIN_BASELINE_SAMPLES or len(current) < MIN_RECENT_SAMPLES:
         return f"{field} insufficient baseline", False
     average = fmean(historical)
     current_average = fmean(current)
@@ -307,9 +309,7 @@ def _metric_deviation(
     return f"{field} {current_average:.1f} vs baseline {average:.1f} (n={len(historical)})", unfavorable
 
 
-def _recovery_comparison(
-    baseline: Sequence[CoachDailyRecord], latest: Sequence[CoachDailyRecord]
-) -> str:
+def _recovery_comparison(baseline: Sequence[CoachDailyRecord], latest: Sequence[CoachDailyRecord]) -> str:
     """Summarize individualized recovery indicators without prescribing restrictions.
 
     Returns:
@@ -317,7 +317,7 @@ def _recovery_comparison(
     """
     comparisons = [_metric_deviation(baseline, latest, name) for name in ("hrv", "resting_hr", "sleep_score")]
     unfavorable_count = sum(1 for _, unfavorable in comparisons if unfavorable)
-    status = "multiple trends warrant attention" if unfavorable_count >= 2 else "interpret trends alongside symptoms"
+    status = "multiple trends warrant attention" if unfavorable_count >= MULTI_SIGNAL_COUNT else "interpret trends alongside symptoms"
     return f"Recovery (7d vs prior 56d): {'; '.join(value for value, _ in comparisons)}; {status}."
 
 
@@ -331,9 +331,10 @@ def _signal_for_day(record: CoachDailyRecord, records: Sequence[CoachDailyRecord
         return "rest_day"
     past = [item for item in records if item.date <= record.date]
     baseline, recent = _split_recovery_windows(past)
-    if sum(unfavorable for _, unfavorable in (
-        _metric_deviation(baseline, recent, field) for field in ("hrv", "resting_hr", "sleep_score")
-    )) >= 2:
+    unfavorable_count = sum(
+        _metric_deviation(baseline, recent, field)[1] for field in ("hrv", "resting_hr", "sleep_score")
+    )
+    if unfavorable_count >= MULTI_SIGNAL_COUNT:
         return "recovery_watch"
     return "training_logged"
 
