@@ -67,7 +67,9 @@ async def update_training_plan(
         plan = session.exec(statement).first()
 
         if not plan:
-            return await generate_weekly_plan(user, settings, week_start=monday, progress=progress)
+            if progress is not None:
+                return await generate_weekly_plan(user, settings, week_start=monday, progress=progress)
+            return await generate_weekly_plan(user, settings, week_start=monday)
 
         history = [
             *plan.prompt_history,
