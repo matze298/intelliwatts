@@ -93,3 +93,31 @@ def test_past_training_week_does_not_shift_new_workouts_into_another_week() -> N
 
     assert "If the whole selected week is in the past, add no new workouts" in guidance
     assert "do not move them into a later week" in guidance
+
+
+def test_future_midweek_phase_start_prevents_early_week_workouts() -> None:
+    """The exact phase start date, not only Week 1's Monday, limits new sessions."""
+    guidance = workout_date_guidance(
+        week_start=date(2026, 11, 16),
+        today=date(2026, 11, 7),
+        phase_start=date(2026, 11, 19),
+        existing_plan=False,
+    )
+
+    assert "long-term training phase starts on 2026-11-19" in guidance
+    assert "earliest date for NEW workouts is 2026-11-19" in guidance
+    assert "even if Week 1 begins on an earlier Monday" in guidance
+
+
+def test_existing_phase_start_uses_today_when_later() -> None:
+    """An older goal does not allow new workouts on elapsed dates."""
+    guidance = workout_date_guidance(
+        week_start=date(2026, 11, 2),
+        today=date(2026, 11, 7),
+        phase_start=date(2026, 10, 12),
+        existing_plan=True,
+    )
+
+    assert "long-term training phase starts on 2026-10-12" in guidance
+    assert "earliest date for NEW workouts is 2026-11-07" in guidance
+    assert "existing workouts already assigned to past dates may be retained unchanged" in guidance

@@ -41,10 +41,17 @@
                     <label for="primary_goal" class="block text-sm font-medium text-gray-700">Primary goal:</label>
                     <input type="text" id="primary_goal" name="primary_goal" value="{{ primary_goal or '' }}" required class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
                 </div>
-                <div>
-                    <label for="target_date" class="block text-sm font-medium text-gray-700">Target date:</label>
-                    <input type="date" id="target_date" name="target_date" value="{{ target_date or '' }}" required class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="start_date" class="block text-sm font-medium text-gray-700">Start date:</label>
+                        <input type="date" id="start_date" name="start_date" value="{{ start_date }}" required aria-describedby="goal-start-hint" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="target_date" class="block text-sm font-medium text-gray-700">Target date:</label>
+                        <input type="date" id="target_date" name="target_date" value="{{ target_date or '' }}" required class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                    </div>
                 </div>
+                <p id="goal-start-hint" class="text-sm text-slate-600">Week 1 starts on the Monday of your chosen start date. Leave today's date to begin this week, or choose a later date to postpone the plan.</p>
                 {{ render_action_button("Save Long-term Goal", tone="secondary", extra_classes="px-4 py-2 text-sm") }}
             </form>
         </section>

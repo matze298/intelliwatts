@@ -47,7 +47,9 @@ def build_prompt_summary(context: PromptSummaryContext) -> str:
     )
 
 
-def workout_date_guidance(*, week_start: date, today: date, existing_plan: bool) -> str:
+def workout_date_guidance(
+    *, week_start: date, today: date, existing_plan: bool, phase_start: date | None = None
+) -> str:
     """Build a dated scheduling rule for generation or revision.
 
     Returns:
@@ -65,6 +67,15 @@ def workout_date_guidance(*, week_start: date, today: date, existing_plan: bool)
         "- Past days can be shown as history, completed training, or rest; do not prescribe fresh sessions there.",
         "- If the whole selected week is in the past, add no new workouts; do not move them into a later week.",
     ]
+    if phase_start is not None:
+        earliest_new_workout = max(today, phase_start)
+        lines.extend([
+            f"- The long-term training phase starts on {phase_start.isoformat()}.",
+            (
+                f"- The earliest date for NEW workouts is {earliest_new_workout.isoformat()}; "
+                "never schedule new workouts before that date, even if Week 1 begins on an earlier Monday."
+            ),
+        ])
     if existing_plan:
         lines.append(
             "- On an update, existing workouts already assigned to past dates may be retained "

@@ -251,6 +251,7 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
     prompt: list[dict[str, str]] | None,
     primary_goal: str = "",
     target_date: str = "",
+    start_date: str | None = None,
     week_options: list[LongTermWeekOption] | None = None,
     selected_week_start: str = "",
     error: str | None = None,
@@ -270,6 +271,11 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
             "settings": settings_context["settings"].model_copy(update={"LANGUAGE_MODEL": selected_model}),
         }
 
+    if start_date is None:
+        with Session(engine) as session:
+            phase = _get_active_phase(session, user)
+            start_date = phase.start_date.isoformat() if phase is not None else _today().isoformat()
+
     return templates.TemplateResponse(
         request,
         "plan.html",
@@ -284,6 +290,7 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
             "prompt": prompt,
             "primary_goal": primary_goal,
             "target_date": target_date,
+            "start_date": start_date,
             "week_options": week_options or [],
             "selected_week_start": selected_week_start,
             "error": error,
@@ -393,6 +400,8 @@ def home(request: Request, user: Annotated[User | None, Depends(get_profile)]) -
     with Session(engine) as session:
         raw_week_start = str(request.query_params.get("week_start", "")).strip()
         week_selection = _resolve_home_week_selection(session, user, raw_week_start)
+        active_phase = _get_active_phase(session, user)
+        goal_start_date = active_phase.start_date.isoformat() if active_phase else _today().isoformat()
 
     if user:
         loaded = load_user_plan(
@@ -425,106 +434,96 @@ def home(request: Request, user: Annotated[User | None, Depends(get_profile)]) -
         prompt=prompt,
         primary_goal=week_selection.primary_goal,
         target_date=week_selection.target_date,
+        start_date=goal_start_date,
         week_options=week_selection.week_options,
         selected_week_start=selected_week_start.isoformat() if selected_week_start else "",
         error=str(week_selection.error) if week_selection.error else None,
     )
 
 
+def _render_long_term_goal_error(  # ruff: ignore[too-many-arguments]
+    request: Request,
+    user: User,
+    *,
+    primary_goal: str,
+    raw_start_date: str,
+    raw_target_date: str,
+    error: str,
+) -> HTMLResponse:
+    """Render a validation error without discarding the submitted goal dates.
+
+    Returns:
+        The long-term goal form with the submitted values and validation error.
+    """
+    return _render_plan_page(
+        request,
+        user=user,
+        plan_html=None,
+        long_term_summary_html=None,
+        delivery_status=None,
+        delivery_last_error=None,
+        summary=None,
+        prompt=None,
+        primary_goal=primary_goal,
+        start_date=raw_start_date,
+        target_date=raw_target_date,
+        week_options=[],
+        error=error,
+    )
+
+
 @planner_router.post("/long-term-plan", response_class=HTMLResponse)
-async def long_term_plan(
+async def long_term_plan(  # ruff: ignore[too-many-return-statements, complex-structure]
     request: Request,
     user: Annotated[User, Depends(get_profile)],
 ) -> Response:
-    """Persist a long-term planning goal and render the planner page.
+    """Persist a long-term goal with an optional future starting date.
 
     Returns:
-        A redirect on success or the rendered planner page on validation errors.
+        A redirect on success, or the form with validation errors.
     """
     input_data = await request.form()
     primary_goal = str(input_data.get("primary_goal", "")).strip()
     raw_target_date = str(input_data.get("target_date", "")).strip()
+    # Missing values preserve compatibility with clients that do not send start_date.
+    today = _today()
+    raw_start_date = str(input_data.get("start_date", "")).strip() or today.isoformat()
+
+    def invalid(message: str) -> HTMLResponse:
+        return _render_long_term_goal_error(
+            request,
+            user,
+            primary_goal=primary_goal,
+            raw_start_date=raw_start_date,
+            raw_target_date=raw_target_date,
+            error=message,
+        )
 
     if not primary_goal:
-        return _render_plan_page(
-            request,
-            user=user,
-            plan_html=None,
-            long_term_summary_html=None,
-            delivery_status=None,
-            delivery_last_error=None,
-            summary=None,
-            prompt=None,
-            primary_goal=primary_goal,
-            target_date=raw_target_date,
-            week_options=[],
-            error="Primary goal is required.",
-        )
+        return invalid("Primary goal is required.")
+
+    start_date, date_error = _parse_iso_date(raw_start_date, error_message="Start date must be a valid date.")
+    if date_error is not None:
+        return invalid(date_error)
+    if start_date is None:
+        return invalid("Start date is required.")
 
     target_date, date_error = _parse_iso_date(raw_target_date, error_message="Target date must be a valid date.")
     if date_error is not None:
-        return _render_plan_page(
-            request,
-            user=user,
-            plan_html=None,
-            long_term_summary_html=None,
-            delivery_status=None,
-            delivery_last_error=None,
-            summary=None,
-            prompt=None,
-            primary_goal=primary_goal,
-            target_date=raw_target_date,
-            week_options=[],
-            error=date_error,
-        )
+        return invalid(date_error)
     if target_date is None:
-        return _render_plan_page(
-            request,
-            user=user,
-            plan_html=None,
-            long_term_summary_html=None,
-            delivery_status=None,
-            delivery_last_error=None,
-            summary=None,
-            prompt=None,
-            primary_goal=primary_goal,
-            target_date=raw_target_date,
-            week_options=[],
-            error="Target date is required.",
-        )
+        return invalid("Target date is required.")
 
-    start_date = _today()
-    if target_date < start_date:
-        return _render_plan_page(
-            request,
-            user=user,
-            plan_html=None,
-            long_term_summary_html=None,
-            delivery_status=None,
-            delivery_last_error=None,
-            summary=None,
-            prompt=None,
-            primary_goal=primary_goal,
-            target_date=raw_target_date,
-            week_options=[],
-            error="Target date cannot be in the past.",
-        )
+    if start_date < get_monday(today):
+        with Session(engine) as session:
+            active_phase = _get_active_phase(session, user)
+        if active_phase is None or active_phase.start_date != start_date:
+            return invalid("Start date must be in the current week or later.")
 
+    if target_date < today:
+        return invalid("Target date cannot be in the past.")
     if target_date <= start_date:
-        return _render_plan_page(
-            request,
-            user=user,
-            plan_html=None,
-            long_term_summary_html=None,
-            delivery_status=None,
-            delivery_last_error=None,
-            summary=None,
-            prompt=None,
-            primary_goal=primary_goal,
-            target_date=raw_target_date,
-            week_options=[],
-            error="Target date must be after the start date.",
-        )
+        return invalid("Target date must be after the start date.")
 
     with Session(engine) as session:
         phase = replace_active_phase(
