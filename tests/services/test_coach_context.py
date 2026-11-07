@@ -126,65 +126,83 @@ def test_user_prompt_uses_deduplicated_sections() -> None:
     assert "Recent Activities:" not in prompt
 
 
-def test_build_week_note_thresholds() -> None:
-    """The weekly note helper should classify the obvious recovery states."""
-    # GIVEN representative weekly load and recovery values
-    # WHEN the week is soft on sleep
-    sleep_note = coach_context._build_week_note(
-        total_tss=320.0,
-        avg_sleep_score=68.0,
-        avg_hrv=55.0,
-        avg_resting_hr=49.0,
-    )
-    # THEN sleep should be the dominant recovery signal
-    assert sleep_note == "recovery softened"
-
-    # WHEN the week is productive but HRV is low
-    hrv_note = coach_context._build_week_note(
-        total_tss=450.0,
-        avg_sleep_score=78.0,
-        avg_hrv=48.0,
-        avg_resting_hr=49.0,
-    )
-    # THEN the helper should flag fatigue
-    assert hrv_note == "fatigue elevated"
-
-
-def test_signal_for_day_flags_recovery_compromised() -> None:
-    """The day-level signal helper should flag low-recovery training days."""
-    # GIVEN a hard training day and a weaker recent recovery trend
-    records = [
+def test_personal_recovery_baseline_detects_relative_changes_not_absolute_values() -> None:
+    """Recovery comparisons use personal observations, not an absolute HRV/RHR threshold."""
+    baseline = [
         coach_context.CoachDailyRecord(
-            date=date(2026, 5, 1),
-            training_stress=40.0,
-            duration_h=1.0,
+            date=date(2026, 4, 1) + timedelta(days=index),
+            training_stress=30,
+            duration_h=1,
             activity_type="Ride",
-            sleep_score=82,
-            hrv=55.0,
-            resting_hr=48.0,
-        ),
-        coach_context.CoachDailyRecord(
-            date=date(2026, 5, 2),
-            training_stress=45.0,
-            duration_h=1.0,
-            activity_type="Ride",
-            sleep_score=80,
-            hrv=54.0,
-            resting_hr=48.0,
-        ),
-        coach_context.CoachDailyRecord(
-            date=date(2026, 5, 3),
-            training_stress=80.0,
-            duration_h=1.5,
-            activity_type="Ride",
-            sleep_score=60,
-            hrv=46.0,
-            resting_hr=53.0,
-        ),
+            sleep_score=88,
+            hrv=38,
+            resting_hr=61,
+        )
+        for index in range(28)
     ]
+    recent = [
+        coach_context.CoachDailyRecord(
+            date=date(2026, 4, 29) + timedelta(days=index),
+            training_stress=40,
+            duration_h=1,
+            activity_type="Ride",
+            sleep_score=66,
+            hrv=30,
+            resting_hr=69,
+        )
+        for index in range(7)
+    ]
+    summary = coach_context._recovery_comparison(baseline, recent)
+    assert "hrv 30.0 vs baseline 38.0" in summary
+    assert "resting_hr 69.0 vs baseline 61.0" in summary
+    assert "sleep_score 66.0 vs baseline 88.0" in summary
+    assert "multiple trends warrant attention" in summary
+    assert coach_context._signal_for_day(recent[-1], baseline + recent) == "recovery_watch"
 
-    # WHEN deriving the daily training signal
-    signal = coach_context._signal_for_day(records[-1], records)
 
-    # THEN it should warn about compromised recovery
-    assert signal == "recovery_compromised"
+def test_recovery_baseline_respects_missing_data() -> None:
+    """No baseline should produce no numerical inference or false warning."""
+    incomplete = [
+        coach_context.CoachDailyRecord(
+            date=date(2026, 5, 1) + timedelta(days=index),
+            training_stress=20,
+            duration_h=0.5,
+            activity_type="Ride",
+            sleep_score=None,
+            hrv=None,
+            resting_hr=None,
+        )
+        for index in range(7)
+    ]
+    text = coach_context._recovery_comparison([], incomplete)
+    assert "insufficient baseline" in text
+    assert "multiple trends warrant attention" not in text
+    assert coach_context._signal_for_day(incomplete[-1], incomplete) == "training_logged"
+
+
+def test_cross_sport_context_counts_multiple_sports_on_same_day(
+    coach_phase: TrainingPhase,
+    coach_artifact: LongTermPlanArtifact,
+) -> None:
+    """The coach sees both cycling and non-cycling work, not only the first sport."""
+    records: list[dict[str, object]] = []
+    for index in range(42):
+        kinds = ["Ride", "Soccer"] if index in {37, 40} else ["Ride"]
+        records.append({
+            "date": (date(2026, 4, 1) + timedelta(days=index)).isoformat(),
+            "duration_h": 1.5 if len(kinds) > 1 else 0.75,
+            "training_stress": 90 if len(kinds) > 1 else 35,
+            "types": kinds,
+            "hrv": 55,
+            "resting_hr": 49,
+            "sleep_score": 80,
+        })
+    context = coach_context.build_coach_context(
+        daily_records=records,
+        phase=coach_phase,
+        artifact=coach_artifact,
+        week_start=date(2026, 5, 11),
+    )
+    assert "Soccer (2d)" in context.brief_context
+    assert any("Ride + Soccer" in day.activity_type for day in context.daily_ledger)
+    assert "400 TSS" not in context.render()
