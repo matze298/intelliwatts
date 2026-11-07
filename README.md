@@ -15,8 +15,8 @@
 
 ### Training planner
 
-- **Long-term goal:** Define the main training objective and target date.
-- **Planning horizon:** View the long-term plan and select the week to work on. Week 1 begins on the Monday of the week when the goal was saved, including a partial first week.
+- **Long-term goal:** Define the main training objective, start date, and target date. The start defaults to today and can be postponed.
+- **Planning horizon:** View the long-term plan and select the week to work on. Week 1 begins on the Monday of the chosen start date; the current week and future weeks are supported.
 - **Weekly limits:** Set available training hours and the maximum number of planned sessions.
 - **Recovery context:** Choose whether readiness and wellness signals are included in plan generation.
 - **Model selection:** Select a configured OpenAI, Groq, or Gemini model.
@@ -54,7 +54,7 @@ Charts adjust their axis labels, gridlines, legends, and tooltips to remain legi
 
 1. **Sign in.** Open the web app and enter the configured application password.
 2. **Check the Dashboard.** Review training load, recent activities, recovery signals, and the current analysis window.
-3. **Set your goal.** On the Plan page, enter the target and date, then save the long-term goal.
+3. **Set your goal.** On the Plan page, enter the objective, start date, and target date, then save the long-term goal. The start date defaults to today; choose a future date to postpone Week 1.
 4. **Configure the week.** Select the planning week and define the weekly hours, session limit, model, and optional wellness context.
 5. **Generate and review.** Generate the weekly plan, follow the live progress messages, check the proposed workouts and long-term context, and revise the plan in place if needed.
 6. **Publish.** Use the publish action to send all structured workouts for the selected week to Intervals.icu. Review the delivery status and open the returned workout links. Generating or updating a plan saves a local draft; publishing is a separate action.
