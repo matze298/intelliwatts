@@ -437,6 +437,7 @@ def test_dashboard_flow(  # ruff: ignore[too-many-arguments, too-many-positional
     settings.INTERVALS_API_KEY = "test_api_key"
     settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
     settings.CACHE_INTERVALS_HOURS = 0
+    settings.DASHBOARD_CACHE_MINUTES = 0
     settings.ANALYSIS_DAYS = 120
     settings.DASHBOARD_DAYS = 42
     resp = web_routes.dashboard(build_request(app, method="GET", path="/dashboard"), user, settings)
