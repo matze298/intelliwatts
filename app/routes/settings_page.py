@@ -1,14 +1,16 @@
 """Profile-backed settings page rendering."""
 
 from copy import copy
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from app.models.user import User
 from app.profile import get_profile
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="app/templates")
