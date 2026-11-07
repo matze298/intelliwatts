@@ -122,6 +122,7 @@ def _build_weekly_planner_route_context() -> WeeklyPlannerRouteContext:
     settings.INTERVALS_API_KEY = "test_api_key"
     settings.INTERVALS_ATHLETE_ID = "test_athlete_id"
     settings.CACHE_INTERVALS_HOURS = 0
+    settings.DASHBOARD_CACHE_MINUTES = 0
     settings.ANALYSIS_DAYS = 120
     settings.LANGUAGE_MODEL = "test-model"
     settings.SYSTEM_PROMPT = "system default"
