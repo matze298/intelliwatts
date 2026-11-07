@@ -25,11 +25,13 @@ from app.services.long_term_planner import (
     get_or_create_active_phase,
 )
 from app.services.planner.analysis import get_analysis
+from app.services.planner.calendar import load_week_commitments
 from app.services.planner.persistence import save_and_stage_weekly_plan
 from app.services.planner.prompt import PromptSummaryContext, build_prompt_summary, workout_date_guidance
 from app.utils.datetime import get_monday
 
 if TYPE_CHECKING:
+    from app.models.plan import LongTermPlanArtifact, TrainingPhase
     from app.models.user import User
 
 _get_analysis = get_analysis
@@ -40,6 +42,49 @@ ProgressCallback = Callable[[str], None]
 def _report(progress: ProgressCallback | None, message: str) -> None:
     if progress is not None:
         progress(message)
+
+
+def _make_intervals_client(settings: Settings) -> IntervalsClient:
+    """Build the same Intervals client for generation and revision.
+
+    Returns:
+        An API client with the configured request cache, when enabled.
+    """
+    session = requests.Session()
+    if settings.CACHE_INTERVALS_HOURS > 0:
+        session = CachedSession(
+            "intervals_cache",
+            backend="sqlite",
+            expire_after=timedelta(hours=settings.CACHE_INTERVALS_HOURS),
+        )
+    return IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session)
+
+
+async def _fresh_revision_context(
+    *, settings: Settings, phase: TrainingPhase, artifact: LongTermPlanArtifact | None, week_start: date
+) -> str:
+    """Refresh only concise completed-training, recovery and calendar context.
+
+    Returns:
+        Observations for the latest week, not a new copy of every historical prompt.
+    """
+    client = _make_intervals_client(settings)
+    analysis = await run_in_threadpool(_get_analysis, client, settings.ANALYSIS_DAYS)
+    coach = build_coach_context(
+        daily_records=analysis.daily_records,
+        phase=phase,
+        artifact=artifact,
+        week_start=week_start,
+    )
+    recent_rows = coach.daily_ledger[-7:]
+    rows = "\n".join(
+        f"- {row.date}: {row.activity_type}, {row.duration_h:.1f}h, {row.training_stress:.0f} TSS"
+        for row in recent_rows
+    )
+    calendar = await run_in_threadpool(
+        load_week_commitments, client, week_start=week_start, today=datetime.now(UTC).date()
+    )
+    return f"{coach.brief_context}\nLast recorded 7 days:\n{rows or '- No completed activity records.'}\n{calendar}"
 
 
 async def update_training_plan(
@@ -87,7 +132,27 @@ async def update_training_plan(
             existing_plan=True,
             phase_start=phase.start_date,
         )
-        history.append({"role": LLMRole.USER, "content": f"{feedback}\n\n{date_rules}"})
+        _report(progress, "Refreshing training, recovery and scheduled activities")
+        try:
+            latest_context = await _fresh_revision_context(
+                settings=settings,
+                phase=phase,
+                artifact=get_current_long_term_plan_artifact(session, phase_id=phase.id),
+                week_start=monday,
+            )
+        except (requests.RequestException, ValueError):
+            # Keep revising saved plans if Intervals.icu is temporarily unavailable.
+            latest_context = "Fresh Intervals.icu context unavailable; use saved plan and athlete feedback."
+        history.append({
+            "role": LLMRole.USER,
+            "content": (
+                f"{feedback}\n\n"
+                f"Latest recorded context (supersedes older observations):\n{latest_context}\n\n"
+                f"{date_rules}\n"
+                "Revise conservatively: honor all sports, personal recovery trends and weekly limits; "
+                "preserve completed or past workouts."
+            ),
+        })
 
         _report(progress, "Requesting a revised plan from the selected model")
         llm_response = await run_in_threadpool(
@@ -132,15 +197,7 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
     if prompt_updates:
         settings = settings.model_copy(update=prompt_updates)
 
-    session = requests.Session()
-    if settings.CACHE_INTERVALS_HOURS > 0:
-        session = CachedSession(
-            "intervals_cache",
-            backend="sqlite",
-            expire_after=timedelta(hours=settings.CACHE_INTERVALS_HOURS),
-        )
-
-    client = IntervalsClient(settings.INTERVALS_API_KEY, settings.INTERVALS_ATHLETE_ID, session=session)
+    client = _make_intervals_client(settings)
 
     _report(progress, "Retrieving recent training and recovery data")
     analysis = await run_in_threadpool(_get_analysis, client, settings.ANALYSIS_DAYS)
@@ -184,7 +241,11 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
         existing_plan=False,
         phase_start=phase.start_date,
     )
-    full_summary = f"{full_summary}\n\n{date_rules}"
+    _report(progress, "Checking upcoming sports and race commitments")
+    calendar = await run_in_threadpool(
+        load_week_commitments, client, week_start=target_week_start, today=datetime.now(UTC).date()
+    )
+    full_summary = f"{full_summary}\n\n{date_rules}\n\n{calendar}"
 
     _report(progress, "Requesting structured workouts from the selected model")
     llm_response = await run_in_threadpool(
