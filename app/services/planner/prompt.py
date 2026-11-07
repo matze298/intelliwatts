@@ -34,8 +34,9 @@ def build_prompt_summary(context: PromptSummaryContext) -> str:
         The final prompt string.
     """
     constraints_text = (
-        f"- Max Hours: {context.weekly_hours if context.weekly_hours is not None else context.user.weekly_hours}\n"
-        f"- Max Sessions: {context.weekly_sessions if context.weekly_sessions is not None else context.user.weekly_sessions}\n"
+        f"- Max Cycling Hours: {context.weekly_hours if context.weekly_hours is not None else context.user.weekly_hours}\n"
+        f"- Max Cycling Sessions: {context.weekly_sessions if context.weekly_sessions is not None else context.user.weekly_sessions}\n"
+        "- Non-cycling sports do not consume this cycling budget; use them only for recovery and scheduling.\n"
         f"- Primary Goal: {context.phase.primary_goal}"
     )
     return user_prompt(
