@@ -7,6 +7,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 import pytest
 from sqlmodel import Session, select
 
+import app.services.planner.orchestrator as orchestrator
 from app.models.plan import (
     LongTermPlanArtifact,
     LongTermPlanBlock,
@@ -396,8 +397,6 @@ async def test_update_training_plan_fallback_uses_selected_week(session: Session
 @pytest.mark.asyncio
 async def test_fresh_revision_context_uses_latest_completed_activity_and_calendar() -> None:
     """Only a concise recent snapshot is appended on revision, not full raw history."""
-    from app.services.planner.orchestrator import _fresh_revision_context
-
     phase = TrainingPhase(
         user_id=uuid.uuid4(),
         primary_goal="Build FTP",
@@ -427,7 +426,7 @@ async def test_fresh_revision_context_uses_latest_completed_activity_and_calenda
             return_value="Scheduled calendar commitments: 2026-11-10 Planned Soccer",
         ),
     ):
-        context = await _fresh_revision_context(
+        context = await orchestrator._fresh_revision_context(
             settings=MagicMock(ANALYSIS_DAYS=120),
             phase=phase,
             artifact=None,
