@@ -37,7 +37,7 @@ from app.services.long_term_planner import (
     replace_active_phase,
 )
 from app.services.plan_loader import load_user_plan
-from app.services.planner.preferences import normalize_available_days, preferred_model, WEEKDAYS
+from app.services.planner.preferences import WEEKDAYS, normalize_available_days, preferred_model
 from app.services.planner import (
     generate_weekly_plan,
     update_training_plan,
@@ -246,7 +246,9 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
         The rendered planner page.
     """
     settings_context = request.app.state.settings
-    saved_model = preferred_model(user.preferred_language_model, settings_context["settings"].LANGUAGE_MODEL) if user else None
+    saved_model = (
+        preferred_model(user.preferred_language_model, settings_context["settings"].LANGUAGE_MODEL) if user else None
+    )
     active_model = selected_model or saved_model
     if active_model is not None:
         display_settings = settings_context["settings"]
@@ -477,7 +479,7 @@ async def long_term_plan(  # ruff: ignore[too-many-return-statements, complex-st
 
 
 @planner_router.post("/generate", response_class=HTMLResponse)
-async def generate(
+async def generate(  # ruff: ignore[too-many-locals, complex-structure]
     request: Request,
     user: Annotated[User, Depends(get_profile)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -597,7 +599,7 @@ async def generate(
 
 
 @planner_router.post("/update", response_class=HTMLResponse)
-async def update(
+async def update(  # ruff: ignore[too-many-locals, too-many-branches, complex-structure]
     request: Request,
     user: Annotated[User, Depends(get_profile)],
     settings: Annotated[Settings, Depends(get_settings)],
