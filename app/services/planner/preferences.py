@@ -1,13 +1,11 @@
 """Stored cycling availability and language-model preference helpers."""
 
-from collections.abc import Sequence
-
 from app.config import LanguageModel
 
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 
-def normalize_available_days(days: Sequence[str]) -> list[str]:
+def normalize_available_days(days: list[str]) -> list[str]:
     """Order and validate cycling weekdays without changing the weekly session cap.
 
     Returns:
@@ -17,7 +15,8 @@ def normalize_available_days(days: Sequence[str]) -> list[str]:
         ValueError: If no day was selected or an unknown day was submitted.
     """
     if not days or any(day not in WEEKDAYS for day in days):
-        raise ValueError("Select at least one valid cycling day (Monday–Sunday).")
+        msg = "Select at least one valid cycling day (Monday-Sunday)."
+        raise ValueError(msg)
     return [day for day in WEEKDAYS if day in days]
 
 
