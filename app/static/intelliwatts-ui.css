@@ -547,6 +547,29 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 .planner-progress-steps .planner-step-failed::before { content: "×"; color: #c45547; }
 .planner-progress-error { border-color: #e2b3aa; background: #fff5f1; }
 .planner-progress-error #planner-progress-state { color: #9d4539; }
+.planner-error-details {
+  margin-top: 16px; padding: 12px 14px; border: 1px solid #e3b7af;
+  border-radius: 10px; background: #fff8f5;
+}
+.planner-error-details summary {
+  cursor: pointer; color: #953d34; font-size: .85rem;
+  font-weight: 750; line-height: 1.5;
+}
+.planner-error-details summary:hover { text-decoration: underline; }
+.planner-error-details summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.planner-error-traceback {
+  margin: 12px 0 0; padding: 12px; max-height: 320px; overflow: auto;
+  border: 1px solid #eed1ca; border-radius: 8px;
+  background: #fff; color: #60342f; white-space: pre-wrap;
+  overflow-wrap: anywhere; font: .75rem/1.6 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+html[data-theme="dark"] .planner-error-details {
+  border-color: #895951; background: #3b272a;
+}
+html[data-theme="dark"] .planner-error-details summary { color: #ffbdb0; }
+html[data-theme="dark"] .planner-error-traceback {
+  border-color: #6d4b46; background: #241f24; color: #f4d3cb;
+}
 @media (max-width: 640px) {
   .planner-progress { padding: 15px; }
   .planner-progress-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
