@@ -55,7 +55,13 @@ def stream_planner_action(
         task = asyncio.create_task(execute())
         try:
             while True:
-                item = await queue.get()
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=15)
+                except TimeoutError:
+                    # Keep reverse proxies and the browser connected during
+                    # long provider requests; this is not simulated progress.
+                    yield 'data: {"kind":"heartbeat"}' + chr(10) * 2
+                    continue
                 if item is None:
                     break
                 yield "data: " + json.dumps(item, ensure_ascii=False) + chr(10) * 2
