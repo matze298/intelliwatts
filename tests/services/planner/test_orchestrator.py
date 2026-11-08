@@ -142,7 +142,7 @@ async def test_generate_weekly_plan(  # ruff: ignore[too-many-arguments, too-man
     mock_derive_weekly_brief.assert_called_once()
     assert mock_derive_weekly_brief.call_args.kwargs["week_start"] == target_week_start
     mock_user_prompt.assert_called_once_with(
-        constraints="- Max Cycling Hours: 10.0\n- Max Cycling Sessions: 5\n- Non-cycling sports do not consume this cycling budget; use them only for recovery and scheduling.\n- Primary Goal: Peak for hill climb",
+        constraints="- Max Cycling Hours: 10.0\n- Max Cycling Sessions: 5\n- Non-cycling sports do not consume this cycling budget; use them only for recovery and scheduling.\n- Available cycling days: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday (only schedule NEW workouts on these days).\n- Primary Goal: Peak for hill climb",
         weekly_brief="Weekly Brief:\n- Goal: Peak for hill climb\n- Current Block: Build",
         coach_context="Coach Context:\n- 42-day weekly summaries",
         specialist_context="FTP Trajectory:\n- Starting FTP: 250.0W",
