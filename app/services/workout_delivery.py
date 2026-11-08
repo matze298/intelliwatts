@@ -1,7 +1,8 @@
 """Helpers for staging and publishing weekly workouts to Intervals.icu."""
 
 import calendar
-from datetime import UTC, datetime, timedelta
+import re
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from sqlmodel import Session, select
@@ -14,6 +15,46 @@ if TYPE_CHECKING:
 
 DEFAULT_WORKOUT_TYPE = "Ride"
 _DAY_OFFSETS = {day.lower(): index for index, day in enumerate(calendar.day_name)}
+_DAY_OFFSETS.update({day[:3].lower(): index for index, day in enumerate(calendar.day_name)})
+_DAY_OFFSETS["tues"] = 1
+_DAY_OFFSETS["thurs"] = 3
+_ISO_DATE = re.compile(r"\\b\\d{4}-\\d{2}-\\d{2}\\b")
+
+
+def _workout_calendar_date(workout: dict[str, object], week_start: date) -> date:
+    """Resolve an exact selected-week date without guessing from list position.
+
+    Returns:
+        The local date for a workout within the selected training week.
+
+    Raises:
+        ValueError: For an unrecognized or conflicting day/date.
+    """
+    raw_day = str(workout.get("day", "")).strip()
+    name = workout.get("workout_name", "Workout")
+    explicit = workout.get("date")
+    embedded_date = _ISO_DATE.search(raw_day)
+    raw_date = explicit if isinstance(explicit, str) and explicit else embedded_date.group() if embedded_date else None
+    weekday_token = raw_day.split(",", 1)[0].split()[0].strip(".").lower() if raw_day else ""
+    weekday = _DAY_OFFSETS.get(weekday_token)
+
+    if raw_date is not None:
+        try:
+            planned_date = date.fromisoformat(raw_date)
+        except ValueError as exc:
+            raise ValueError(f"{name}: invalid workout date {raw_date!r}") from exc
+        if weekday is not None and planned_date.weekday() != weekday:
+            raise ValueError(f"{name}: day {raw_day!r} disagrees with date {raw_date!r}")
+    elif weekday is not None:
+        planned_date = week_start + timedelta(days=weekday)
+    else:
+        raise ValueError(
+            f"{name}: unknown workout day {raw_day!r}; use Monday–Sunday or a YYYY-MM-DD date"
+        )
+
+    if not week_start <= planned_date <= week_start + timedelta(days=6):
+        raise ValueError(f"{name}: {planned_date.isoformat()} is outside the selected week {week_start.isoformat()}")
+    return planned_date
 
 
 def build_workout_delivery_payloads(plan: TrainingPlan) -> list[WorkoutDeliveryPayload]:
@@ -24,9 +65,8 @@ def build_workout_delivery_payloads(plan: TrainingPlan) -> list[WorkoutDeliveryP
     """
     payloads: list[WorkoutDeliveryPayload] = []
     for index, workout in enumerate(plan.workout_data):
-        day_name = str(workout.get("day", "")).strip().lower()
-        day_offset = _DAY_OFFSETS.get(day_name, index)
-        start_date_local = datetime.combine(plan.week_start + timedelta(days=day_offset), datetime.min.time())
+        calendar_date = _workout_calendar_date(workout, plan.week_start)
+        start_date_local = datetime.combine(calendar_date, datetime.min.time())
         payloads.append({
             "category": "WORKOUT",
             "start_date_local": start_date_local.replace(tzinfo=None).isoformat(timespec="seconds"),
@@ -46,24 +86,31 @@ def stage_workout_delivery(session: Session, plan: TrainingPlan) -> WorkoutDeliv
     Returns:
         The persisted workout delivery row.
     """
-    payloads = build_workout_delivery_payloads(plan)
+    try:
+        payloads = build_workout_delivery_payloads(plan)
+        staging_error = None
+    except ValueError as exc:
+        # The generated plan remains saved for review; never silently move a
+        # workout to a different day or publish an incorrect calendar date.
+        payloads = []
+        staging_error = str(exc)
     statement = select(WorkoutDelivery).where(WorkoutDelivery.training_plan_id == plan.id)
     delivery = session.exec(statement).first()
     now = datetime.now(UTC)
     if delivery:
-        delivery.status = WorkoutDeliveryStatus.DRAFT
+        delivery.status = WorkoutDeliveryStatus.FAILED if staging_error else WorkoutDeliveryStatus.DRAFT
         delivery.staged_payload = payloads
         delivery.published_payload = []
         delivery.published_at = None
-        delivery.last_error = None
+        delivery.last_error = staging_error
         delivery.updated_at = now
     else:
         delivery = WorkoutDelivery(
             training_plan_id=plan.id,
-            status=WorkoutDeliveryStatus.DRAFT,
+            status=WorkoutDeliveryStatus.FAILED if staging_error else WorkoutDeliveryStatus.DRAFT,
             staged_payload=payloads,
             published_payload=[],
-            last_error=None,
+            last_error=staging_error,
         )
     session.add(delivery)
     session.commit()
@@ -85,6 +132,9 @@ def publish_workout_delivery(
     delivery = session.exec(statement).first()
     if not delivery:
         delivery = stage_workout_delivery(session, plan)
+
+    if delivery.status == WorkoutDeliveryStatus.FAILED and delivery.last_error and not delivery.staged_payload:
+        raise ValueError(f"Cannot publish until workout dates are corrected: {delivery.last_error}")
 
     now = datetime.now(UTC)
     delivery.status = WorkoutDeliveryStatus.PUBLISHING
