@@ -89,9 +89,22 @@
     }
     let completed = false;
     try {
+      const payload = new FormData(form);
+      if (form.id === "update-plan-form") {
+        // Controls belong to the Generate form in HTML. Include their current
+        // values in Update requests so edits use the visible weekday/model caps.
+        for (const key of ["max_hours", "max_sessions", "language_model"]) {
+          const control = document.getElementById(key);
+          if (control) payload.set(key, control.value);
+        }
+        payload.set("available_days_present", "1");
+        for (const selected of document.querySelectorAll('input[name="available_days"]:checked')) {
+          payload.append("available_days", selected.value);
+        }
+      }
       const response = await fetch(form.action.replace(/\/$/, "") + "/stream", {
         method: "POST",
-        body: new FormData(form),
+        body: payload,
         credentials: "same-origin",
         headers: {"Accept": "text/event-stream"},
       });
@@ -117,6 +130,8 @@
             const event = JSON.parse(data);
             if (event.kind === "stage") {
               stage(event.message);
+            } else if (event.kind === "heartbeat") {
+              text("planner-progress-state", "Connected · processing");
             } else if (event.kind === "error") {
               throw new Error(event.message || "Training-plan generation failed.");
             } else if (event.kind === "complete") {
