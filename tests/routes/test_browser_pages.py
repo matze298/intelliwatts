@@ -204,12 +204,12 @@ def test_failed_generation_displays_clickable_traceback(browser_server: BrowserS
         _save_long_term_goal(page, browser_server.base_url)
 
         failure_message = "Plan generation failed. Your existing plan is still available; please try again."
-        traceback_text = "Traceback (most recent call last):\\nValueError: model timeout <b>not markup</b>"
+        traceback_text = "Traceback (most recent call last):\nValueError: model timeout <b>not markup</b>"
         events = [
             {"kind": "stage", "message": "Waiting for the selected model"},
             {"kind": "error", "message": failure_message, "traceback": traceback_text},
         ]
-        stream = "".join("data: " + json.dumps(event) + "\\n\\n" for event in events)
+        stream = "".join("data: " + json.dumps(event) + "\n\n" for event in events)
         page.route(
             "**/generate/stream",
             lambda route: route.fulfill(
