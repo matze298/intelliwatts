@@ -29,6 +29,12 @@
     if (!panel) return;
     const list = id("planner-progress-steps");
     list.replaceChildren();
+    const errorDetails = id("planner-error-details");
+    if (errorDetails) {
+      errorDetails.open = false;
+      errorDetails.classList.add("hidden");
+      text("planner-error-traceback", "");
+    }
     panel.classList.remove("hidden", "planner-progress-error");
     panel.setAttribute("aria-busy", "true");
     text("planner-progress-title", form.id === "update-plan-form" ? "Updating training plan" : "Generating training plan");
@@ -46,6 +52,19 @@
       step.classList.replace("planner-step-active", hasError ? "planner-step-failed" : "planner-step-complete");
     }
     text("planner-progress-state", message);
+  }
+
+  function showFailure(message, traceback) {
+    const details = id("planner-error-details");
+    if (details) {
+      details.open = false;
+      text("planner-error-message", message);
+      text("planner-error-traceback", traceback || "No server traceback was provided. Check the server logs.");
+      details.classList.remove("hidden");
+    } else {
+      stage(message);
+    }
+    finish("Failed — click the message for details", true);
   }
 
   function updateRenderedPlan(html, form) {
@@ -133,7 +152,9 @@
             } else if (event.kind === "heartbeat") {
               text("planner-progress-state", "Connected · processing");
             } else if (event.kind === "error") {
-              throw new Error(event.message || "Training-plan generation failed.");
+              const failure = new Error(event.message || "Training-plan generation failed.");
+              failure.traceback = typeof event.traceback === "string" ? event.traceback : "";
+              throw failure;
             } else if (event.kind === "complete") {
               updateRenderedPlan(event.html, form);
               completed = true;
@@ -146,8 +167,8 @@
       if (!completed) throw new Error("The progress connection ended without a completed plan. Refresh to check whether it was saved.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not update the plan.";
-      stage(message);
-      finish("Not completed — existing plan remains visible", true);
+      const traceback = error?.traceback || (error instanceof Error ? error.stack : "");
+      showFailure(message, traceback);
     } finally {
       running = false;
       for (const control of controls) {

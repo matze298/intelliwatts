@@ -193,6 +193,47 @@ def test_core_pages_load_through_browser_transitions(browser_server: BrowserServ
         browser.close()
 
 
+def test_failed_generation_displays_clickable_traceback(browser_server: BrowserServer) -> None:
+    """Failed streamed generations reveal details only after clicking the message."""
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.goto(f"{browser_server.base_url}/login", wait_until="domcontentloaded")
+        page.get_by_label("Master password").fill(get_settings().APP_PASSWORD)
+        page.get_by_role("button", name="Sign in").click()
+        _save_long_term_goal(page, browser_server.base_url)
+
+        failure_message = "Plan generation failed. Your existing plan is still available; please try again."
+        traceback_text = "Traceback (most recent call last):\nValueError: model timeout <b>not markup</b>"
+        events = [
+            {"kind": "stage", "message": "Waiting for the selected model"},
+            {"kind": "error", "message": failure_message, "traceback": traceback_text},
+        ]
+        stream = "".join("data: " + json.dumps(event) + "\n\n" for event in events)
+        page.route(
+            "**/generate/stream",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="text/event-stream",
+                body=stream,
+            ),
+        )
+
+        page.get_by_role("button", name="Generate Plan").click()
+        details = page.locator("#planner-error-details")
+        expect(details).to_be_visible()
+        expect(page.locator("#planner-error-message")).to_have_text(failure_message)
+        expect(page.locator("#planner-error-traceback")).not_to_be_visible()
+
+        # Expanding the exact failure message reveals text, not injected HTML.
+        page.locator("#planner-error-message").click()
+        expect(page.locator("#planner-error-traceback")).to_be_visible()
+        expect(page.locator("#planner-error-traceback")).to_contain_text("ValueError: model timeout")
+        assert page.locator("#planner-error-traceback b").count() == 0
+        expect(page.locator("#planner-plan-body")).to_be_visible()
+        browser.close()
+
+
 def _save_long_term_goal(page: Page, base_url: str) -> None:
     # GIVEN an authenticated user on the planner page.
     page.get_by_label("Primary goal:").fill("Peak for anonymized gran fondo")
