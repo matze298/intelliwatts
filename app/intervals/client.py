@@ -131,7 +131,9 @@ class IntervalsClient:
             raise IntervalsResponseError(msg)
         return payload
 
-    def publish_workout_events(self, events: list[WorkoutDeliveryPayload]) -> list[WorkoutDeliveryResult]:
+    def publish_workout_events(  # ruff: ignore[complex-structure]
+        self, events: list[WorkoutDeliveryPayload]
+    ) -> list[WorkoutDeliveryResult]:
         """Create or update planned workouts on the calendar.
 
         Returns:
