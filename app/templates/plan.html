@@ -74,7 +74,7 @@
                 <div class="space-y-2">
                     {% if week_options %}
                     <form method="get" action="/">
-                        {{ render_week_select("Planning week", "week_start_view", week_options, selected_week_start) }}
+                        {{ render_week_select("Planning week", "week_start", week_options, selected_week_start) }}
                     </form>
                     {% else %}
                     <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Planning week</p>
