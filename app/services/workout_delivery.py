@@ -42,18 +42,20 @@ def _workout_calendar_date(workout: dict[str, object], week_start: date) -> date
         try:
             planned_date = date.fromisoformat(raw_date)
         except ValueError as exc:
-            raise ValueError(f"{name}: invalid workout date {raw_date!r}") from exc
+            msg = f"{name}: invalid workout date {raw_date!r}"
+            raise ValueError(msg) from exc
         if weekday is not None and planned_date.weekday() != weekday:
-            raise ValueError(f"{name}: day {raw_day!r} disagrees with date {raw_date!r}")
+            msg = f"{name}: day {raw_day!r} disagrees with date {raw_date!r}"
+            raise ValueError(msg)
     elif weekday is not None:
         planned_date = week_start + timedelta(days=weekday)
     else:
-        raise ValueError(
-            f"{name}: unknown workout day {raw_day!r}; use Monday–Sunday or a YYYY-MM-DD date"
-        )
+        msg = f"{name}: unknown workout day {raw_day!r}; use Monday-Sunday or a YYYY-MM-DD date"
+        raise ValueError(msg)
 
     if not week_start <= planned_date <= week_start + timedelta(days=6):
-        raise ValueError(f"{name}: {planned_date.isoformat()} is outside the selected week {week_start.isoformat()}")
+        msg = f"{name}: {planned_date.isoformat()} is outside the selected week {week_start.isoformat()}"
+        raise ValueError(msg)
     return planned_date
 
 
@@ -127,6 +129,9 @@ def publish_workout_delivery(
 
     Returns:
         The updated workout delivery row.
+
+    Raises:
+        ValueError: When an invalid local date has blocked staging.
     """
     statement = select(WorkoutDelivery).where(WorkoutDelivery.training_plan_id == plan.id)
     delivery = session.exec(statement).first()
@@ -134,7 +139,8 @@ def publish_workout_delivery(
         delivery = stage_workout_delivery(session, plan)
 
     if delivery.status == WorkoutDeliveryStatus.FAILED and delivery.last_error and not delivery.staged_payload:
-        raise ValueError(f"Cannot publish until workout dates are corrected: {delivery.last_error}")
+        msg = f"Cannot publish until workout dates are corrected: {delivery.last_error}"
+        raise ValueError(msg)
 
     now = datetime.now(UTC)
     delivery.status = WorkoutDeliveryStatus.PUBLISHING
