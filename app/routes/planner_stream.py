@@ -36,9 +36,9 @@ _SECRET_SETTINGS = (
 _MAX_TRACEBACK_LENGTH = 16000
 _SENSITIVE_ASSIGNMENT = re.compile(
     r"(?i)((?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|session[_-]?secret|"
-    r"authorization)\\s*[:=]\\s*['\\\"]?)[^'\\\"\\s,;&]+"
+    r"authorization)\s*[:=]\s*['\"]?)[^'\"\s,;&]+"
 )
-_BEARER_TOKEN = re.compile(r"(?i)(Bearer\\s+)\\S+")
+_BEARER_TOKEN = re.compile(r"(?i)(Bearer\s+)\S+")
 
 
 def safe_planner_traceback(error: Exception, settings: Settings) -> str:
@@ -58,10 +58,10 @@ def safe_planner_traceback(error: Exception, settings: Settings) -> str:
         encoded = quote(secret, safe="")
         if encoded != secret:
             details = details.replace(encoded, "[REDACTED]")
-    details = _SENSITIVE_ASSIGNMENT.sub(r"\\1[REDACTED]", details)
-    details = _BEARER_TOKEN.sub(r"\\1[REDACTED]", details)
+    details = _SENSITIVE_ASSIGNMENT.sub(r"\1[REDACTED]", details)
+    details = _BEARER_TOKEN.sub(r"\1[REDACTED]", details)
     if len(details) > _MAX_TRACEBACK_LENGTH:
-        details = "[Earlier traceback frames omitted]\\n" + details[-_MAX_TRACEBACK_LENGTH:]
+        details = "[Earlier traceback frames omitted]\n" + details[-_MAX_TRACEBACK_LENGTH:]
     return details
 
 
