@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from copy import copy
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, NamedTuple
 from urllib.parse import urlencode
@@ -248,10 +249,13 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
     saved_model = preferred_model(user.preferred_language_model, settings_context["settings"].LANGUAGE_MODEL) if user else None
     active_model = selected_model or saved_model
     if active_model is not None:
-        settings_context = {
-            **settings_context,
-            "settings": settings_context["settings"].model_copy(update={"LANGUAGE_MODEL": active_model}),
-        }
+        display_settings = settings_context["settings"]
+        if hasattr(display_settings, "model_copy"):
+            display_settings = display_settings.model_copy(update={"LANGUAGE_MODEL": active_model})
+        else:
+            display_settings = copy(display_settings)
+            display_settings.LANGUAGE_MODEL = active_model
+        settings_context = {**settings_context, "settings": display_settings}
 
     if start_date is None:
         with Session(engine) as session:
