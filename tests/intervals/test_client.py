@@ -156,3 +156,52 @@ def test_calendar_events_fetches_selected_week_read_only(requests_mock: Mocker) 
     request = requests_mock.request_history[-1]
     assert request.method == "GET"
     assert request.qs == {"oldest": ["2026-11-09"], "newest": ["2026-11-15"]}
+
+
+def test_workout_publish_checks_returned_local_calendar_date(requests_mock: Mocker) -> None:
+    """A response on another local calendar day is not reported as successful."""
+    client = IntervalsClient(api_key="test_key", athlete_id="test_id", session=requests.Session())
+    payload: list[WorkoutDeliveryPayload] = [
+        {
+            "category": "WORKOUT",
+            "start_date_local": "2026-11-10T00:00:00",
+            "type": "Ride",
+            "name": "Tuesday Intervals",
+            "description": "Structured workout",
+            "external_id": "plan-1-0",
+        }
+    ]
+    requests_mock.post(
+        f"{BASE_URL}/athlete/test_id/events/bulk",
+        json=[{
+            "id": 321,
+            "external_id": "plan-1-0",
+            "start_date_local": "2026-11-09T00:00:00",
+        }],
+    )
+    with pytest.raises(ValueError, match="expected 2026-11-10"):
+        client.publish_workout_events(payload)
+
+
+def test_workout_publish_accepts_matching_returned_local_date(requests_mock: Mocker) -> None:
+    """A matching Intervals local calendar date is accepted as a receipt."""
+    client = IntervalsClient(api_key="test_key", athlete_id="test_id", session=requests.Session())
+    payload: list[WorkoutDeliveryPayload] = [
+        {
+            "category": "WORKOUT",
+            "start_date_local": "2026-11-10T00:00:00",
+            "type": "Ride",
+            "name": "Tuesday Intervals",
+            "description": "Structured workout",
+            "external_id": "plan-1-0",
+        }
+    ]
+    requests_mock.post(
+        f"{BASE_URL}/athlete/test_id/events/bulk",
+        json=[{
+            "id": 321,
+            "external_id": "plan-1-0",
+            "start_date_local": "2026-11-10T00:00:00",
+        }],
+    )
+    assert client.publish_workout_events(payload)[0]["start_date_local"] == "2026-11-10T00:00:00"
