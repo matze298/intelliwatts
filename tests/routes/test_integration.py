@@ -1213,6 +1213,7 @@ async def test_planner_saves_model_and_weekday_preferences(
         assert "Max Cycling Sessions: 2" in prompt
 
         # Reopening the Planner preserves the choice in the model dropdown.
+        context.app.state.settings["models"] = LanguageModel
         home = web_routes.home(build_request(context.app, method="GET", path="/"), persisted)
         html = bytes(home.body).decode()
         assert 'value="openai/gpt-oss-120b" selected' in html
