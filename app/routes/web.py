@@ -37,11 +37,11 @@ from app.services.long_term_planner import (
     replace_active_phase,
 )
 from app.services.plan_loader import load_user_plan
-from app.services.planner.preferences import WEEKDAYS, normalize_available_days, preferred_model
 from app.services.planner import (
     generate_weekly_plan,
     update_training_plan,
 )
+from app.services.planner.preferences import WEEKDAYS, normalize_available_days, preferred_model
 from app.services.workout_delivery import publish_workout_delivery
 from app.utils.datetime import get_monday
 from app.utils.markdown import render_markdown
