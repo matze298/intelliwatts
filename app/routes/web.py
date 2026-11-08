@@ -608,6 +608,58 @@ async def update(
     raw_week_start = str(input_data.get("week_start", "")).strip()
     week_start: date | None = None
 
+    # In-place updates also receive the visible planning controls from the
+    # browser, not just the text feedback. Plain HTML submissions remain valid.
+    raw_model = input_data.get("language_model")
+    if raw_model:
+        selected_model = _selected_language_model(raw_model, settings.LANGUAGE_MODEL)
+        if selected_model is None:
+            return _render_invalid_model_selection(request, user, raw_week_start)
+        settings = settings.model_copy(update={"LANGUAGE_MODEL": selected_model})
+    else:
+        selected_model = None
+
+    weekly_hours, weekly_sessions, controls_error = _parse_weekly_limits(
+        input_data.get("max_hours"), input_data.get("max_sessions")
+    )
+    selected_days = user.available_cycling_days
+    if "available_days_present" in input_data:
+        try:
+            selected_days = normalize_available_days([str(day) for day in input_data.getlist("available_days")])
+        except ValueError as exc:
+            controls_error = str(exc)
+    if controls_error:
+        loaded = load_user_plan(user)
+        return _render_plan_page(
+            request,
+            user=user,
+            plan_html=loaded.plan_html,
+            long_term_summary_html=loaded.long_term_summary_html,
+            delivery_status=loaded.delivery_status,
+            delivery_last_error=loaded.delivery_last_error,
+            summary=None,
+            prompt=loaded.prompt,
+            selected_week_start=raw_week_start,
+            error=controls_error,
+        )
+
+    if raw_model or "available_days_present" in input_data or weekly_hours is not None or weekly_sessions is not None:
+        with Session(engine) as session:
+            db_user = session.get(User, user.id)
+            if db_user:
+                if selected_model is not None:
+                    db_user.preferred_language_model = selected_model.value
+                if "available_days_present" in input_data:
+                    db_user.available_cycling_days = selected_days
+                if weekly_hours is not None:
+                    db_user.weekly_hours = weekly_hours
+                if weekly_sessions is not None:
+                    db_user.weekly_sessions = weekly_sessions
+                session.add(db_user)
+                session.commit()
+                session.refresh(db_user)
+                user = db_user
+
     week_start, week_error = _parse_iso_date(raw_week_start)
     if week_error:
         loaded = load_user_plan(user)
