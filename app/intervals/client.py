@@ -156,6 +156,7 @@ class IntervalsClient:
             raise IntervalsResponseError(msg)
 
         expected_external_ids = {event["external_id"] for event in events}
+        expected_by_external_id = {event["external_id"]: event for event in events}
         results: list[WorkoutDeliveryResult] = []
         returned_external_ids: set[str] = set()
         for index, item in enumerate(payload):
@@ -175,5 +176,12 @@ class IntervalsClient:
                     msg = "Intervals.icu workout events response contained unknown or duplicate external IDs"
                     raise IntervalsResponseError(msg)
                 returned_external_ids.add(external_id)
+            # When Intervals.icu reports a local date, check that it actually
+            # stored the date we intended rather than reporting success blindly.
+            stored_date = item.get("start_date_local")
+            expected = expected_by_external_id.get(external_id) if isinstance(external_id, str) else events[index]
+            if isinstance(stored_date, str) and stored_date[:10] != expected["start_date_local"][:10]:
+                msg = f"Intervals.icu returned {stored_date[:10]} for {expected['name']}, expected {expected['start_date_local'][:10]}"
+                raise IntervalsResponseError(msg)
             results.append(cast("WorkoutDeliveryResult", item))
         return results
