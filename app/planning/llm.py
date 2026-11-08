@@ -155,7 +155,7 @@ def _call_gpt_cached(
     return LLMResponse(
         plan=output.plan_markdown,
         prompt=messages,
-        workouts=[workout.model_dump(mode="json") for workout in output.workouts],
+        workouts=[workout.model_dump(mode="json", exclude_none=True) for workout in output.workouts],
     )
 
 
@@ -248,5 +248,5 @@ def _call_gemini_cached(
     return LLMResponse(
         plan=output.plan_markdown,
         prompt=messages,
-        workouts=[workout.model_dump(mode="json") for workout in output.workouts],
+        workouts=[workout.model_dump(mode="json", exclude_none=True) for workout in output.workouts],
     )
