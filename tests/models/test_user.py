@@ -13,3 +13,7 @@ def test_user_settings_defaults() -> None:
     # WHEN the user settings are inspected
     # THEN the persisted preferences should default to a disabled developer mode
     assert user.developer_mode_enabled is False
+    assert user.preferred_language_model is None
+    assert user.available_cycling_days == [
+        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+    ]
