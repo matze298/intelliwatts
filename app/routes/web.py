@@ -36,6 +36,7 @@ from app.services.long_term_planner import (
     replace_active_phase,
 )
 from app.services.plan_loader import load_user_plan
+from app.services.planner.preferences import normalize_available_days, preferred_model, WEEKDAYS
 from app.services.planner import (
     generate_weekly_plan,
     update_training_plan,
@@ -244,10 +245,12 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
         The rendered planner page.
     """
     settings_context = request.app.state.settings
-    if selected_model is not None:
+    saved_model = preferred_model(user.preferred_language_model, settings_context["settings"].LANGUAGE_MODEL) if user else None
+    active_model = selected_model or saved_model
+    if active_model is not None:
         settings_context = {
             **settings_context,
-            "settings": settings_context["settings"].model_copy(update={"LANGUAGE_MODEL": selected_model}),
+            "settings": settings_context["settings"].model_copy(update={"LANGUAGE_MODEL": active_model}),
         }
 
     if start_date is None:
@@ -275,6 +278,7 @@ def _render_plan_page(  # ruff: ignore[too-many-arguments]
             "error": error,
             "settings": settings_context,
             "user": user,
+            "weekdays": WEEKDAYS,
         },
     )
 
@@ -492,6 +496,12 @@ async def generate(
     weekly_hours, weekly_sessions, limit_error = _parse_weekly_limits(
         input_data.get("max_hours"), input_data.get("max_sessions")
     )
+    selected_days = user.available_cycling_days
+    if "available_days_present" in input_data:
+        try:
+            selected_days = normalize_available_days([str(day) for day in input_data.getlist("available_days")])
+        except ValueError as exc:
+            limit_error = str(exc)
     if limit_error:
         loaded = load_user_plan(user)
         return _render_plan_page(
@@ -511,7 +521,7 @@ async def generate(
             selected_model=selected_model,
         )
 
-    if weekly_hours is not None or weekly_sessions is not None:
+    if weekly_hours is not None or weekly_sessions is not None or raw_model or "available_days_present" in input_data:
         with Session(engine) as session:
             db_user = session.get(User, user.id)
             if db_user:
@@ -519,6 +529,10 @@ async def generate(
                     db_user.weekly_hours = weekly_hours
                 if weekly_sessions is not None:
                     db_user.weekly_sessions = weekly_sessions
+                if raw_model and selected_model is not None:
+                    db_user.preferred_language_model = selected_model.value
+                if "available_days_present" in input_data:
+                    db_user.available_cycling_days = selected_days
                 session.add(db_user)
                 session.commit()
                 session.refresh(db_user)
@@ -727,7 +741,7 @@ async def publish_workout(
         try:
             publish_workout_delivery(session, plan, client)
             result = "success"
-        except requests.RequestException, IntervalsResponseError:
+        except requests.RequestException, IntervalsResponseError, ValueError:
             _LOGGER.exception("Intervals.icu workout publication failed")
             result = "failed"
 
