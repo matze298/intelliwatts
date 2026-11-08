@@ -1161,6 +1161,41 @@ async def test_planner_stream_reports_backend_milestones_without_llm() -> None:
 
 
 @pytest.mark.asyncio
+async def test_planner_stream_failure_returns_sanitized_traceback() -> None:
+    """A failed model call exposes useful frames but never configured API credentials."""
+    context = _build_weekly_planner_route_context()
+    context.settings.INTERVALS_API_KEY = "sensitive-api-secret-98765"
+    context.settings.GROQ_API_KEY = "groq-very-private-123"
+    request = build_request(context.app, method="POST", path="/generate/stream")
+
+    async def failing_action(request: Request, _user: User, _settings: Settings) -> HTMLResponse:
+        request.state.planner_progress("Waiting for the selected model")
+        raise RuntimeError(
+            "Model failed: api_key=sensitive-api-secret-98765 "
+            "Bearer hidden-access-token-abc Groq groq-very-private-123"
+        )
+
+    response = web_routes._stream_planner_action(request, context.route_user, context.settings, failing_action)
+    events = [
+        json.loads((chunk if isinstance(chunk, str) else bytes(chunk).decode()).removeprefix("data: ").strip())
+        async for chunk in response.body_iterator
+    ]
+
+    assert [event["kind"] for event in events] == ["stage", "error"]
+    assert events[1]["message"] == (
+        "Plan generation failed. Your existing plan is still available; please try again."
+    )
+    traceback_text = events[1]["traceback"]
+    assert "Traceback (most recent call last)" in traceback_text
+    assert "failing_action" in traceback_text
+    assert "RuntimeError: Model failed" in traceback_text
+    assert "[REDACTED]" in traceback_text
+    assert "sensitive-api-secret-98765" not in traceback_text
+    assert "groq-very-private-123" not in traceback_text
+    assert "hidden-access-token-abc" not in traceback_text
+
+
+@pytest.mark.asyncio
 @patch("app.services.planner.orchestrator.generate_plan")
 async def test_planner_saves_model_and_weekday_preferences(
     mock_generate_plan: MagicMock, monkeypatch: pytest.MonkeyPatch
