@@ -1181,10 +1181,10 @@ async def test_planner_saves_model_and_weekday_preferences(
     )
 
     def apply_model(update: dict[str, object]) -> Settings:
-        context.settings.LANGUAGE_MODEL = update["LANGUAGE_MODEL"]
+        context.settings.LANGUAGE_MODEL = LanguageModel(str(update["LANGUAGE_MODEL"]))
         return context.settings
 
-    context.settings.model_copy.side_effect = apply_model
+    monkeypatch.setattr(context.settings, "model_copy", MagicMock(side_effect=apply_model))
     response = await web_routes.generate(
         build_request(
             context.app,
