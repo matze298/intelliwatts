@@ -1170,10 +1170,9 @@ async def test_planner_stream_failure_returns_sanitized_traceback() -> None:
 
     async def failing_action(request: Request, _user: User, _settings: Settings) -> HTMLResponse:
         request.state.planner_progress("Waiting for the selected model")
-        raise RuntimeError(
-            "Model failed: api_key=sensitive-api-secret-98765 "
-            "Bearer hidden-access-token-abc Groq groq-very-private-123"
-        )
+        await asyncio.sleep(0)
+        message = "Model failed: api_key=sensitive-api-secret-98765 Bearer hidden-access-token-abc Groq groq-very-private-123"
+        raise RuntimeError(message)
 
     response = web_routes._stream_planner_action(request, context.route_user, context.settings, failing_action)
     events = [
@@ -1182,9 +1181,7 @@ async def test_planner_stream_failure_returns_sanitized_traceback() -> None:
     ]
 
     assert [event["kind"] for event in events] == ["stage", "error"]
-    assert events[1]["message"] == (
-        "Plan generation failed. Your existing plan is still available; please try again."
-    )
+    assert events[1]["message"] == ("Plan generation failed. Your existing plan is still available; please try again.")
     traceback_text = events[1]["traceback"]
     assert "Traceback (most recent call last)" in traceback_text
     assert "failing_action" in traceback_text
