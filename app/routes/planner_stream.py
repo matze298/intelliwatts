@@ -7,8 +7,8 @@ import json
 import logging
 import re
 import traceback
-from urllib.parse import quote
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 from fastapi.responses import HTMLResponse, StreamingResponse
 
@@ -34,6 +34,7 @@ _SECRET_SETTINGS = (
     "GROQ_API_KEY",
 )
 _MAX_TRACEBACK_LENGTH = 16000
+_MIN_SECRET_LENGTH = 4
 _SENSITIVE_ASSIGNMENT = re.compile(
     r"(?i)((?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|session[_-]?secret|"
     r"authorization)\s*[:=]\s*['\"]?)[^'\"\s,;&]+"
@@ -51,7 +52,7 @@ def safe_planner_traceback(error: Exception, settings: Settings) -> str:
     secrets = {
         value
         for field in _SECRET_SETTINGS
-        if isinstance((value := getattr(settings, field, None)), str) and len(value) >= 4
+        if isinstance((value := getattr(settings, field, None)), str) and len(value) >= _MIN_SECRET_LENGTH
     }
     for secret in sorted(secrets, key=len, reverse=True):
         details = details.replace(secret, "[REDACTED]")
