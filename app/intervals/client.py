@@ -180,6 +180,9 @@ class IntervalsClient:
             # stored the date we intended rather than reporting success blindly.
             stored_date = item.get("start_date_local")
             expected = expected_by_external_id.get(external_id) if isinstance(external_id, str) else events[index]
+            if expected is None:
+                msg = "Intervals.icu returned an unrecognized external ID"
+                raise IntervalsResponseError(msg)
             if isinstance(stored_date, str) and stored_date[:10] != expected["start_date_local"][:10]:
                 msg = f"Intervals.icu returned {stored_date[:10]} for {expected['name']}, expected {expected['start_date_local'][:10]}"
                 raise IntervalsResponseError(msg)
