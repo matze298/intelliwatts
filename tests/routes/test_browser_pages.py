@@ -193,6 +193,28 @@ def test_core_pages_load_through_browser_transitions(browser_server: BrowserServ
         browser.close()
 
 
+def test_planning_week_selector_tracks_selected_week(browser_server: BrowserServer) -> None:
+    """Selecting another week must change the URL and planning target."""
+    # GIVEN an authenticated athlete with a long-term goal spanning several weeks.
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.goto(f"{browser_server.base_url}/login", wait_until="domcontentloaded")
+        page.get_by_label("Master password").fill(get_settings().APP_PASSWORD)
+        page.get_by_role("button", name="Sign in").click()
+        _save_long_term_goal(page, browser_server.base_url)
+        expect(page.get_by_label("Planning week")).to_have_value("2026-03-30")
+
+        # WHEN the athlete selects a later planning week.
+        page.get_by_label("Planning week").select_option("2026-04-13")
+        page.wait_for_url(f"{browser_server.base_url}/?week_start=2026-04-13")
+
+        # THEN the chosen week remains selected and is used for generation.
+        expect(page.get_by_label("Planning week")).to_have_value("2026-04-13")
+        expect(page.locator('#generate-plan-form input[name="week_start"]')).to_have_value("2026-04-13")
+        browser.close()
+
+
 def test_failed_generation_displays_clickable_traceback(browser_server: BrowserServer) -> None:
     """Failed streamed generations reveal details only after clicking the message."""
     with sync_playwright() as playwright:

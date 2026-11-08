@@ -927,6 +927,9 @@ def test_home_page_renders_selected_week_plan(selected_week_route_context: Selec
     assert "control-button" in body
     assert "control-button-warning" in body
     assert "control-select" in body
+    assert '<select id="week_start" name="week_start"' in body
+    assert 'name="week_start_view"' not in body
+    assert '<input type="hidden" name="week_start" value="2026-05-18">' in body
     assert 'value="2026-05-18" selected' in body
     assert "Week 3 of 4 - 2026-05-18" in body
 
