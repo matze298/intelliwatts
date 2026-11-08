@@ -5,6 +5,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
+import traceback
+from urllib.parse import quote
 from typing import TYPE_CHECKING
 
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -18,6 +21,48 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 _LOGGER = logging.getLogger(__name__)
+
+
+_SECRET_SETTINGS = (
+    "APP_PASSWORD",
+    "SESSION_SECRET",
+    "DATABASE_URL",
+    "INTERVALS_API_KEY",
+    "INTERVALS_ATHLETE_ID",
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "GROQ_API_KEY",
+)
+_MAX_TRACEBACK_LENGTH = 16000
+_SENSITIVE_ASSIGNMENT = re.compile(
+    r"(?i)((?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|session[_-]?secret|"
+    r"authorization)\\s*[:=]\\s*['\\\"]?)[^'\\\"\\s,;&]+"
+)
+_BEARER_TOKEN = re.compile(r"(?i)(Bearer\\s+)\\S+")
+
+
+def safe_planner_traceback(error: Exception, settings: Settings) -> str:
+    """Prepare a useful traceback for the authenticated UI without exposing known credentials.
+
+    Returns:
+        A size-bounded traceback with configured secrets and credential fields redacted.
+    """
+    details = "".join(traceback.format_exception(error))
+    secrets = {
+        value
+        for field in _SECRET_SETTINGS
+        if isinstance((value := getattr(settings, field, None)), str) and len(value) >= 4
+    }
+    for secret in sorted(secrets, key=len, reverse=True):
+        details = details.replace(secret, "[REDACTED]")
+        encoded = quote(secret, safe="")
+        if encoded != secret:
+            details = details.replace(encoded, "[REDACTED]")
+    details = _SENSITIVE_ASSIGNMENT.sub(r"\\1[REDACTED]", details)
+    details = _BEARER_TOKEN.sub(r"\\1[REDACTED]", details)
+    if len(details) > _MAX_TRACEBACK_LENGTH:
+        details = "[Earlier traceback frames omitted]\\n" + details[-_MAX_TRACEBACK_LENGTH:]
+    return details
 
 
 def stream_planner_action(
@@ -41,11 +86,12 @@ def stream_planner_action(
         try:
             result = await action(request, user, settings)
             queue.put_nowait({"kind": "complete", "html": bytes(result.body).decode("utf-8")})
-        except Exception:
+        except Exception as exc:
             _LOGGER.exception("Planner generation stream failed")
             queue.put_nowait({
                 "kind": "error",
                 "message": "Plan generation failed. Your existing plan is still available; please try again.",
+                "traceback": safe_planner_traceback(exc, settings),
             })
         finally:
             queue.put_nowait(None)
