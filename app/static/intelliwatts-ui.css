@@ -552,3 +552,20 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
   .planner-progress-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
   .planner-progress-steps li { grid-template-columns: 57px 10px minmax(0,1fr); gap: 8px; }
 }
+
+/* Selectable cycling weekdays within the weekly planning limits. */
+.planner-availability { border: 0; min-width: 0; padding: 0; }
+.planner-day-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.planner-day-option {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  border: 1px solid var(--iw-stroke); border-radius: 9px;
+  padding: 8px 12px; background: var(--iw-surface); color: var(--iw-ink);
+  font-size: .84rem; font-weight: 650;
+}
+.planner-day-option:has(input:checked) {
+  border-color: #358c69; background: #e3f4e9; color: #145d43;
+}
+.planner-day-option input { accent-color: #168759; width: 15px; height: 15px; }
+html[data-theme="dark"] .planner-day-option:has(input:checked) {
+  border-color: #77c9a5; background: #194438; color: #cdfce3;
+}

@@ -51,6 +51,7 @@ class WorkoutDeliveryResult(TypedDict, total=False):
 
     id: int
     external_id: str
+    start_date_local: str
 
 
 class TrainingPhase(SQLModel, table=True):

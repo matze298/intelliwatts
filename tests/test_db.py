@@ -85,7 +85,7 @@ def test_init_db_creates_schema_and_persists_data(monkeypatch: pytest.MonkeyPatc
             assert saved_user.weekly_hours == 9
             assert saved_plan.workout_data == [{"name": "Endurance"}]
         with engine.connect() as connection:
-            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "20261103_01"
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "20261108_01"
         command.downgrade(app.db._build_alembic_config(), "base")
         assert "user" not in inspect(engine).get_table_names()
         app.db.init_db()

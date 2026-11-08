@@ -16,7 +16,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, delete, select
 from starlette.requests import Request
 
-from app.config import Settings
+from app.config import LanguageModel, Settings
 from app.db import engine
 from app.intervals.parser.activity import ParsedActivity
 from app.intervals.parser.power_curve import ParsedPowerCurve, PowerCurvePoint
@@ -1158,3 +1158,98 @@ async def test_planner_stream_reports_backend_milestones_without_llm() -> None:
         "Saving the plan",
     ]
     assert "planner-plan-body" in messages[2]["html"]
+
+
+@pytest.mark.asyncio
+@patch("app.services.planner.orchestrator.generate_plan")
+async def test_planner_saves_model_and_weekday_preferences(
+    mock_generate_plan: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A generated week's model and cycling availability survive another request."""
+    context = _build_weekly_planner_route_context()
+    _seed_long_term_phase(
+        context.engine,
+        user_id=context.user_id,
+        primary_goal="Improve FTP",
+        start_date=date(2026, 5, 16),
+        target_date=date(2026, 9, 20),
+    )
+    _configure_isolated_planner_dependencies(
+        monkeypatch,
+        test_engine=context.engine,
+        generate_plan_mock=mock_generate_plan,
+    )
+
+    def apply_model(update: dict[str, object]) -> Settings:
+        context.settings.LANGUAGE_MODEL = LanguageModel(str(update["LANGUAGE_MODEL"]))
+        return context.settings
+
+    monkeypatch.setattr(context.settings, "model_copy", MagicMock(side_effect=apply_model))
+    response = await web_routes.generate(
+        build_request(
+            context.app,
+            method="POST",
+            path="/generate",
+            body=(
+                b"max_hours=6&max_sessions=2&week_start=2026-06-01"
+                b"&language_model=openai%2Fgpt-oss-120b"
+                b"&available_days_present=1&available_days=Tuesday&available_days=Saturday"
+            ),
+        ),
+        context.route_user,
+        context.settings,
+    )
+    assert response.status_code == 200
+    with Session(context.engine) as session:
+        persisted = session.get(User, context.user_id)
+        assert persisted is not None
+        assert persisted.preferred_language_model == LanguageModel.GROQ_GPT_OSS_120B.value
+        assert persisted.available_cycling_days == ["Tuesday", "Saturday"]
+        assert persisted.weekly_sessions == 2
+        assert persisted.weekly_hours == 6
+
+        prompt = mock_generate_plan.call_args.kwargs["messages"][1]["content"]
+        assert "Available cycling days: Tuesday, Saturday" in prompt
+        assert "Max Cycling Sessions: 2" in prompt
+
+        # Reopening the Planner preserves the choice in the model dropdown.
+        context.app.state.settings["models"] = LanguageModel
+        home = web_routes.home(build_request(context.app, method="GET", path="/"), persisted)
+        html = bytes(home.body).decode()
+        assert 'value="openai/gpt-oss-120b" selected' in html
+        assert 'value="Tuesday" form="generate-plan-form" checked' in html
+        assert 'value="Monday" form="generate-plan-form" checked' not in html
+
+
+@pytest.mark.asyncio
+@patch("app.services.planner.orchestrator.generate_plan")
+async def test_planner_rejects_no_selected_cycling_days_without_calling_model(
+    mock_generate_plan: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Clearing every weekday reports a form error without generating."""
+    context = _build_weekly_planner_route_context()
+    _seed_long_term_phase(
+        context.engine,
+        user_id=context.user_id,
+        primary_goal="Improve FTP",
+        start_date=date(2026, 5, 16),
+        target_date=date(2026, 9, 20),
+    )
+    _configure_isolated_planner_dependencies(
+        monkeypatch,
+        test_engine=context.engine,
+        generate_plan_mock=mock_generate_plan,
+    )
+    response = await web_routes.generate(
+        build_request(
+            context.app,
+            method="POST",
+            path="/generate",
+            body=b"max_hours=6&max_sessions=2&week_start=2026-06-01&available_days_present=1",
+        ),
+        context.route_user,
+        context.settings,
+    )
+    assert response.status_code == 200
+    assert "Select at least one valid cycling day" in bytes(response.body).decode()
+    mock_generate_plan.assert_not_called()

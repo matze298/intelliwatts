@@ -27,6 +27,7 @@ from app.services.long_term_planner import (
 from app.services.planner.analysis import get_analysis
 from app.services.planner.calendar import load_week_commitments
 from app.services.planner.persistence import save_and_stage_weekly_plan
+from app.services.planner.preferences import preferred_model
 from app.services.planner.prompt import PromptSummaryContext, build_prompt_summary, workout_date_guidance
 from app.utils.datetime import get_monday
 
@@ -102,6 +103,10 @@ async def update_training_plan(
     """
     if settings is None:
         settings = get_settings()
+    if user.preferred_language_model:
+        settings = settings.model_copy(
+            update={"LANGUAGE_MODEL": preferred_model(user.preferred_language_model, settings.LANGUAGE_MODEL)}
+        )
 
     _report(progress, "Loading the current training week")
     with Session(engine) as session:
@@ -132,37 +137,42 @@ async def update_training_plan(
             existing_plan=True,
             phase_start=phase.start_date,
         )
-        _report(progress, "Refreshing training, recovery and scheduled activities")
-        try:
-            latest_context = await _fresh_revision_context(
-                settings=settings,
-                phase=phase,
-                artifact=get_current_long_term_plan_artifact(session, phase_id=phase.id),
-                week_start=monday,
-            )
-        except requests.RequestException, ValueError:
-            # Keep revising saved plans if Intervals.icu is temporarily unavailable.
-            latest_context = "Fresh Intervals.icu context unavailable; use saved plan and athlete feedback."
-        history.append({
-            "role": LLMRole.USER,
-            "content": (
-                f"{feedback}\n\n"
-                f"Latest recorded context (supersedes older observations):\n{latest_context}\n\n"
-                f"{date_rules}\n"
-                "Revise conservatively: cycling-only hour and session limits; "
-                "other sports affect recovery/timing, never the cycling budget. "
-                "Preserve completed or past workouts."
-            ),
-        })
+        artifact = get_current_long_term_plan_artifact(session, phase_id=phase.id)
 
-        _report(progress, "Requesting a revised plan from the selected model")
-        llm_response = await run_in_threadpool(
-            generate_plan,
-            messages=history,
-            language_model=settings.LANGUAGE_MODEL,
+    # Release the database session before slow Intervals.icu and model calls.
+    _report(progress, "Refreshing training, recovery and scheduled activities")
+    try:
+        latest_context = await _fresh_revision_context(
+            settings=settings,
+            phase=phase,
+            artifact=artifact,
+            week_start=monday,
         )
+    except requests.RequestException, ValueError:
+        # Keep revising saved plans if Intervals.icu is temporarily unavailable.
+        latest_context = "Fresh Intervals.icu context unavailable; use saved plan and athlete feedback."
+    history.append({
+        "role": LLMRole.USER,
+        "content": (
+            f"{feedback}\n\n"
+            f"Latest recorded context (supersedes older observations):\n{latest_context}\n\n"
+            f"{date_rules}\n"
+            f"Available cycling days: {', '.join(user.available_cycling_days)}; "
+            f"at most {user.weekly_sessions} cycling sessions and {user.weekly_hours} cycling hours. "
+            "Other sports affect recovery/timing, never the cycling budget. "
+            "Keep past workouts unchanged; only NEW workouts must use an available day."
+        ),
+    })
 
-        _report(progress, "Saving the revision and staging workouts")
+    _report(progress, "Requesting a revised plan from the selected model")
+    llm_response = await run_in_threadpool(
+        generate_plan,
+        messages=history,
+        language_model=settings.LANGUAGE_MODEL,
+    )
+
+    _report(progress, "Saving the revision and staging workouts")
+    with Session(engine) as session:
         saved_plan_id = save_and_stage_weekly_plan(
             session=session,
             phase_id=phase.id,
@@ -191,6 +201,8 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
     if settings is None:
         settings = get_settings()
     prompt_updates = {}
+    if user.preferred_language_model:
+        prompt_updates["LANGUAGE_MODEL"] = preferred_model(user.preferred_language_model, settings.LANGUAGE_MODEL)
     if user.system_prompt_override is not None:
         prompt_updates["SYSTEM_PROMPT"] = user.system_prompt_override
     if user.user_prompt_override is not None:

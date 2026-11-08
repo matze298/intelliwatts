@@ -116,14 +116,27 @@
                 </div>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div>
-                        <label for="max_hours" class="control-label">Weekly max hours</label>
+                        <label for="max_hours" class="control-label">Max cycling hours</label>
                         <input type="number" id="max_hours" name="max_hours" form="generate-plan-form" value="{% if user %}{{ user.weekly_hours }}{% else %}8{% endif %}" class="control-field">
                     </div>
                     <div>
-                        <label for="max_sessions" class="control-label">Weekly max sessions</label>
+                        <label for="max_sessions" class="control-label">Max cycling sessions</label>
                         <input type="number" id="max_sessions" name="max_sessions" form="generate-plan-form" value="{% if user %}{{ user.weekly_sessions }}{% else %}4{% endif %}" class="control-field">
                     </div>
                 </div>
+                <fieldset class="planner-availability mt-4">
+                    <legend class="control-label">Available cycling days</legend>
+                    <p class="mt-1 text-sm text-slate-600">Choose the days on which new cycling workouts may be planned. Other sports do not count against your cycling limits.</p>
+                    <input type="hidden" name="available_days_present" value="1" form="generate-plan-form">
+                    <div class="planner-day-options">
+                        {% for day in weekdays %}
+                        <label class="planner-day-option">
+                            <input type="checkbox" name="available_days" value="{{ day }}" form="generate-plan-form" {% if day in user.available_cycling_days %}checked{% endif %}>
+                            <span>{{ day[:3] }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div>
                         <label for="language_model" class="control-label">Large Language model</label>

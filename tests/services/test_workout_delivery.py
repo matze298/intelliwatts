@@ -125,3 +125,59 @@ def test_publish_workout_delivery_updates_status(workout_session: Session, train
     assert restaged.status == WorkoutDeliveryStatus.DRAFT
     assert restaged.published_payload == []
     assert restaged.published_at is None
+
+
+@pytest.mark.parametrize(
+    ("day", "explicit_date", "expected"),
+    [
+        ("Tue", None, "2026-05-19T00:00:00"),
+        ("Thursday", None, "2026-05-21T00:00:00"),
+        ("Saturday, 2026-05-23", None, "2026-05-23T00:00:00"),
+        ("2026-05-24", None, "2026-05-24T00:00:00"),
+        ("Friday", "2026-05-22", "2026-05-22T00:00:00"),
+    ],
+)
+def test_calendar_date_uses_actual_weekday_or_explicit_date(
+    workout_session: Session, training_plan: TrainingPlan, day: str, explicit_date: str | None, expected: str
+) -> None:
+    """Named weekdays, abbreviations and explicit dates resolve to the selected week."""
+    workout = dict(training_plan.workout_data[0])
+    workout["day"] = day
+    if explicit_date:
+        workout["date"] = explicit_date
+    training_plan.workout_data = [workout]
+    staged = stage_workout_delivery(workout_session, training_plan)
+    assert staged.status == WorkoutDeliveryStatus.DRAFT
+    assert staged.staged_payload[0]["start_date_local"] == expected
+
+
+@pytest.mark.parametrize(
+    ("day", "explicit_date"),
+    [
+        ("Some day", None),
+        ("Tuesday", "2026-05-20"),
+        ("Sunday", "2026-05-31"),
+        ("Friday", "2026-05-99"),
+    ],
+)
+def test_invalid_workout_date_keeps_plan_but_blocks_wrong_calendar_export(
+    workout_session: Session, training_plan: TrainingPlan, day: str, explicit_date: str | None
+) -> None:
+    """Bad dates must be visible errors, not silently mapped from array position."""
+    workout = dict(training_plan.workout_data[0])
+    workout["day"] = day
+    if explicit_date:
+        workout["date"] = explicit_date
+    training_plan.workout_data = [workout]
+    staged = stage_workout_delivery(workout_session, training_plan)
+
+    # The LLM output survives for manual revision, without an API request.
+    assert training_plan.raw_content == "## Weekly Plan"
+    assert staged.status == WorkoutDeliveryStatus.FAILED
+    assert staged.staged_payload == []
+    assert staged.last_error
+
+    client = MagicMock(spec=IntervalsClient)
+    with pytest.raises(ValueError, match="Cannot publish until workout dates are corrected"):
+        publish_workout_delivery(workout_session, training_plan, client)
+    client.publish_workout_events.assert_not_called()
