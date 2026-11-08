@@ -18,7 +18,7 @@ _DAY_OFFSETS = {day.lower(): index for index, day in enumerate(calendar.day_name
 _DAY_OFFSETS.update({day[:3].lower(): index for index, day in enumerate(calendar.day_name)})
 _DAY_OFFSETS["tues"] = 1
 _DAY_OFFSETS["thurs"] = 3
-_ISO_DATE = re.compile(r"\\b\\d{4}-\\d{2}-\\d{2}\\b")
+_ISO_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 
 
 def _workout_calendar_date(workout: dict[str, object], week_start: date) -> date:
