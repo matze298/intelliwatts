@@ -173,11 +173,13 @@ def test_workout_publish_checks_returned_local_calendar_date(requests_mock: Mock
     ]
     requests_mock.post(
         f"{BASE_URL}/athlete/test_id/events/bulk",
-        json=[{
-            "id": 321,
-            "external_id": "plan-1-0",
-            "start_date_local": "2026-11-09T00:00:00",
-        }],
+        json=[
+            {
+                "id": 321,
+                "external_id": "plan-1-0",
+                "start_date_local": "2026-11-09T00:00:00",
+            }
+        ],
     )
     with pytest.raises(ValueError, match="expected 2026-11-10"):
         client.publish_workout_events(payload)
@@ -198,10 +200,12 @@ def test_workout_publish_accepts_matching_returned_local_date(requests_mock: Moc
     ]
     requests_mock.post(
         f"{BASE_URL}/athlete/test_id/events/bulk",
-        json=[{
-            "id": 321,
-            "external_id": "plan-1-0",
-            "start_date_local": "2026-11-10T00:00:00",
-        }],
+        json=[
+            {
+                "id": 321,
+                "external_id": "plan-1-0",
+                "start_date_local": "2026-11-10T00:00:00",
+            }
+        ],
     )
     assert client.publish_workout_events(payload)[0]["start_date_local"] == "2026-11-10T00:00:00"
