@@ -51,6 +51,7 @@ class PlannedWorkout(LLMOutputModel):
     """A single planned workout ready for conversion to Intervals.icu format."""
 
     day: str = Field(description="Day of the week, e.g. Monday.")
+    date: str | None = Field(default=None, description="Optional exact local date in YYYY-MM-DD format.")
     workout_name: str
     description: str
     segments: list[WorkoutSegment]
