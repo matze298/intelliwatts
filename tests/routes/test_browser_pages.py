@@ -8,6 +8,7 @@ import threading
 import time
 from datetime import date
 from pathlib import Path
+from urllib.parse import parse_qs
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, NamedTuple, cast
 
@@ -15,12 +16,13 @@ import pytest
 import uvicorn
 from playwright.sync_api import Page, expect, sync_playwright
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from app import db
 from app import profile as profile_module
-from app.config import get_settings
+from app.config import LanguageModel, get_settings
 from app.main import app
+from app.models.plan import TrainingPhase, TrainingPlan
 from app.models.user import User
 from app.routes import api as api_routes
 from app.routes import settings as settings_routes
@@ -132,7 +134,7 @@ def browser_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
     monkeypatch.setattr("app.routes.dashboard._today", lambda: date(2026, 4, 1))
     monkeypatch.setattr(web_routes, "_today", lambda: date(2026, 4, 1))
     app.dependency_overrides[get_settings] = lambda: settings
-    app.state.settings = {"settings": settings, "models": ["test-model"]}
+    app.state.settings = {"settings": settings, "models": ["test-model", LanguageModel.MANUAL]}
     _clear_login_failures()
 
     port = _free_port()
@@ -212,6 +214,66 @@ def test_planning_week_selector_tracks_selected_week(browser_server: BrowserServ
         # THEN the chosen week remains selected and is used for generation.
         expect(page.get_by_label("Planning week")).to_have_value("2026-04-13")
         expect(page.locator('#generate-plan-form input[name="week_start"]')).to_have_value("2026-04-13")
+        browser.close()
+
+
+def test_manual_model_uses_prompt_workspace_for_generate_and_update(browser_server: BrowserServer) -> None:
+    """Both Planner actions submit the selected manual mode without model streaming."""
+    # GIVEN an authenticated athlete with an active training horizon.
+    submitted: list[dict[str, list[str]]] = []
+
+    def capture_manual(route: object) -> None:
+        """Capture POSTed controls without calling the LLM."""
+        submitted.append(parse_qs(route.request.post_data or ""))
+        route.fulfill(status=200, content_type="text/html", body="<html><body>Manual workspace</body></html>")
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.goto(f"{browser_server.base_url}/login", wait_until="domcontentloaded")
+        page.get_by_label("Master password").fill(get_settings().APP_PASSWORD)
+        page.get_by_role("button", name="Sign in").click()
+        _save_long_term_goal(page, browser_server.base_url)
+        page.route("**/manual-plan/prepare", capture_manual)
+
+        # WHEN Manual / External LLM is selected and Generate Plan is submitted.
+        model = page.get_by_label("Large Language model")
+        model.select_option("manual")
+        expect(model.locator('option[value="manual"]')).to_have_text("Manual / External LLM")
+        page.get_by_role("button", name="Generate Plan", exact=True).click()
+        page.wait_for_url(f"{browser_server.base_url}/manual-plan/prepare")
+
+        # THEN the native manual POST includes the selected week, model, and limits.
+        assert submitted[0]["mode"] == ["generate"]
+        assert submitted[0]["language_model"] == ["manual"]
+        assert submitted[0]["week_start"] == ["2026-03-30"]
+        assert submitted[0]["max_sessions"] == ["4"]
+
+        # GIVEN an existing plan for the same week.
+        with Session(db.engine) as session:
+            phase = session.exec(select(TrainingPhase).where(TrainingPhase.status == "active")).one()
+            session.add(
+                TrainingPlan(
+                    phase_id=phase.id,
+                    week_start=date(2026, 3, 30),
+                    raw_content="# Saved workout plan",
+                    prompt_history=[{"role": "user", "content": "Initial training context"}],
+                )
+            )
+            session.commit()
+        page.goto(f"{browser_server.base_url}/", wait_until="domcontentloaded")
+
+        # WHEN manual mode is chosen for Update Plan with feedback.
+        page.get_by_label("Large Language model").select_option("manual")
+        page.get_by_label("What would you like to change?").fill("Move the intervals to Thursday")
+        page.get_by_role("button", name="Update Plan", exact=True).click()
+        page.wait_for_url(f"{browser_server.base_url}/manual-plan/prepare")
+
+        # THEN the exact revision feedback is carried through with the selected week.
+        assert submitted[1]["mode"] == ["update"]
+        assert submitted[1]["language_model"] == ["manual"]
+        assert submitted[1]["feedback"] == ["Move the intervals to Thursday"]
+        assert submitted[1]["week_start"] == ["2026-03-30"]
         browser.close()
 
 
