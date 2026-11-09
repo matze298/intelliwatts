@@ -28,8 +28,10 @@ def format_manual_prompt(messages: list[dict[str, str]]) -> str:
         A single prompt that can be pasted into any browser-based LLM.
     """
     sections = [
-        ("Generate a training plan for IntelliWatts. Follow ALL instructions and context below. "
-        "Return only a single JSON object matching the schema at the end; no explanation or markdown code fences.")
+        (
+            "Generate a training plan for IntelliWatts. Follow ALL instructions and context below. "
+            "Return only a single JSON object matching the schema at the end; no explanation or markdown code fences."
+        )
     ]
     for message in messages:
         heading = "SYSTEM INSTRUCTIONS" if message["role"] == "system" else "USER MESSAGE"
