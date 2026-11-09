@@ -522,21 +522,38 @@ async def _render_manual_plan_page(
     """
     raw_week_start = str(data.get("week_start", "")).strip()
     response_text = str(data.get("response_text", ""))
+    mode = str(data.get("mode", "generate"))
+    feedback = str(data.get("feedback", ""))
+    if mode not in {"generate", "update"}:
+        error = "Choose Generate Plan or Update Plan for manual mode."
     with Session(engine) as session:
         selection = _resolve_week_selection(session, user, raw_week_start)
     controls = _manual_plan_controls(data, user)
     error = error or (str(selection.error) if selection.error else None) or controls.error
     prompt_text = ""
     if error is None:
-        effective_user = user.model_copy(update={"available_cycling_days": controls.available_days})
-        prepared = await generate_weekly_plan(
-            user=effective_user,
-            settings=settings,
-            weekly_hours=controls.weekly_hours,
-            weekly_sessions=controls.weekly_sessions,
-            week_start=selection.selected_week_start,
-            prompt_only=True,
-        )
+        effective_user = user.model_copy(update={
+            "available_cycling_days": controls.available_days,
+            "weekly_hours": controls.weekly_hours if controls.weekly_hours is not None else user.weekly_hours,
+            "weekly_sessions": controls.weekly_sessions if controls.weekly_sessions is not None else user.weekly_sessions,
+        })
+        if mode == "update":
+            prepared = await update_training_plan(
+                user=effective_user,
+                feedback=feedback,
+                settings=settings,
+                week_start=selection.selected_week_start,
+                prompt_only=True,
+            )
+        else:
+            prepared = await generate_weekly_plan(
+                user=effective_user,
+                settings=settings,
+                weekly_hours=controls.weekly_hours,
+                weekly_sessions=controls.weekly_sessions,
+                week_start=selection.selected_week_start,
+                prompt_only=True,
+            )
         prompt_text = format_manual_prompt(prepared["prompt"])
 
     week_start = selection.selected_week_start
@@ -554,6 +571,8 @@ async def _render_manual_plan_page(
             "available_days": controls.available_days,
             "prompt_text": prompt_text,
             "response_text": response_text,
+            "mode": mode,
+            "feedback": feedback,
             "error": error,
         },
         status_code=status.HTTP_400_BAD_REQUEST if error else status.HTTP_200_OK,
@@ -575,6 +594,20 @@ async def manual_plan_page(
     return await _render_manual_plan_page(request, user, settings, request.query_params)
 
 
+@planner_router.post("/manual-plan/prepare", response_class=HTMLResponse)
+async def prepare_manual_plan(
+    request: Request,
+    user: Annotated[User, Depends(get_profile)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
+    """Prepare a copyable prompt from the selected Generate or Update action.
+
+    Returns:
+        The manual prompt and response workspace.
+    """
+    return await _render_manual_plan_page(request, user, settings, await request.form())
+
+
 @planner_router.post("/manual-plan", response_class=HTMLResponse)
 async def import_manual_plan(
     request: Request,
@@ -589,6 +622,11 @@ async def import_manual_plan(
     data = await request.form()
     raw_week_start = str(data.get("week_start", "")).strip()
     response_text = str(data.get("response_text", ""))
+    mode = str(data.get("mode", "generate"))
+    if mode not in {"generate", "update"}:
+        return await _render_manual_plan_page(
+            request, user, settings, data, error="Choose Generate Plan or Update Plan for manual mode."
+        )
     with Session(engine) as session:
         selection = _resolve_week_selection(session, user, raw_week_start)
     controls = _manual_plan_controls(data, user)
@@ -601,16 +639,29 @@ async def import_manual_plan(
             error=str(selection.error) if selection.error else controls.error,
         )
 
-    effective_user = user.model_copy(update={"available_cycling_days": controls.available_days})
+    effective_user = user.model_copy(update={
+        "available_cycling_days": controls.available_days,
+        "weekly_hours": controls.weekly_hours if controls.weekly_hours is not None else user.weekly_hours,
+        "weekly_sessions": controls.weekly_sessions if controls.weekly_sessions is not None else user.weekly_sessions,
+    })
     try:
-        result = await generate_weekly_plan(
-            user=effective_user,
-            settings=settings,
-            weekly_hours=controls.weekly_hours,
-            weekly_sessions=controls.weekly_sessions,
-            week_start=selection.selected_week_start,
-            manual_response=response_text,
-        )
+        if mode == "update":
+            result = await update_training_plan(
+                user=effective_user,
+                feedback=str(data.get("feedback", "")),
+                settings=settings,
+                week_start=selection.selected_week_start,
+                manual_response=response_text,
+            )
+        else:
+            result = await generate_weekly_plan(
+                user=effective_user,
+                settings=settings,
+                weekly_hours=controls.weekly_hours,
+                weekly_sessions=controls.weekly_sessions,
+                week_start=selection.selected_week_start,
+                manual_response=response_text,
+            )
     except ValueError as exc:
         return await _render_manual_plan_page(request, user, settings, data, error=str(exc))
 
@@ -619,6 +670,7 @@ async def import_manual_plan(
     with Session(engine) as session:
         db_user = session.get(User, user.id)
         if db_user is not None:
+            db_user.preferred_language_model = LanguageModel.MANUAL.value
             if controls.weekly_hours is not None:
                 db_user.weekly_hours = controls.weekly_hours
             if controls.weekly_sessions is not None:
@@ -647,6 +699,8 @@ async def generate(  # ruff: ignore[too-many-locals, complex-structure]
     """
     input_data = await request.form()
     raw_model = input_data.get("language_model")
+    if raw_model == LanguageModel.MANUAL.value:
+        return await _render_manual_plan_page(request, user, settings, input_data)
     selected_model = None
     if raw_model:
         selected_model = _selected_language_model(raw_model, settings.LANGUAGE_MODEL)
@@ -773,6 +827,8 @@ async def update(  # ruff: ignore[too-many-locals, too-many-branches, complex-st
     # In-place updates also receive the visible planning controls from the
     # browser, not just the text feedback. Plain HTML submissions remain valid.
     raw_model = input_data.get("language_model")
+    if raw_model == LanguageModel.MANUAL.value:
+        return await _render_manual_plan_page(request, user, settings, input_data)
     if raw_model:
         selected_model = _selected_language_model(raw_model, settings.LANGUAGE_MODEL)
         if selected_model is None:
