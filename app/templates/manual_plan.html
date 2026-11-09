@@ -54,9 +54,14 @@
                 <input type="hidden" name="available_days" value="{{ day }}">
                 {% endfor %}
                 <div>
-                    <label for="manual-response" class="control-label">2. Paste the complete JSON response</label>
-                    <p class="mt-2 text-sm text-slate-600">The response must contain <code>plan_markdown</code> and a structured <code>workouts</code> array. An optional JSON code fence is accepted. No plan is published automatically.</p>
-                    <textarea id="manual-response" name="response_text" rows="16" required spellcheck="false" placeholder='{"plan_markdown": "...", "workouts": []}' style="font-family: monospace;" class="control-field mt-2 w-full text-xs">{{ response_text }}</textarea>
+                    <label for="manual-response" class="control-label">2. Import the JSON response</label>
+                    <p class="mt-2 text-sm text-slate-600">Ask your LLM to create a downloadable <code>intelliwatts-plan.json</code> file. Select it below, or paste raw JSON directly. The JSON must contain <code>plan_markdown</code> and a structured <code>workouts</code> array. Nothing is published automatically.</p>
+                    <div class="mt-3">
+                        <label for="manual-json-file" class="control-label">Select JSON file (optional)</label>
+                        <input id="manual-json-file" type="file" accept=".json,application/json" class="control-field mt-2 w-full">
+                        <p id="manual-file-status" class="mt-2 text-sm text-slate-600" role="status"></p>
+                    </div>
+                    <textarea id="manual-response" name="response_text" rows="16" required spellcheck="false" placeholder='{"plan_markdown": "...", "workouts": []}' style="font-family: monospace;" class="control-field mt-3 w-full text-xs">{{ response_text }}</textarea>
                 </div>
                 <div class="flex flex-wrap gap-3">
                     <button type="submit" class="control-button control-button-primary px-4 py-3 text-sm">{{ "Validate & update plan" if mode == "update" else "Validate & save plan" }}</button>
@@ -66,6 +71,21 @@
         </section>
     </main>
     <script>
+    document.getElementById("manual-json-file")?.addEventListener("change", async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const status = document.getElementById("manual-file-status");
+        if (file.size > 250000) {
+            status.textContent = "File exceeds the 250 KB response limit.";
+            return;
+        }
+        try {
+            document.getElementById("manual-response").value = await file.text();
+            status.textContent = file.name + " loaded. Review the response below, then validate and save.";
+        } catch {
+            status.textContent = "Could not read the file. Paste the JSON contents below instead.";
+        }
+    });
     document.getElementById("copy-manual-prompt")?.addEventListener("click", async () => {
         const prompt = document.getElementById("manual-prompt");
         const status = document.getElementById("copy-manual-status");
