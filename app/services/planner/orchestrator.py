@@ -103,6 +103,9 @@ async def update_training_plan(  # ruff: ignore[too-many-arguments]
 
     Returns:
         The updated weekly plan and summary.
+
+    Raises:
+        ValueError: If manual mode is selected without a pasted response.
     """
     if settings is None:
         settings = get_settings()
@@ -122,7 +125,11 @@ async def update_training_plan(  # ruff: ignore[too-many-arguments]
         if not plan:
             if prompt_only or manual_response is not None:
                 return await generate_weekly_plan(
-                    user, settings, week_start=monday, progress=progress, prompt_only=prompt_only,
+                    user,
+                    settings,
+                    week_start=monday,
+                    progress=progress,
+                    prompt_only=prompt_only,
                     manual_response=manual_response,
                 )
             if progress is not None:
@@ -216,6 +223,9 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
 
     Returns:
         The generated plan payload, summary, prompt, and saved identifiers.
+
+    Raises:
+        ValueError: If manual mode is selected without a pasted response.
     """
     if settings is None:
         settings = get_settings()
@@ -266,9 +276,6 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
         )
 
     _report(progress, "Checking upcoming sports and race commitments")
-    calendar = await run_in_threadpool(
-        load_week_commitments, client, week_start=week_start, today=datetime.now(UTC).date()
-    )
     # Add date rules even when athletes override the default coach prompt.
     full_summary = (
         f"{full_summary}\n\n"
@@ -278,7 +285,10 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
             existing_plan=False,
             phase_start=phase.start_date,
         )
-        + f"\n\n{calendar}"
+        + "\n\n"
+        + await run_in_threadpool(
+            load_week_commitments, client, week_start=week_start, today=datetime.now(UTC).date()
+        )
     )
 
     messages = [
