@@ -30,8 +30,18 @@ def format_manual_prompt(messages: list[dict[str, str]]) -> str:
     sections = [
         (
             "Create or revise a training plan for IntelliWatts. Follow ALL instructions and context below. "
-            "Return only a single JSON object matching the schema at the end; no explanation or markdown code fences."
-        )
+            "Your deliverable is a UTF-8 JSON document named intelliwatts-plan.json. "
+            "If your chat supports file attachments, create that downloadable .json file containing ONLY one JSON object. "
+            "Otherwise, output ONLY the raw JSON object (an optional json code fence is fine), with no commentary."
+        ),
+        (
+            "STRICT JSON RULES: Use straight ASCII double quotes for every key and string delimiter, never curly quotes. "
+            "Represent newlines inside strings as escaped \\n, not literal line breaks. "
+            "Do not Markdown-escape array brackets: write [ and ], NEVER \\[ or \\]. "
+            "The workouts, segments, and steps fields must ALWAYS be JSON arrays, even for a single item. "
+            "For example, a single interval is \"steps\": [{\"duration_m\": 20, \"power_pct\": \"65-70\"}]. "
+            "Before returning the result, check it parses as JSON and matches the schema below."
+        ),
     ]
     for message in messages:
         heading = {"system": "SYSTEM INSTRUCTIONS", "user": "USER MESSAGE", "assistant": "ASSISTANT RESPONSE"}.get(
@@ -44,6 +54,73 @@ def format_manual_prompt(messages: list[dict[str, str]]) -> str:
         + "\nReturn a JSON object with plan_markdown and workouts. Use [] when no workouts are prescribed."
     )
     return "\n\n".join(sections)
+
+
+def _normalize_json_punctuation(text: str) -> str:
+    """Repair smart JSON quotes and Markdown-escaped array brackets outside strings.
+
+    Returns:
+        JSON text with delimiters normalized, preserving content inside valid strings.
+    """
+    result: list[str] = []
+    quote: str | None = None
+    escaped = False
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if quote is None:
+            if char in {'"', "“"}:
+                result.append('"')
+                quote = char
+            elif char == "\\" and index + 1 < len(text) and text[index + 1] in "[]":
+                # Some chat interfaces add a Markdown escape before JSON arrays.
+                index += 1
+                result.append(text[index])
+            else:
+                result.append(char)
+        elif quote == '"':
+            result.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                quote = None
+        elif escaped:
+            result.append(char)
+            escaped = False
+        elif char == "\\":
+            result.append(char)
+            escaped = True
+        elif char == "”" and (
+            not (following := text[index + 1 :].lstrip()) or following[0] in ":,}]"
+        ):
+            result.append('"')
+            quote = None
+        elif char == '"':
+            # A straight quote within a smart-quoted string is content, not a delimiter.
+            result.append('\\"')
+        else:
+            result.append(char)
+        index += 1
+    return "".join(result)
+
+
+def _wrap_single_steps(data: object) -> object:
+    """Repair only one-step objects in structured workouts.
+
+    Returns:
+        The parsed object with single-step dictionaries wrapped in arrays.
+    """
+    if not isinstance(data, dict) or not isinstance(data.get("workouts"), list):
+        return data
+    for workout in data["workouts"]:
+        if not isinstance(workout, dict) or not isinstance(workout.get("segments"), list):
+            continue
+        for segment in workout["segments"]:
+            if isinstance(segment, dict) and isinstance(segment.get("steps"), dict):
+                segment["steps"] = [segment["steps"]]
+    return data
 
 
 def parse_manual_response(response_text: str, *, messages: list[dict[str, str]], week_start: date) -> LLMResponse:
@@ -70,7 +147,19 @@ def parse_manual_response(response_text: str, *, messages: list[dict[str, str]],
         text = match.group(1)
 
     try:
-        output = WeeklyPlanOutput.model_validate_json(text)
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        try:
+            data = json.loads(_normalize_json_punctuation(text))
+        except json.JSONDecodeError as exc:
+            msg = (
+                "The response must contain valid JSON with plan_markdown and structured workouts. "
+                f"Syntax error at line {exc.lineno}, column {exc.colno}: {exc.msg}."
+            )
+            raise ValueError(msg) from exc
+
+    try:
+        output = WeeklyPlanOutput.model_validate(_wrap_single_steps(data))
     except ValidationError as exc:
         msg = "The response must contain valid JSON with plan_markdown and structured workouts. " + str(exc)[:900]
         raise ValueError(msg) from exc
