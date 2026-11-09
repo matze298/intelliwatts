@@ -612,9 +612,7 @@ async def import_manual_plan(
             manual_response=response_text,
         )
     except ValueError as exc:
-        return await _render_manual_plan_page(
-            request, user, settings, data, error=str(exc)
-        )
+        return await _render_manual_plan_page(request, user, settings, data, error=str(exc))
 
     # Match automatic generation: the selected limits become defaults for
     # future revisions of the imported plan.
