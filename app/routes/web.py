@@ -532,11 +532,15 @@ async def _render_manual_plan_page(
     error = error or (str(selection.error) if selection.error else None) or controls.error
     prompt_text = ""
     if error is None:
-        effective_user = user.model_copy(update={
-            "available_cycling_days": controls.available_days,
-            "weekly_hours": controls.weekly_hours if controls.weekly_hours is not None else user.weekly_hours,
-            "weekly_sessions": controls.weekly_sessions if controls.weekly_sessions is not None else user.weekly_sessions,
-        })
+        effective_user = user.model_copy(
+            update={
+                "available_cycling_days": controls.available_days,
+                "weekly_hours": controls.weekly_hours if controls.weekly_hours is not None else user.weekly_hours,
+                "weekly_sessions": controls.weekly_sessions
+                if controls.weekly_sessions is not None
+                else user.weekly_sessions,
+            }
+        )
         if mode == "update":
             prepared = await update_training_plan(
                 user=effective_user,
@@ -639,11 +643,15 @@ async def import_manual_plan(
             error=str(selection.error) if selection.error else controls.error,
         )
 
-    effective_user = user.model_copy(update={
-        "available_cycling_days": controls.available_days,
-        "weekly_hours": controls.weekly_hours if controls.weekly_hours is not None else user.weekly_hours,
-        "weekly_sessions": controls.weekly_sessions if controls.weekly_sessions is not None else user.weekly_sessions,
-    })
+    effective_user = user.model_copy(
+        update={
+            "available_cycling_days": controls.available_days,
+            "weekly_hours": controls.weekly_hours if controls.weekly_hours is not None else user.weekly_hours,
+            "weekly_sessions": controls.weekly_sessions
+            if controls.weekly_sessions is not None
+            else user.weekly_sessions,
+        }
+    )
     try:
         if mode == "update":
             result = await update_training_plan(
@@ -701,12 +709,10 @@ async def generate(  # ruff: ignore[too-many-locals, complex-structure]
     raw_model = input_data.get("language_model")
     if raw_model == LanguageModel.MANUAL.value:
         return await _render_manual_plan_page(request, user, settings, input_data)
-    selected_model = None
-    if raw_model:
-        selected_model = _selected_language_model(raw_model, settings.LANGUAGE_MODEL)
-        if selected_model is None:
-            return _render_invalid_model_selection(request, user, str(input_data.get("week_start", "")))
-        settings = settings.model_copy(update={"LANGUAGE_MODEL": selected_model})
+    selected_model = _selected_language_model(raw_model, settings.LANGUAGE_MODEL) if raw_model else None
+    if raw_model and selected_model is None:
+        return _render_invalid_model_selection(request, user, str(input_data.get("week_start", "")))
+    settings = settings.model_copy(update={"LANGUAGE_MODEL": selected_model}) if selected_model is not None else settings
     raw_week_start = str(input_data.get("week_start", "")).strip()
 
     weekly_hours, weekly_sessions, limit_error = _parse_weekly_limits(
