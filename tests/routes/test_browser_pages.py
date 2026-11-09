@@ -8,9 +8,9 @@ import threading
 import time
 from datetime import date
 from pathlib import Path
-from urllib.parse import parse_qs
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, NamedTuple, cast
+from urllib.parse import parse_qs
 
 import pytest
 import uvicorn
@@ -32,6 +32,8 @@ from app.services.planner import orchestrator
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+    from playwright.sync_api import Route
 
 _FIXTURE_DIR = Path(__file__).resolve().parents[1] / "data" / "intervals"
 
@@ -222,7 +224,7 @@ def test_manual_model_uses_prompt_workspace_for_generate_and_update(browser_serv
     # GIVEN an authenticated athlete with an active training horizon.
     submitted: list[dict[str, list[str]]] = []
 
-    def capture_manual(route: object) -> None:
+    def capture_manual(route: Route) -> None:
         """Capture POSTed controls without calling the LLM."""
         submitted.append(parse_qs(route.request.post_data or ""))
         route.fulfill(status=200, content_type="text/html", body="<html><body>Manual workspace</body></html>")
