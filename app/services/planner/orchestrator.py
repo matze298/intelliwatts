@@ -12,7 +12,7 @@ from requests_cache import CachedSession
 from sqlmodel import Session, select
 from starlette.concurrency import run_in_threadpool
 
-from app.config import Settings, get_settings
+from app.config import LanguageModel, Settings, get_settings
 from app.db import engine
 from app.intervals.client import IntervalsClient
 from app.models.plan import TrainingPlan
@@ -89,13 +89,15 @@ async def _fresh_revision_context(
     return f"{coach.brief_context}\nLast recorded 7 days:\n{rows or '- No completed activity records.'}\n{calendar}"
 
 
-async def update_training_plan(
+async def update_training_plan(  # ruff: ignore[too-many-arguments]
     user: User,
     feedback: str,
     settings: Settings | None = None,
     *,
     week_start: date | None = None,
     progress: ProgressCallback | None = None,
+    prompt_only: bool = False,
+    manual_response: str | None = None,
 ) -> dict[str, Any]:
     """Updates the training plan based on user feedback.
 
@@ -118,6 +120,11 @@ async def update_training_plan(
         plan = session.exec(statement).first()
 
         if not plan:
+            if prompt_only or manual_response is not None:
+                return await generate_weekly_plan(
+                    user, settings, week_start=monday, progress=progress, prompt_only=prompt_only,
+                    manual_response=manual_response,
+                )
             if progress is not None:
                 return await generate_weekly_plan(user, settings, week_start=monday, progress=progress)
             return await generate_weekly_plan(user, settings, week_start=monday)
@@ -165,12 +172,21 @@ async def update_training_plan(
         ),
     })
 
-    _report(progress, "Requesting a revised plan from the selected model")
-    llm_response = await run_in_threadpool(
-        generate_plan,
-        messages=history,
-        language_model=settings.LANGUAGE_MODEL,
-    )
+    if prompt_only:
+        return {"prompt": history, "week_start": monday}
+    if manual_response is not None:
+        _report(progress, "Validating the pasted revision")
+        llm_response = parse_manual_response(manual_response, messages=history, week_start=monday)
+    else:
+        if settings.LANGUAGE_MODEL == LanguageModel.MANUAL:
+            msg = "Manual mode requires a pasted LLM response."
+            raise ValueError(msg)
+        _report(progress, "Requesting a revised plan from the selected model")
+        llm_response = await run_in_threadpool(
+            generate_plan,
+            messages=history,
+            language_model=settings.LANGUAGE_MODEL,
+        )
 
     _report(progress, "Saving the revision and staging workouts")
     with Session(engine) as session:
@@ -276,6 +292,9 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
         _report(progress, "Validating the pasted structured workouts")
         llm_response = parse_manual_response(manual_response, messages=messages, week_start=week_start)
     else:
+        if settings.LANGUAGE_MODEL == LanguageModel.MANUAL:
+            msg = "Manual mode requires a pasted LLM response."
+            raise ValueError(msg)
         _report(progress, "Requesting structured workouts from the selected model")
         llm_response = await run_in_threadpool(
             generate_plan,
