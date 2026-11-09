@@ -57,6 +57,7 @@ def format_manual_prompt(messages: list[dict[str, str]]) -> str:
 
 
 _JSON_QUOTED_STRING = re.compile(r'"(?:\\.|[^"\\])*"', re.DOTALL)
+_SMART_STRING_ESCAPES = {"\n": r"\n", "\r": r"\r", "\t": r"\t", '"': r'\"'}
 
 
 def _smart_quote_closes(text: str, index: int) -> bool:
@@ -95,7 +96,7 @@ def _append_smart_quoted_text(text: str, start: int, result: list[str]) -> int:
             result.append('"')
             return index + 1
         else:
-            result.append(r'\"' if char == '"' else char)
+            result.append(_SMART_STRING_ESCAPES.get(char, char))
         index += 1
     return index
 
