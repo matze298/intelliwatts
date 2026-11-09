@@ -57,7 +57,7 @@ def format_manual_prompt(messages: list[dict[str, str]]) -> str:
 
 
 _JSON_QUOTED_STRING = re.compile(r'"(?:\\.|[^"\\])*"', re.DOTALL)
-_SMART_STRING_ESCAPES = {"\n": r"\n", "\r": r"\r", "\t": r"\t", '"': r'\"'}
+_SMART_STRING_ESCAPES = {"\n": r"\n", "\r": r"\r", "\t": r"\t", '"': r"\""}
 
 
 def _smart_quote_closes(text: str, index: int) -> bool:
