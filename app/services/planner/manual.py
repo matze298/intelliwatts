@@ -29,12 +29,14 @@ def format_manual_prompt(messages: list[dict[str, str]]) -> str:
     """
     sections = [
         (
-            "Generate a training plan for IntelliWatts. Follow ALL instructions and context below. "
+            "Create or revise a training plan for IntelliWatts. Follow ALL instructions and context below. "
             "Return only a single JSON object matching the schema at the end; no explanation or markdown code fences."
         )
     ]
     for message in messages:
-        heading = "SYSTEM INSTRUCTIONS" if message["role"] == "system" else "USER MESSAGE"
+        heading = {"system": "SYSTEM INSTRUCTIONS", "user": "USER MESSAGE", "assistant": "ASSISTANT RESPONSE"}.get(
+            message["role"], "PRIOR MESSAGE"
+        )
         sections.append(f"### {heading}\n{message['content']}")
     sections.append(
         "### REQUIRED JSON RESPONSE SCHEMA\n"
