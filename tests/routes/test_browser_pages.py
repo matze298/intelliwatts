@@ -279,9 +279,19 @@ def test_manual_model_uses_prompt_workspace_for_generate_and_update(browser_serv
         browser.close()
 
 
-def test_manual_json_file_populates_response_field(browser_server: BrowserServer) -> None:
+def test_manual_json_file_populates_response_field(
+    browser_server: BrowserServer, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A downloaded JSON file is loaded into the existing manual-import field."""
     # GIVEN an authenticated athlete using a manual plan for a future week.
+    # The browser fixture mocks dashboard data, but manual prompt preparation
+    # also loads Intervals.icu analysis and commitments.
+    monkeypatch.setattr(
+        orchestrator,
+        "_get_analysis",
+        lambda *_args, **_kwargs: SimpleNamespace(provider_results={}, daily_records=[]),
+    )
+    monkeypatch.setattr(orchestrator, "load_week_commitments", lambda *_args, **_kwargs: "No upcoming events")
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         page = browser.new_page()
