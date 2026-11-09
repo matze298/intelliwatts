@@ -249,19 +249,21 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
             )
         )
 
-    # Add dates at request time, not in static settings or stored prompt templates.
-    # This rule also applies when athletes override the default coach prompt.
-    date_rules = workout_date_guidance(
-        week_start=week_start,
-        today=datetime.now(UTC).date(),
-        existing_plan=False,
-        phase_start=phase.start_date,
-    )
     _report(progress, "Checking upcoming sports and race commitments")
     calendar = await run_in_threadpool(
         load_week_commitments, client, week_start=week_start, today=datetime.now(UTC).date()
     )
-    full_summary = f"{full_summary}\n\n{date_rules}\n\n{calendar}"
+    # Add date rules even when athletes override the default coach prompt.
+    full_summary = (
+        f"{full_summary}\n\n"
+        + workout_date_guidance(
+            week_start=week_start,
+            today=datetime.now(UTC).date(),
+            existing_plan=False,
+            phase_start=phase.start_date,
+        )
+        + f"\n\n{calendar}"
+    )
 
     messages = [
         {"role": LLMRole.SYSTEM, "content": settings.SYSTEM_PROMPT},
