@@ -21,6 +21,7 @@
 - **Recovery context:** Choose whether readiness and wellness signals are included in plan generation.
 - **Model selection:** Select a configured OpenAI, Groq, or Gemini model; the last used model is remembered across visits and revisions.
 - **Weekly workout generation:** Create a structured weekly plan based on the goal, selected week, constraints, and available context.
+- **Manual LLM planning:** Use **Use external LLM** in the Planner to prepare the full coaching prompt, copy it into ChatGPT or another browser-based model, and paste back the model\'s JSON response. IntelliWatts validates and stages the same structured workout format as API generation, without calling an LLM API. The prompt includes personal athlete data, so review it before sharing. No workout is published until you choose Publish.
 - **Review, update, and publish:** Inspect the generated plan, request an update without leaving the page, and publish the selected week's workouts to Intervals.icu. The Planner uses streaming keepalives during slow model calls, displays publishing status and confirmed calendar links, and prevents ambiguous workout dates from being silently shifted.
 
 ### Performance dashboard
@@ -57,6 +58,7 @@ Charts adjust their axis labels, gridlines, legends, and tooltips to remain legi
 3. **Set your goal.** On the Plan page, enter the objective, start date, and target date, then save the long-term goal. The start date defaults to today; choose a future date to postpone Week 1.
 4. **Configure the week.** Select the planning week and define the weekly hours, session limit, model, and optional wellness context.
 5. **Generate and review.** Select the available cycling weekdays, maximum cycling sessions/hours, and model. These preferences are saved and used for subsequent plan updates. Other sports affect recovery and timing but do not consume cycling limits. Generate or revise in place while following live progress messages.
+   Alternatively, choose **Use external LLM**, copy the full prompt, open your preferred model in another tab, and paste its JSON response back into IntelliWatts. Manual imports must contain `plan_markdown` and structured `workouts`; invalid JSON or dates outside the selected week are rejected before saving.
 6. **Publish.** Use the publish action to send all structured workouts for the selected week to Intervals.icu. IntelliWatts resolves weekdays against the selected week, accepts explicit local dates, and checks any dates returned by Intervals.icu. An invalid day leaves the plan saved but prevents publishing until corrected. Generating or updating a plan saves a local draft; publishing is a separate action.
 
 The Planner, Dashboard, and Settings are available from the main navigation. On smaller screens the navigation moves into the page header.
@@ -70,7 +72,7 @@ The Planner, Dashboard, and Settings are available from the main navigation. On 
 | [Groq](https://console.groq.com/keys) | Supported LLM backend for training-plan generation |
 | [Google Gemini](https://aistudio.google.com/api-keys) | Supported LLM backend for training-plan generation |
 
-The available model identifiers are maintained in `app/config.py`. The configured API key for the selected provider is required whenever a plan is generated.
+The available model identifiers are maintained in `app/config.py`. The configured API key for the selected provider is required for automatic generation; manual LLM planning does not require an LLM provider API key.
 
 ## Requirements
 
