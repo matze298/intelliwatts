@@ -32,7 +32,7 @@
             {% if prompt_text %}
             <div class="mt-6">
                 <label for="manual-prompt" class="control-label">1. Full LLM prompt</label>
-                <textarea id="manual-prompt" rows="16" readonly spellcheck="false" class="control-field mt-2 w-full font-mono text-xs">{{ prompt_text }}</textarea>
+                <textarea id="manual-prompt" rows="16" readonly spellcheck="false" style="font-family: monospace;" class="control-field mt-2 w-full text-xs">{{ prompt_text }}</textarea>
                 <div class="mt-3 flex flex-wrap items-center gap-3">
                     <button type="button" id="copy-manual-prompt" class="control-button control-button-secondary px-4 py-2 text-sm">Copy full prompt</button>
                     <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" class="control-button control-button-secondary px-4 py-2 text-sm">Open ChatGPT</a>
@@ -51,7 +51,7 @@
                 <div>
                     <label for="manual-response" class="control-label">2. Paste the complete JSON response</label>
                     <p class="mt-2 text-sm text-slate-600">The response must contain <code>plan_markdown</code> and a structured <code>workouts</code> array. An optional JSON code fence is accepted. No plan is published automatically.</p>
-                    <textarea id="manual-response" name="response_text" rows="16" required spellcheck="false" placeholder='{"plan_markdown": "...", "workouts": []}' class="control-field mt-2 w-full font-mono text-xs">{{ response_text }}</textarea>
+                    <textarea id="manual-response" name="response_text" rows="16" required spellcheck="false" placeholder='{"plan_markdown": "...", "workouts": []}' style="font-family: monospace;" class="control-field mt-2 w-full text-xs">{{ response_text }}</textarea>
                 </div>
                 <div class="flex flex-wrap gap-3">
                     <button type="submit" class="control-button control-button-primary px-4 py-3 text-sm">Validate & save plan</button>
