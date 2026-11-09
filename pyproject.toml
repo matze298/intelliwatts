@@ -17,7 +17,7 @@ dependencies = [
     "polars",
     "pydantic",
     "pydantic-settings",
-    "psycopg[binary]>=3.3.6",
+    "psycopg[binary]>=3.3.8",
     "python-multipart",
     "requests",
     "requests-cache",
