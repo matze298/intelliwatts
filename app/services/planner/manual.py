@@ -39,7 +39,7 @@ def format_manual_prompt(messages: list[dict[str, str]]) -> str:
             "Represent newlines inside strings as escaped \\n, not literal line breaks. "
             "Do not Markdown-escape array brackets: write [ and ], NEVER \\[ or \\]. "
             "The workouts, segments, and steps fields must ALWAYS be JSON arrays, even for a single item. "
-            "For example, a single interval is \"steps\": [{\"duration_m\": 20, \"power_pct\": \"65-70\"}]. "
+            'For example, a single interval is "steps": [{"duration_m": 20, "power_pct": "65-70"}]. '
             "Before returning the result, check it parses as JSON and matches the schema below."
         ),
     ]
@@ -56,58 +56,72 @@ def format_manual_prompt(messages: list[dict[str, str]]) -> str:
     return "\n\n".join(sections)
 
 
-def _normalize_json_punctuation(text: str) -> str:
-    """Repair smart JSON quotes and Markdown-escaped array brackets outside strings.
+_JSON_QUOTED_STRING = re.compile(r'"(?:\\.|[^"\\])*"', re.DOTALL)
+
+
+def _smart_quote_closes(text: str, index: int) -> bool:
+    """Distinguish a closing JSON delimiter from punctuation inside prose.
 
     Returns:
-        JSON text with delimiters normalized, preserving content inside valid strings.
+        Whether this smart right quote can close a JSON string.
     """
-    result: list[str] = []
-    quote: str | None = None
+    following = text[index + 1 :].lstrip()
+    if not following or following[0] in ":}]":
+        return True
+    if not following.startswith(","):
+        return False
+    after_comma = following[1:].lstrip()
+    return not after_comma or after_comma[0] in '"“{['
+
+
+def _append_smart_quoted_text(text: str, start: int, result: list[str]) -> int:
+    """Convert a curly-quoted string into a JSON-quoted string in the output.
+
+    Returns:
+        The index of the next character after that string.
+    """
+    result.append('"')
+    index = start + 1
     escaped = False
-    index = 0
     while index < len(text):
         char = text[index]
-        if quote is None:
-            if char in {'"', "“"}:
-                result.append('"')
-                quote = char
-            elif char == "\\" and index + 1 < len(text) and text[index + 1] in "[]":
-                # Some chat interfaces add a Markdown escape before JSON arrays.
-                index += 1
-                result.append(text[index])
-            else:
-                result.append(char)
-        elif quote == '"':
-            result.append(char)
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                quote = None
-        elif escaped:
+        if escaped:
             result.append(char)
             escaped = False
         elif char == "\\":
             result.append(char)
             escaped = True
-        elif char == "”" and (
-            not (following := text[index + 1 :].lstrip())
-            or following[0] in ":}]"
-            or (
-                following.startswith(",")
-                and (not (after_comma := following[1:].lstrip()) or after_comma[0] in '"“{[')
-            )
-        ):
+        elif char == "”" and _smart_quote_closes(text, index):
             result.append('"')
-            quote = None
-        elif char == '"':
-            # A straight quote within a smart-quoted string is content, not a delimiter.
-            result.append('\\"')
+            return index + 1
         else:
-            result.append(char)
+            result.append(r'\"' if char == '"' else char)
         index += 1
+    return index
+
+
+def _normalize_json_punctuation(text: str) -> str:
+    """Repair smart JSON delimiters and escaped brackets outside JSON strings.
+
+    Returns:
+        JSON text with common copy/paste artifacts normalized.
+    """
+    result: list[str] = []
+    index = 0
+    while index < len(text):
+        quoted = _JSON_QUOTED_STRING.match(text, index)
+        if quoted is not None:
+            # Never modify the contents of already-valid JSON strings.
+            result.append(quoted.group())
+            index = quoted.end()
+        elif text[index] == "“":
+            index = _append_smart_quoted_text(text, index, result)
+        elif text[index : index + 2] in {r"\[", r"\]"}:
+            result.append(text[index + 1])
+            index += 2
+        else:
+            result.append(text[index])
+            index += 1
     return "".join(result)
 
 
