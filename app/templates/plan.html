@@ -140,7 +140,7 @@
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div>
                         <label for="language_model" class="control-label">Large Language model</label>
-                        <select id="language_model" name="language_model" form="generate-plan-form" class="control-field" onchange="document.getElementById('update-language-model').value = this.value">
+                        <select id="language_model" name="language_model" form="generate-plan-form" class="control-field" onchange="const target = document.getElementById('update-language-model'); if (target) target.value = this.value">
                             {% for model in settings.models %}
                             <option value="{{ model }}" {% if model==settings.settings.LANGUAGE_MODEL %}selected{% endif %}>{{ "Manual / External LLM" if model == "manual" else model }}</option>
                             {% endfor %}
