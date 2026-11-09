@@ -26,6 +26,7 @@ from app.services.long_term_planner import (
 )
 from app.services.planner.analysis import get_analysis
 from app.services.planner.calendar import load_week_commitments
+from app.services.planner.manual import parse_manual_response
 from app.services.planner.persistence import save_and_stage_weekly_plan
 from app.services.planner.preferences import preferred_model
 from app.services.planner.prompt import PromptSummaryContext, build_prompt_summary, workout_date_guidance
@@ -192,6 +193,8 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
     weekly_sessions: int | None = None,
     week_start: date | None = None,
     progress: ProgressCallback | None = None,
+    prompt_only: bool = False,
+    manual_response: str | None = None,
 ) -> dict[str, Any]:
     """Generates the weekly plan.
 
@@ -260,15 +263,23 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
     )
     full_summary = f"{full_summary}\n\n{date_rules}\n\n{calendar}"
 
-    _report(progress, "Requesting structured workouts from the selected model")
-    llm_response = await run_in_threadpool(
-        generate_plan,
-        messages=[
-            {"role": LLMRole.SYSTEM, "content": settings.SYSTEM_PROMPT},
-            {"role": LLMRole.USER, "content": full_summary},
-        ],
-        language_model=settings.LANGUAGE_MODEL,
-    )
+    messages = [
+        {"role": LLMRole.SYSTEM, "content": settings.SYSTEM_PROMPT},
+        {"role": LLMRole.USER, "content": full_summary},
+    ]
+    if prompt_only:
+        return {"summary": full_summary, "prompt": messages, "week_start": target_week_start}
+
+    if manual_response is not None:
+        _report(progress, "Validating the pasted structured workouts")
+        llm_response = parse_manual_response(manual_response, messages=messages, week_start=target_week_start)
+    else:
+        _report(progress, "Requesting structured workouts from the selected model")
+        llm_response = await run_in_threadpool(
+            generate_plan,
+            messages=messages,
+            language_model=settings.LANGUAGE_MODEL,
+        )
 
     _report(progress, "Validating and saving the generated workouts")
     with Session(engine) as db_session:
