@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -13,6 +13,9 @@ from app.models.plan import TrainingPlan
 from app.planning.llm import LLMResponse
 from app.planning.schemas import WeeklyPlanOutput
 from app.services.workout_delivery import build_workout_delivery_payloads
+
+if TYPE_CHECKING:
+    from datetime import date
 
 MAX_MANUAL_RESPONSE_LENGTH = 250_000
 _JSON_FENCE = re.compile(r"\A```(?:json)?\s*\n(.*?)\n```\s*\Z", re.IGNORECASE | re.DOTALL)
@@ -25,8 +28,8 @@ def format_manual_prompt(messages: list[dict[str, str]]) -> str:
         A single prompt that can be pasted into any browser-based LLM.
     """
     sections = [
-        "Generate a training plan for IntelliWatts. Follow ALL instructions and context below. "
-        "Return only a single JSON object matching the schema at the end; no explanation or markdown code fences."
+        ("Generate a training plan for IntelliWatts. Follow ALL instructions and context below. "
+        "Return only a single JSON object matching the schema at the end; no explanation or markdown code fences.")
     ]
     for message in messages:
         heading = "SYSTEM INSTRUCTIONS" if message["role"] == "system" else "USER MESSAGE"
@@ -39,9 +42,7 @@ def format_manual_prompt(messages: list[dict[str, str]]) -> str:
     return "\n\n".join(sections)
 
 
-def parse_manual_response(
-    response_text: str, *, messages: list[dict[str, str]], week_start: date
-) -> LLMResponse:
+def parse_manual_response(response_text: str, *, messages: list[dict[str, str]], week_start: date) -> LLMResponse:
     """Validate pasted JSON with the same schema used by automatic generation.
 
     Returns:
