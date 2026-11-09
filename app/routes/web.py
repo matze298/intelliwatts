@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from copy import copy
 from datetime import UTC, date, datetime, timedelta
-from typing import Annotated, NamedTuple
+from typing import TYPE_CHECKING, Annotated, NamedTuple
 from urllib.parse import urlencode
 
 import requests
@@ -13,7 +13,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from requests_cache import CachedSession
-from starlette.datastructures import FormData, QueryParams
 from sqlmodel import Session, select
 
 from app.config import LanguageModel, Settings, get_settings
@@ -47,6 +46,9 @@ from app.services.planner.preferences import WEEKDAYS, normalize_available_days,
 from app.services.workout_delivery import publish_workout_delivery
 from app.utils.datetime import get_monday
 from app.utils.markdown import render_markdown
+
+if TYPE_CHECKING:
+    from starlette.datastructures import FormData, QueryParams
 
 __all__ = ["dashboard", "settings"]
 
@@ -512,7 +514,6 @@ async def _render_manual_plan_page(
     data: FormData | QueryParams,
     *,
     error: str | None = None,
-    response_text: str = "",
 ) -> HTMLResponse:
     """Show a complete copyable prompt without calling a language model.
 
@@ -520,6 +521,7 @@ async def _render_manual_plan_page(
         The manual prompt and import form, with validation feedback if needed.
     """
     raw_week_start = str(data.get("week_start", "")).strip()
+    response_text = str(data.get("response_text", ""))
     with Session(engine) as session:
         selection = _resolve_week_selection(session, user, raw_week_start)
     controls = _manual_plan_controls(data, user)
@@ -546,7 +548,9 @@ async def _render_manual_plan_page(
             "user": user,
             "week_start": week_start.isoformat() if week_start else raw_week_start,
             "weekly_hours": controls.weekly_hours if controls.weekly_hours is not None else user.weekly_hours,
-            "weekly_sessions": controls.weekly_sessions if controls.weekly_sessions is not None else user.weekly_sessions,
+            "weekly_sessions": controls.weekly_sessions
+            if controls.weekly_sessions is not None
+            else user.weekly_sessions,
             "available_days": controls.available_days,
             "prompt_text": prompt_text,
             "response_text": response_text,
@@ -595,7 +599,6 @@ async def import_manual_plan(
             settings,
             data,
             error=str(selection.error) if selection.error else controls.error,
-            response_text=response_text,
         )
 
     effective_user = user.model_copy(update={"available_cycling_days": controls.available_days})
@@ -610,7 +613,7 @@ async def import_manual_plan(
         )
     except ValueError as exc:
         return await _render_manual_plan_page(
-            request, user, settings, data, error=str(exc), response_text=response_text
+            request, user, settings, data, error=str(exc)
         )
 
     # Match automatic generation: the selected limits become defaults for
