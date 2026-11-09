@@ -81,24 +81,24 @@ def test_manual_response_repairs_mixed_quotes_brackets_and_singleton_steps() -> 
     pasted = (
         '{ “plan_markdown”: “# IntelliWatts Cycling Plan — Base Week 1/4\n'
         '**Week:** 9–15 November 2026\n'
-        'He said “easy”, then kept the ride aerobic.”, “workouts”: \['
+        'He said “easy”, then kept the ride aerobic.”, “workouts”: \\['
         '{"day": "Monday", "date": "2026-11-09", "workout_name": "Aerobic Calibration",'
-        '"description": "30-minute easy ride", "segments": \['
-        '{"title": "Progressive Warm-Up", "repeats": 1, "steps": \['
-        '{"duration_m": 8, "power_pct": "Ramp 50-65", "rpm": "85-95"}\]},'
+        '"description": "30-minute easy ride", "segments": \\['
+        '{"title": "Progressive Warm-Up", "repeats": 1, "steps": \\['
+        '{"duration_m": 8, "power_pct": "Ramp 50-65", "rpm": "85-95"}\\]},'
         '{ “title”: “Easy Aerobic Calibration”, “repeats”: 1, “steps”: '
         '{"duration_m": 17, "power_pct": "65-70", "rpm": "85-95"} },'
         '{ “title”: “Cool-Down”, “repeats”: 1, “steps”: '
-        '{"duration_m": 5, "power_pct": "Ramp 60-45", "rpm": "80-90"} }\]},'
+        '{"duration_m": 5, "power_pct": "Ramp 60-45", "rpm": "80-90"} }\\]},'
         '{ “day”: “Tuesday”, “date”: “2026-11-10”, '
         '“workout_name”: “Endurance Base Ride”, “description”: “90-minute Zone 2 ride”, '
-        '“segments”: \[{ “title”: “Endurance”, “repeats”: 1, '
-        '“steps”: { "duration_m": 90, "power_pct": "65-73" } }\]},'
+        '“segments”: \\[{ “title”: “Endurance”, “repeats”: 1, '
+        '“steps”: { "duration_m": 90, "power_pct": "65-73" } }\\]},'
         '{ “day”: “Thursday”, “date”: “2026-11-12”, '
         '“workout_name”: “FTP Builder”, “description”: “Controlled tempo”, '
-        '“segments”: \[{ “title”: “Tempo”, “repeats”: 2, '
-        '“steps”: { "duration_m": 12, "power_pct": "85-90" } }\]}'
-        '\] }'
+        '“segments”: \\[{ “title”: “Tempo”, “repeats”: 2, '
+        '“steps”: { "duration_m": 12, "power_pct": "85-90" } }\\]}'
+        '\\] }'
     )
 
     # WHEN the response is imported for the selected week.
@@ -139,12 +139,12 @@ def test_manual_response_keeps_valid_json_and_week_checks() -> None:
 
     # GIVEN formatted JSON with a workout in the next week.
     wrong_week = (
-        '{ “plan_markdown”: “# Future ride”, “workouts”: \['
+        '{ “plan_markdown”: “# Future ride”, “workouts”: \\['
         '{“day”: “Monday”, “date”: “2026-11-16”, “workout_name”: “Endurance”, '
-        '“description”: “Easy”, “segments”: \['
+        '“description”: “Easy”, “segments”: \\['
         '{“title”: “Ride”, “repeats”: 1, “steps”: '
         '{"duration_m": 30, "power_pct": "65-75"}}'
-        '\]}\]}'
+        '\\]}\\]}'
     )
     # WHEN parsing it for the selected current week.
     # THEN date validation still rejects it.
