@@ -94,6 +94,41 @@
     }
   }
 
+  function formPayload(form) {
+    const payload = new FormData(form);
+    if (form.id === "update-plan-form") {
+      // The update form owns the feedback field; controls belong to Generate.
+      // Include the current settings when preparing either API or manual updates.
+      for (const key of ["max_hours", "max_sessions", "language_model"]) {
+        const control = id(key);
+        if (control) payload.set(key, control.value);
+      }
+      payload.set("available_days_present", "1");
+      for (const selected of document.querySelectorAll('input[name="available_days"]:checked')) {
+        payload.append("available_days", selected.value);
+      }
+    }
+    return payload;
+  }
+
+  function submitManual(form) {
+    // POST rather than placing athlete context or revision feedback in a URL.
+    const payload = formPayload(form);
+    const navigation = document.createElement("form");
+    navigation.method = "post";
+    navigation.action = "/manual-plan/prepare";
+    navigation.hidden = true;
+    for (const [name, value] of payload.entries()) {
+      const field = document.createElement("input");
+      field.type = "hidden";
+      field.name = name;
+      field.value = value;
+      navigation.append(field);
+    }
+    document.body.append(navigation);
+    navigation.submit();
+  }
+
   async function run(form) {
     const panel = id("planner-progress");
     if (!panel) return;
@@ -108,19 +143,7 @@
     }
     let completed = false;
     try {
-      const payload = new FormData(form);
-      if (form.id === "update-plan-form") {
-        // Controls belong to the Generate form in HTML. Include their current
-        // values in Update requests so edits use the visible weekday/model caps.
-        for (const key of ["max_hours", "max_sessions", "language_model"]) {
-          const control = document.getElementById(key);
-          if (control) payload.set(key, control.value);
-        }
-        payload.set("available_days_present", "1");
-        for (const selected of document.querySelectorAll('input[name="available_days"]:checked')) {
-          payload.append("available_days", selected.value);
-        }
-      }
+      const payload = formPayload(form);
       const response = await fetch(form.action.replace(/\/$/, "") + "/stream", {
         method: "POST",
         body: payload,
@@ -181,9 +204,16 @@
   document.addEventListener("submit", event => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement) || !form.matches('form[data-live-progress="true"]')) return;
-    if (typeof window.fetch !== "function" || !window.ReadableStream || !window.TextDecoder) return;
     event.preventDefault();
     if (running) return;
+    if (id("language_model")?.value === "manual") {
+      submitManual(form);
+      return;
+    }
+    if (typeof window.fetch !== "function" || !window.ReadableStream || !window.TextDecoder) {
+      form.submit();
+      return;
+    }
     void run(form);
   });
 })();

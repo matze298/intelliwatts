@@ -140,9 +140,9 @@
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div>
                         <label for="language_model" class="control-label">Large Language model</label>
-                        <select id="language_model" name="language_model" form="generate-plan-form" class="control-field">
+                        <select id="language_model" name="language_model" form="generate-plan-form" class="control-field" onchange="const target = document.getElementById('update-language-model'); if (target) target.value = this.value">
                             {% for model in settings.models %}
-                            <option value="{{ model }}" {% if model==settings.settings.LANGUAGE_MODEL %}selected{% endif %}>{{ model }}</option>
+                            <option value="{{ model }}" {% if model==settings.settings.LANGUAGE_MODEL %}selected{% endif %}>{{ "Manual / External LLM" if model == "manual" else model }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -195,6 +195,7 @@
             data-live-progress="true"
         >
             <input type="hidden" name="week_start" value="{{ selected_week_start }}">
+            <input type="hidden" name="mode" value="generate">
         </form>
 
         {% call render_disclosure("Long-term plan", details_class="planner-long-term mb-6") %}
@@ -272,6 +273,8 @@
                     data-live-progress="true"
                 >
                     <input type="hidden" name="week_start" value="{{ selected_week_start }}">
+                    <input type="hidden" name="mode" value="update">
+                    <input id="update-language-model" type="hidden" name="language_model" value="{{ settings.settings.LANGUAGE_MODEL }}">
                     <div>
                         <label for="feedback" class="block text-sm font-medium text-gray-700">What would you like to change?</label>
                         <textarea id="feedback" name="feedback" rows="2" placeholder="e.g. Make Tuesday harder, or I have more time on Sunday" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>

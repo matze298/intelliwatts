@@ -7,7 +7,8 @@ from contextlib import AsyncExitStack
 from datetime import date, timedelta
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, NamedTuple, cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+from urllib.parse import urlencode
 
 import pytest
 from fastapi import FastAPI
@@ -894,6 +895,210 @@ def test_home_page_renders_current_long_term_summary(monkeypatch: pytest.MonkeyP
     assert "Include Readiness & Recovery (Wellness) Data" in body
     assert "control-button" in body
     assert 'href="/static/tailwind-light.css"' in body
+
+
+@pytest.mark.asyncio
+@patch("app.services.planner.orchestrator.generate_plan")
+async def test_manual_llm_prompt_and_import_preserve_selected_week(
+    mock_generate_plan: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Manual preparation and import bypass the model API, but stage a normal plan."""
+    # GIVEN a saved macro plan and isolated athlete data.
+    context = _build_weekly_planner_route_context()
+    _seed_long_term_phase(
+        context.engine,
+        user_id=context.user_id,
+        primary_goal="Peak for gravel race",
+        start_date=date(2026, 5, 16),
+        target_date=date(2026, 9, 20),
+    )
+    _configure_isolated_planner_dependencies(
+        monkeypatch, test_engine=context.engine, generate_plan_mock=mock_generate_plan
+    )
+    monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 16))
+    query = b"week_start=2026-06-01&max_hours=6&max_sessions=2&available_days_present=1&available_days=Tuesday"
+
+    # WHEN generating the manual prompt (without requesting a model response).
+    preview = await web_routes.manual_plan_page(
+        build_request(context.app, method="GET", path="/manual-plan", query_string=query),
+        context.route_user,
+        context.settings,
+    )
+    prompt_html = bytes(preview.body).decode()
+    # THEN the coach's full prompt is shown for the requested week with custom limits.
+    assert preview.status_code == 200
+    assert "system default" in prompt_html
+    assert "Week Of: 2026-06-01" in prompt_html
+    assert "Max Cycling Hours: 6" in prompt_html
+    assert "Available cycling days: Tuesday" in prompt_html
+    assert "REQUIRED JSON RESPONSE SCHEMA" in prompt_html
+    mock_generate_plan.assert_not_called()
+
+    pasted = {
+        "plan_markdown": "# Manually imported plan",
+        "workouts": [
+            {
+                "day": "Tuesday",
+                "workout_name": "Endurance",
+                "description": "Easy ride",
+                "segments": [{"title": "Main", "repeats": 1, "steps": [{"duration_m": 30, "power_pct": "65-75"}]}],
+            }
+        ],
+    }
+    submitted = urlencode({
+        "week_start": "2026-06-01",
+        "max_hours": "6",
+        "max_sessions": "2",
+        "available_days_present": "1",
+        "available_days": "Tuesday",
+        "response_text": json.dumps(pasted),
+    }).encode()
+    # WHEN pasting valid structured JSON for the same selected week.
+    response = await web_routes.import_manual_plan(
+        build_request(context.app, method="POST", path="/manual-plan", body=submitted),
+        context.route_user,
+        context.settings,
+    )
+    # THEN it is persisted, staged for review and returned to that exact week.
+    assert response.status_code == 303
+    assert response.headers["location"] == "/?week_start=2026-06-01"
+    mock_generate_plan.assert_not_called()
+    with Session(context.engine) as session:
+        plan = session.exec(select(TrainingPlan).where(TrainingPlan.week_start == date(2026, 6, 1))).one()
+        deliveries = session.exec(select(WorkoutDelivery).where(WorkoutDelivery.training_plan_id == plan.id)).all()
+        persisted_user = session.get(User, context.user_id)
+    assert plan.raw_content == "# Manually imported plan"
+    assert plan.workout_data[0]["day"] == "Tuesday"
+    assert plan.prompt_history[0]["role"] == "system"
+    assert len(deliveries) == 1
+    assert persisted_user is not None
+    assert persisted_user.available_cycling_days == ["Tuesday"]
+    assert persisted_user.weekly_hours == 6
+    assert persisted_user.weekly_sessions == 2
+
+    # WHEN a later paste is malformed, the previously saved plan is not overwritten.
+    bad_submission = urlencode({
+        "week_start": "2026-06-01",
+        "response_text": "not-json",
+        "max_hours": "6",
+        "max_sessions": "2",
+        "available_days_present": "1",
+        "available_days": "Tuesday",
+    }).encode()
+    invalid = await web_routes.import_manual_plan(
+        build_request(context.app, method="POST", path="/manual-plan", body=bad_submission),
+        context.route_user,
+        context.settings,
+    )
+    # THEN the response stays visible for correction and no LLM call is made.
+    assert invalid.status_code == 400
+    assert "Cannot import this response" in bytes(invalid.body).decode()
+    assert "not-json" in bytes(invalid.body).decode()
+    with Session(context.engine) as session:
+        saved = session.exec(select(TrainingPlan).where(TrainingPlan.week_start == date(2026, 6, 1))).one()
+    assert saved.raw_content == "# Manually imported plan"
+    mock_generate_plan.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch("app.services.planner.orchestrator.generate_plan")
+async def test_manual_llm_revision_uses_history_and_feedback(
+    mock_generate_plan: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Manual Update Plan reuses prior context and saves only validated JSON."""
+    # GIVEN a saved week with prompt history and feedback that must survive the handoff.
+    context = _build_weekly_planner_route_context()
+    _seed_long_term_phase(
+        context.engine,
+        user_id=context.user_id,
+        primary_goal="Peak for gravel race",
+        start_date=date(2026, 5, 16),
+        target_date=date(2026, 9, 20),
+    )
+    _configure_isolated_planner_dependencies(
+        monkeypatch, test_engine=context.engine, generate_plan_mock=mock_generate_plan
+    )
+    monkeypatch.setattr("app.routes.web._today", lambda: date(2026, 5, 16))
+    monkeypatch.setattr(
+        "app.services.planner.orchestrator._fresh_revision_context",
+        AsyncMock(return_value="Recent training and recovery context"),
+    )
+    with Session(context.engine) as session:
+        phase = session.exec(select(TrainingPhase).where(TrainingPhase.user_id == context.user_id)).one()
+        plan = TrainingPlan(
+            phase_id=phase.id,
+            week_start=date(2026, 6, 1),
+            raw_content="# Original week",
+            prompt_history=[
+                {"role": "system", "content": "Coach system context"},
+                {"role": "user", "content": "Original planning summary"},
+            ],
+        )
+        session.add(plan)
+        session.commit()
+        original_id = plan.id
+
+    request_data = urlencode({
+        "mode": "update",
+        "language_model": "manual",
+        "week_start": "2026-06-01",
+        "feedback": "Reduce the intensity on Thursday",
+        "max_hours": "5",
+        "max_sessions": "2",
+        "available_days_present": "1",
+        "available_days": "Thursday",
+    }).encode()
+
+    # WHEN the Update action prepares a copyable revision prompt.
+    preview = await web_routes.prepare_manual_plan(
+        build_request(context.app, method="POST", path="/manual-plan/prepare", body=request_data),
+        context.route_user,
+        context.settings,
+    )
+    # THEN it contains prior assistant response, feedback and updated availability.
+    assert preview.status_code == 200
+    preview_html = bytes(preview.body).decode()
+    assert "ASSISTANT RESPONSE" in preview_html
+    assert "# Original week" in preview_html
+    assert "Reduce the intensity on Thursday" in preview_html
+    assert "Recent training and recovery context" in preview_html
+    assert "at most 2 cycling sessions and 5.0 cycling hours" in preview_html
+    mock_generate_plan.assert_not_called()
+
+    # WHEN the athlete imports a JSON revision.
+    result_data = urlencode({
+        "mode": "update",
+        "language_model": "manual",
+        "week_start": "2026-06-01",
+        "feedback": "Reduce the intensity on Thursday",
+        "max_hours": "5",
+        "max_sessions": "2",
+        "available_days_present": "1",
+        "available_days": "Thursday",
+        "response_text": json.dumps({"plan_markdown": "# Revised week", "workouts": []}),
+    }).encode()
+    saved = await web_routes.import_manual_plan(
+        build_request(context.app, method="POST", path="/manual-plan", body=result_data),
+        context.route_user,
+        context.settings,
+    )
+
+    # THEN the same week's plan, stage and selected manual mode are persisted.
+    assert saved.status_code == 303
+    assert saved.headers["location"] == "/?week_start=2026-06-01"
+    with Session(context.engine) as session:
+        revised = session.exec(select(TrainingPlan).where(TrainingPlan.week_start == date(2026, 6, 1))).one()
+        deliveries = session.exec(select(WorkoutDelivery).where(WorkoutDelivery.training_plan_id == revised.id)).all()
+        athlete = session.get(User, context.user_id)
+    assert revised.id == original_id
+    assert revised.raw_content == "# Revised week"
+    assert any(item["role"] == "assistant" and "# Original week" in item["content"] for item in revised.prompt_history)
+    assert "Reduce the intensity on Thursday" in revised.prompt_history[-1]["content"]
+    assert len(deliveries) == 1
+    assert athlete is not None
+    assert athlete.preferred_language_model == LanguageModel.MANUAL.value
+    assert athlete.available_cycling_days == ["Thursday"]
+    mock_generate_plan.assert_not_called()
 
 
 def test_home_page_renders_selected_week_plan(selected_week_route_context: SelectedWeekRouteContext) -> None:

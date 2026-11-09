@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from copy import copy
 from datetime import UTC, date, datetime, timedelta
-from typing import Annotated, NamedTuple
+from typing import TYPE_CHECKING, Annotated, NamedTuple
 from urllib.parse import urlencode
 
 import requests
@@ -41,10 +41,14 @@ from app.services.planner import (
     generate_weekly_plan,
     update_training_plan,
 )
+from app.services.planner.manual import format_manual_prompt
 from app.services.planner.preferences import WEEKDAYS, normalize_available_days, preferred_model
 from app.services.workout_delivery import publish_workout_delivery
 from app.utils.datetime import get_monday
 from app.utils.markdown import render_markdown
+
+if TYPE_CHECKING:
+    from starlette.datastructures import FormData, QueryParams
 
 __all__ = ["dashboard", "settings"]
 
@@ -478,6 +482,218 @@ async def long_term_plan(  # ruff: ignore[too-many-return-statements, complex-st
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 
+class ManualPlanControls(NamedTuple):
+    """Validated options shared by manual prompt preparation and import."""
+
+    weekly_hours: float | None
+    weekly_sessions: int | None
+    available_days: list[str]
+    error: str | None
+
+
+def _manual_plan_controls(data: FormData | QueryParams, user: User) -> ManualPlanControls:
+    """Read the same cycling constraints used by normal generation.
+
+    Returns:
+        Validated limits and available weekdays for this planning request.
+    """
+    hours, sessions, error = _parse_weekly_limits(data.get("max_hours"), data.get("max_sessions"))
+    days = user.available_cycling_days
+    if "available_days_present" in data:
+        try:
+            days = normalize_available_days([str(day) for day in data.getlist("available_days")])
+        except ValueError as exc:
+            error = str(exc)
+    return ManualPlanControls(hours, sessions, days, error)
+
+
+async def _render_manual_plan_page(
+    request: Request,
+    user: User,
+    settings: Settings,
+    data: FormData | QueryParams,
+    *,
+    error: str | None = None,
+) -> HTMLResponse:
+    """Show a complete copyable prompt without calling a language model.
+
+    Returns:
+        The manual prompt and import form, with validation feedback if needed.
+    """
+    raw_week_start = str(data.get("week_start", "")).strip()
+    response_text = str(data.get("response_text", ""))
+    mode = str(data.get("mode", "generate"))
+    feedback = str(data.get("feedback", ""))
+    if mode not in {"generate", "update"}:
+        error = "Choose Generate Plan or Update Plan for manual mode."
+    with Session(engine) as session:
+        selection = _resolve_week_selection(session, user, raw_week_start)
+    controls = _manual_plan_controls(data, user)
+    error = error or (str(selection.error) if selection.error else None) or controls.error
+    prompt_text = ""
+    if error is None:
+        effective_user = user.model_copy(
+            update={
+                "available_cycling_days": controls.available_days,
+                "weekly_hours": controls.weekly_hours if controls.weekly_hours is not None else user.weekly_hours,
+                "weekly_sessions": controls.weekly_sessions
+                if controls.weekly_sessions is not None
+                else user.weekly_sessions,
+            }
+        )
+        if mode == "update":
+            prepared = await update_training_plan(
+                user=effective_user,
+                feedback=feedback,
+                settings=settings,
+                week_start=selection.selected_week_start,
+                prompt_only=True,
+            )
+        else:
+            prepared = await generate_weekly_plan(
+                user=effective_user,
+                settings=settings,
+                weekly_hours=controls.weekly_hours,
+                weekly_sessions=controls.weekly_sessions,
+                week_start=selection.selected_week_start,
+                prompt_only=True,
+            )
+        prompt_text = format_manual_prompt(prepared["prompt"])
+
+    week_start = selection.selected_week_start
+    return templates.TemplateResponse(
+        request,
+        "manual_plan.html",
+        {
+            "settings": request.app.state.settings,
+            "user": user,
+            "week_start": week_start.isoformat() if week_start else raw_week_start,
+            "weekly_hours": controls.weekly_hours if controls.weekly_hours is not None else user.weekly_hours,
+            "weekly_sessions": controls.weekly_sessions
+            if controls.weekly_sessions is not None
+            else user.weekly_sessions,
+            "available_days": controls.available_days,
+            "prompt_text": prompt_text,
+            "response_text": response_text,
+            "mode": mode,
+            "feedback": feedback,
+            "error": error,
+        },
+        status_code=status.HTTP_400_BAD_REQUEST if error else status.HTTP_200_OK,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@planner_router.get("/manual-plan", response_class=HTMLResponse)
+async def manual_plan_page(
+    request: Request,
+    user: Annotated[User, Depends(get_profile)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
+    """Prepare the full prompt for copying into a browser-based LLM.
+
+    Returns:
+        A page with the model instructions, context and JSON import form.
+    """
+    return await _render_manual_plan_page(request, user, settings, request.query_params)
+
+
+@planner_router.post("/manual-plan/prepare", response_class=HTMLResponse)
+async def prepare_manual_plan(
+    request: Request,
+    user: Annotated[User, Depends(get_profile)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
+    """Prepare a copyable prompt from the selected Generate or Update action.
+
+    Returns:
+        The manual prompt and response workspace.
+    """
+    return await _render_manual_plan_page(request, user, settings, await request.form())
+
+
+@planner_router.post("/manual-plan", response_class=HTMLResponse)
+async def import_manual_plan(
+    request: Request,
+    user: Annotated[User, Depends(get_profile)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Response:
+    """Validate and save pasted structured output without making an LLM call.
+
+    Returns:
+        A redirect to the selected week or a page with a validation error.
+    """
+    data = await request.form()
+    raw_week_start = str(data.get("week_start", "")).strip()
+    response_text = str(data.get("response_text", ""))
+    mode = str(data.get("mode", "generate"))
+    if mode not in {"generate", "update"}:
+        return await _render_manual_plan_page(
+            request, user, settings, data, error="Choose Generate Plan or Update Plan for manual mode."
+        )
+    with Session(engine) as session:
+        selection = _resolve_week_selection(session, user, raw_week_start)
+    controls = _manual_plan_controls(data, user)
+    if selection.error or controls.error:
+        return await _render_manual_plan_page(
+            request,
+            user,
+            settings,
+            data,
+            error=str(selection.error) if selection.error else controls.error,
+        )
+
+    effective_user = user.model_copy(
+        update={
+            "available_cycling_days": controls.available_days,
+            "weekly_hours": controls.weekly_hours if controls.weekly_hours is not None else user.weekly_hours,
+            "weekly_sessions": controls.weekly_sessions
+            if controls.weekly_sessions is not None
+            else user.weekly_sessions,
+        }
+    )
+    try:
+        if mode == "update":
+            result = await update_training_plan(
+                user=effective_user,
+                feedback=str(data.get("feedback", "")),
+                settings=settings,
+                week_start=selection.selected_week_start,
+                manual_response=response_text,
+            )
+        else:
+            result = await generate_weekly_plan(
+                user=effective_user,
+                settings=settings,
+                weekly_hours=controls.weekly_hours,
+                weekly_sessions=controls.weekly_sessions,
+                week_start=selection.selected_week_start,
+                manual_response=response_text,
+            )
+    except ValueError as exc:
+        return await _render_manual_plan_page(request, user, settings, data, error=str(exc))
+
+    # Match automatic generation: the selected limits become defaults for
+    # future revisions of the imported plan.
+    with Session(engine) as session:
+        db_user = session.get(User, user.id)
+        if db_user is not None:
+            db_user.preferred_language_model = LanguageModel.MANUAL.value
+            if controls.weekly_hours is not None:
+                db_user.weekly_hours = controls.weekly_hours
+            if controls.weekly_sessions is not None:
+                db_user.weekly_sessions = controls.weekly_sessions
+            if "available_days_present" in data:
+                db_user.available_cycling_days = controls.available_days
+            session.add(db_user)
+            session.commit()
+
+    return RedirectResponse(
+        url="/?" + urlencode({"week_start": result["week_start"].isoformat()}),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
 @planner_router.post("/generate", response_class=HTMLResponse)
 async def generate(  # ruff: ignore[too-many-locals, complex-structure]
     request: Request,
@@ -491,12 +707,14 @@ async def generate(  # ruff: ignore[too-many-locals, complex-structure]
     """
     input_data = await request.form()
     raw_model = input_data.get("language_model")
-    selected_model = None
-    if raw_model:
-        selected_model = _selected_language_model(raw_model, settings.LANGUAGE_MODEL)
-        if selected_model is None:
-            return _render_invalid_model_selection(request, user, str(input_data.get("week_start", "")))
-        settings = settings.model_copy(update={"LANGUAGE_MODEL": selected_model})
+    if raw_model == LanguageModel.MANUAL.value:
+        return await _render_manual_plan_page(request, user, settings, input_data)
+    selected_model = _selected_language_model(raw_model, settings.LANGUAGE_MODEL) if raw_model else None
+    if raw_model and selected_model is None:
+        return _render_invalid_model_selection(request, user, str(input_data.get("week_start", "")))
+    settings = (
+        settings.model_copy(update={"LANGUAGE_MODEL": selected_model}) if selected_model is not None else settings
+    )
     raw_week_start = str(input_data.get("week_start", "")).strip()
 
     weekly_hours, weekly_sessions, limit_error = _parse_weekly_limits(
@@ -617,6 +835,8 @@ async def update(  # ruff: ignore[too-many-locals, too-many-branches, complex-st
     # In-place updates also receive the visible planning controls from the
     # browser, not just the text feedback. Plain HTML submissions remain valid.
     raw_model = input_data.get("language_model")
+    if raw_model == LanguageModel.MANUAL.value:
+        return await _render_manual_plan_page(request, user, settings, input_data)
     if raw_model:
         selected_model = _selected_language_model(raw_model, settings.LANGUAGE_MODEL)
         if selected_model is None:

@@ -12,7 +12,7 @@ from requests_cache import CachedSession
 from sqlmodel import Session, select
 from starlette.concurrency import run_in_threadpool
 
-from app.config import Settings, get_settings
+from app.config import LanguageModel, Settings, get_settings
 from app.db import engine
 from app.intervals.client import IntervalsClient
 from app.models.plan import TrainingPlan
@@ -26,6 +26,7 @@ from app.services.long_term_planner import (
 )
 from app.services.planner.analysis import get_analysis
 from app.services.planner.calendar import load_week_commitments
+from app.services.planner.manual import parse_manual_response
 from app.services.planner.persistence import save_and_stage_weekly_plan
 from app.services.planner.preferences import preferred_model
 from app.services.planner.prompt import PromptSummaryContext, build_prompt_summary, workout_date_guidance
@@ -88,18 +89,23 @@ async def _fresh_revision_context(
     return f"{coach.brief_context}\nLast recorded 7 days:\n{rows or '- No completed activity records.'}\n{calendar}"
 
 
-async def update_training_plan(
+async def update_training_plan(  # ruff: ignore[too-many-arguments]
     user: User,
     feedback: str,
     settings: Settings | None = None,
     *,
     week_start: date | None = None,
     progress: ProgressCallback | None = None,
+    prompt_only: bool = False,
+    manual_response: str | None = None,
 ) -> dict[str, Any]:
     """Updates the training plan based on user feedback.
 
     Returns:
         The updated weekly plan and summary.
+
+    Raises:
+        ValueError: If manual mode is selected without a pasted response.
     """
     if settings is None:
         settings = get_settings()
@@ -117,6 +123,15 @@ async def update_training_plan(
         plan = session.exec(statement).first()
 
         if not plan:
+            if prompt_only or manual_response is not None:
+                return await generate_weekly_plan(
+                    user,
+                    settings,
+                    week_start=monday,
+                    progress=progress,
+                    prompt_only=prompt_only,
+                    manual_response=manual_response,
+                )
             if progress is not None:
                 return await generate_weekly_plan(user, settings, week_start=monday, progress=progress)
             return await generate_weekly_plan(user, settings, week_start=monday)
@@ -164,12 +179,21 @@ async def update_training_plan(
         ),
     })
 
-    _report(progress, "Requesting a revised plan from the selected model")
-    llm_response = await run_in_threadpool(
-        generate_plan,
-        messages=history,
-        language_model=settings.LANGUAGE_MODEL,
-    )
+    if prompt_only:
+        return {"prompt": history, "week_start": monday}
+    if manual_response is not None:
+        _report(progress, "Validating the pasted revision")
+        llm_response = parse_manual_response(manual_response, messages=history, week_start=monday)
+    else:
+        if settings.LANGUAGE_MODEL == LanguageModel.MANUAL:
+            msg = "Manual mode requires a pasted LLM response."
+            raise ValueError(msg)
+        _report(progress, "Requesting a revised plan from the selected model")
+        llm_response = await run_in_threadpool(
+            generate_plan,
+            messages=history,
+            language_model=settings.LANGUAGE_MODEL,
+        )
 
     _report(progress, "Saving the revision and staging workouts")
     with Session(engine) as session:
@@ -192,11 +216,16 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
     weekly_sessions: int | None = None,
     week_start: date | None = None,
     progress: ProgressCallback | None = None,
+    prompt_only: bool = False,
+    manual_response: str | None = None,
 ) -> dict[str, Any]:
     """Generates the weekly plan.
 
     Returns:
         The generated plan payload, summary, prompt, and saved identifiers.
+
+    Raises:
+        ValueError: If manual mode is selected without a pasted response.
     """
     if settings is None:
         settings = get_settings()
@@ -214,7 +243,7 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
 
     _report(progress, "Retrieving recent training and recovery data")
     analysis = await run_in_threadpool(_get_analysis, client, settings.ANALYSIS_DAYS)
-    target_week_start = week_start or get_monday(datetime.now(UTC).date())
+    week_start = week_start or get_monday(datetime.now(UTC).date())
 
     _report(progress, "Building goals, availability, and training constraints")
     with Session(engine) as db_session:
@@ -224,13 +253,13 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
             daily_records=analysis.daily_records,
             phase=phase,
             artifact=artifact,
-            week_start=target_week_start,
+            week_start=week_start,
         )
         weekly_brief = derive_weekly_brief(
             phase=phase,
             artifact=artifact,
             analysis_context=coach_context.brief_context,
-            week_start=target_week_start,
+            week_start=week_start,
         )
         specialist_text = await registry.get_specialist_context(analysis.provider_results)
         full_summary = build_prompt_summary(
@@ -246,36 +275,47 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
             )
         )
 
-    # Add dates at request time, not in static settings or stored prompt templates.
-    # This rule also applies when athletes override the default coach prompt.
-    date_rules = workout_date_guidance(
-        week_start=target_week_start,
-        today=datetime.now(UTC).date(),
-        existing_plan=False,
-        phase_start=phase.start_date,
-    )
     _report(progress, "Checking upcoming sports and race commitments")
-    calendar = await run_in_threadpool(
-        load_week_commitments, client, week_start=target_week_start, today=datetime.now(UTC).date()
+    # Add date rules even when athletes override the default coach prompt.
+    full_summary = (
+        f"{full_summary}\n\n"
+        + workout_date_guidance(
+            week_start=week_start,
+            today=datetime.now(UTC).date(),
+            existing_plan=False,
+            phase_start=phase.start_date,
+        )
+        + "\n\n"
+        + await run_in_threadpool(load_week_commitments, client, week_start=week_start, today=datetime.now(UTC).date())
     )
-    full_summary = f"{full_summary}\n\n{date_rules}\n\n{calendar}"
 
-    _report(progress, "Requesting structured workouts from the selected model")
-    llm_response = await run_in_threadpool(
-        generate_plan,
-        messages=[
-            {"role": LLMRole.SYSTEM, "content": settings.SYSTEM_PROMPT},
-            {"role": LLMRole.USER, "content": full_summary},
-        ],
-        language_model=settings.LANGUAGE_MODEL,
-    )
+    messages = [
+        {"role": LLMRole.SYSTEM, "content": settings.SYSTEM_PROMPT},
+        {"role": LLMRole.USER, "content": full_summary},
+    ]
+    if prompt_only:
+        return {"summary": full_summary, "prompt": messages, "week_start": week_start}
+
+    if manual_response is not None:
+        _report(progress, "Validating the pasted structured workouts")
+        llm_response = parse_manual_response(manual_response, messages=messages, week_start=week_start)
+    else:
+        if settings.LANGUAGE_MODEL == LanguageModel.MANUAL:
+            msg = "Manual mode requires a pasted LLM response."
+            raise ValueError(msg)
+        _report(progress, "Requesting structured workouts from the selected model")
+        llm_response = await run_in_threadpool(
+            generate_plan,
+            messages=messages,
+            language_model=settings.LANGUAGE_MODEL,
+        )
 
     _report(progress, "Validating and saving the generated workouts")
     with Session(engine) as db_session:
         saved_plan_id = save_and_stage_weekly_plan(
             session=db_session,
             phase_id=phase.id,
-            week_start=target_week_start,
+            week_start=week_start,
             llm_response=llm_response,
         )
 
@@ -285,5 +325,5 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
         "summary": full_summary,
         "prompt": llm_response.prompt,
         "plan_id": saved_plan_id,
-        "week_start": target_week_start,
+        "week_start": week_start,
     }
