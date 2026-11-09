@@ -712,7 +712,9 @@ async def generate(  # ruff: ignore[too-many-locals, complex-structure]
     selected_model = _selected_language_model(raw_model, settings.LANGUAGE_MODEL) if raw_model else None
     if raw_model and selected_model is None:
         return _render_invalid_model_selection(request, user, str(input_data.get("week_start", "")))
-    settings = settings.model_copy(update={"LANGUAGE_MODEL": selected_model}) if selected_model is not None else settings
+    settings = (
+        settings.model_copy(update={"LANGUAGE_MODEL": selected_model}) if selected_model is not None else settings
+    )
     raw_week_start = str(input_data.get("week_start", "")).strip()
 
     weekly_hours, weekly_sessions, limit_error = _parse_weekly_limits(
