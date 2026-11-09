@@ -3,7 +3,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Manual LLM planning · IntelliWatts</title>
+    <title>{{ "Manual plan update" if mode == "update" else "Manual plan generation" }} · IntelliWatts</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,11 +18,14 @@
         {{ app_nav("planner") }}
         <header class="page-masthead">
             <p class="eyebrow">Plan / Manual LLM</p>
-            <h1 class="mt-0 mb-2">Plan using an external LLM</h1>
+            <h1 class="mt-0 mb-2">{{ "Revise your plan using an external LLM" if mode == "update" else "Plan using an external LLM" }}</h1>
             <p class="page-lede">Copy the complete coaching prompt, use the model of your choice in its website, and paste the structured response to import your weekly plan.</p>
         </header>
         <section class="planner-card mb-6 rounded-xl p-6">
             <p class="text-sm text-slate-600">Selected week: <strong>{{ week_start }}</strong></p>
+            {% if mode == "update" %}
+            <p class="mt-2 text-sm text-slate-600">Revision feedback: {{ feedback or "Review and refine the existing plan." }}</p>
+            {% endif %}
             <p class="mt-2 text-sm text-slate-600">The prompt contains personal training and recovery data. Review it before sharing it with a third-party model. IntelliWatts does not send the prompt to ChatGPT automatically.</p>
             {% if error %}
             <div role="alert" class="planner-flash planner-flash-error mt-4">
@@ -42,6 +45,8 @@
             {% endif %}
             <form method="post" action="/manual-plan" class="mt-6 space-y-4">
                 <input type="hidden" name="week_start" value="{{ week_start }}">
+                <input type="hidden" name="mode" value="{{ mode }}">
+                <input type="hidden" name="feedback" value="{{ feedback }}">
                 <input type="hidden" name="max_hours" value="{{ weekly_hours }}">
                 <input type="hidden" name="max_sessions" value="{{ weekly_sessions }}">
                 <input type="hidden" name="available_days_present" value="1">
@@ -54,7 +59,7 @@
                     <textarea id="manual-response" name="response_text" rows="16" required spellcheck="false" placeholder='{"plan_markdown": "...", "workouts": []}' style="font-family: monospace;" class="control-field mt-2 w-full text-xs">{{ response_text }}</textarea>
                 </div>
                 <div class="flex flex-wrap gap-3">
-                    <button type="submit" class="control-button control-button-primary px-4 py-3 text-sm">Validate & save plan</button>
+                    <button type="submit" class="control-button control-button-primary px-4 py-3 text-sm">{{ "Validate & update plan" if mode == "update" else "Validate & save plan" }}</button>
                     <a href="/?week_start={{ week_start }}" class="control-button control-button-secondary px-4 py-3 text-sm">Back to planner</a>
                 </div>
             </form>
