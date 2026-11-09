@@ -217,7 +217,7 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
 
     _report(progress, "Retrieving recent training and recovery data")
     analysis = await run_in_threadpool(_get_analysis, client, settings.ANALYSIS_DAYS)
-    target_week_start = week_start or get_monday(datetime.now(UTC).date())
+    week_start = week_start or get_monday(datetime.now(UTC).date())
 
     _report(progress, "Building goals, availability, and training constraints")
     with Session(engine) as db_session:
@@ -227,13 +227,13 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
             daily_records=analysis.daily_records,
             phase=phase,
             artifact=artifact,
-            week_start=target_week_start,
+            week_start=week_start,
         )
         weekly_brief = derive_weekly_brief(
             phase=phase,
             artifact=artifact,
             analysis_context=coach_context.brief_context,
-            week_start=target_week_start,
+            week_start=week_start,
         )
         specialist_text = await registry.get_specialist_context(analysis.provider_results)
         full_summary = build_prompt_summary(
@@ -252,14 +252,14 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
     # Add dates at request time, not in static settings or stored prompt templates.
     # This rule also applies when athletes override the default coach prompt.
     date_rules = workout_date_guidance(
-        week_start=target_week_start,
+        week_start=week_start,
         today=datetime.now(UTC).date(),
         existing_plan=False,
         phase_start=phase.start_date,
     )
     _report(progress, "Checking upcoming sports and race commitments")
     calendar = await run_in_threadpool(
-        load_week_commitments, client, week_start=target_week_start, today=datetime.now(UTC).date()
+        load_week_commitments, client, week_start=week_start, today=datetime.now(UTC).date()
     )
     full_summary = f"{full_summary}\n\n{date_rules}\n\n{calendar}"
 
@@ -268,11 +268,11 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
         {"role": LLMRole.USER, "content": full_summary},
     ]
     if prompt_only:
-        return {"summary": full_summary, "prompt": messages, "week_start": target_week_start}
+        return {"summary": full_summary, "prompt": messages, "week_start": week_start}
 
     if manual_response is not None:
         _report(progress, "Validating the pasted structured workouts")
-        llm_response = parse_manual_response(manual_response, messages=messages, week_start=target_week_start)
+        llm_response = parse_manual_response(manual_response, messages=messages, week_start=week_start)
     else:
         _report(progress, "Requesting structured workouts from the selected model")
         llm_response = await run_in_threadpool(
@@ -286,7 +286,7 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
         saved_plan_id = save_and_stage_weekly_plan(
             session=db_session,
             phase_id=phase.id,
-            week_start=target_week_start,
+            week_start=week_start,
             llm_response=llm_response,
         )
 
@@ -296,5 +296,5 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
         "summary": full_summary,
         "prompt": llm_response.prompt,
         "plan_id": saved_plan_id,
-        "week_start": target_week_start,
+        "week_start": week_start,
     }
