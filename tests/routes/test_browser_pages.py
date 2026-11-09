@@ -279,6 +279,32 @@ def test_manual_model_uses_prompt_workspace_for_generate_and_update(browser_serv
         browser.close()
 
 
+def test_manual_json_file_populates_response_field(browser_server: BrowserServer) -> None:
+    """A downloaded JSON file is loaded into the existing manual-import field."""
+    # GIVEN an authenticated athlete using a manual plan for a future week.
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.goto(f"{browser_server.base_url}/login", wait_until="domcontentloaded")
+        page.get_by_label("Master password").fill(get_settings().APP_PASSWORD)
+        page.get_by_role("button", name="Sign in").click()
+        _save_long_term_goal(page, browser_server.base_url)
+        page.goto(f"{browser_server.base_url}/manual-plan?week_start=2026-04-13", wait_until="domcontentloaded")
+
+        # WHEN a model-generated JSON file is selected.
+        document = '{"plan_markdown":"# Weekly Plan","workouts":[]}'
+        page.locator("#manual-json-file").set_input_files({
+            "name": "intelliwatts-plan.json",
+            "mimeType": "application/json",
+            "buffer": document.encode(),
+        })
+
+        # THEN the contents are ready for the same existing manual validation.
+        expect(page.locator("#manual-response")).to_have_value(document)
+        expect(page.locator("#manual-file-status")).to_contain_text("intelliwatts-plan.json loaded")
+        browser.close()
+
+
 def test_failed_generation_displays_clickable_traceback(browser_server: BrowserServer) -> None:
     """Failed streamed generations reveal details only after clicking the message."""
     with sync_playwright() as playwright:
