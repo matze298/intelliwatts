@@ -37,13 +37,21 @@ def test_manual_response_parses_json_code_fence() -> None:
     assert result.workouts == []
 
 
-@pytest.mark.parametrize("response", ["not JSON", "{}", '{"plan_markdown":"","workouts":[]}', ""])
-def test_manual_response_rejects_invalid_content(response: str) -> None:
+@pytest.mark.parametrize(
+    ("response", "message"),
+    [
+        ("not JSON", "must contain valid JSON"),
+        ("{}", "must contain valid JSON"),
+        ('{"plan_markdown":"","workouts":[]}', "plan_markdown must not be empty"),
+        ("", "Paste the model"),
+    ],
+)
+def test_manual_response_rejects_invalid_content(response: str, message: str) -> None:
     """Invalid output must not be accepted for persistence."""
     # GIVEN a response without the required valid structured content.
     # WHEN parsing it.
     # THEN validation returns an actionable failure.
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=message):
         parse_manual_response(response, messages=_MESSAGES, week_start=date(2026, 11, 9))
 
 
