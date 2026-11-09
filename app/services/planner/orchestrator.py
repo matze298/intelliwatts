@@ -286,9 +286,7 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
             phase_start=phase.start_date,
         )
         + "\n\n"
-        + await run_in_threadpool(
-            load_week_commitments, client, week_start=week_start, today=datetime.now(UTC).date()
-        )
+        + await run_in_threadpool(load_week_commitments, client, week_start=week_start, today=datetime.now(UTC).date())
     )
 
     messages = [
