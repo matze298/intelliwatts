@@ -89,6 +89,7 @@
                         extra_classes="px-4 py-3 text-sm",
                         loading_label="Generating…"
                     ) }}
+                    <a id="manual-plan-link" href="/manual-plan?week_start={{ selected_week_start }}" class="control-button control-button-secondary px-4 py-3 text-sm">Use external LLM</a>
                     {% if plan_html %}
                     {{ render_action_button(
                         "Republish Workout" if delivery_status == "published" else "Publishing..." if delivery_status == "publishing" else "Publish Workout",
@@ -317,6 +318,12 @@
         {% endif %}
     </main>
 
+    <script>
+        document.getElementById("manual-plan-link")?.addEventListener("click", function () {
+            const form = document.getElementById("generate-plan-form");
+            if (form) this.href = "/manual-plan?" + new URLSearchParams(new FormData(form)).toString();
+        });
+    </script>
 </body>
 
 </html>
