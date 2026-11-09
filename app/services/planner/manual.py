@@ -93,7 +93,12 @@ def _normalize_json_punctuation(text: str) -> str:
             result.append(char)
             escaped = True
         elif char == "”" and (
-            not (following := text[index + 1 :].lstrip()) or following[0] in ":,}]"
+            not (following := text[index + 1 :].lstrip())
+            or following[0] in ":}]"
+            or (
+                following.startswith(",")
+                and (not (after_comma := following[1:].lstrip()) or after_comma[0] in '"“{[')
+            )
         ):
             result.append('"')
             quote = None
