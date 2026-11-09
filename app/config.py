@@ -18,6 +18,7 @@ class LanguageModel(StrEnum):
     GPT_5_MINI = "gpt-5-mini-2025-08-07"
     GEMINI_FLASH = "gemini-flash-latest"
     GROQ_GPT_OSS_120B = "openai/gpt-oss-120b"
+    MANUAL = "manual"
 
 
 class Settings(BaseSettings):
