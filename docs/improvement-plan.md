@@ -30,14 +30,15 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 
 ## Future hybrid-athlete consolidation
 
-The proposed [IntelliWatts consolidation roadmap](hybrid-athlete-consolidation-plan.md) extends the existing single-app architecture to native strength tracking, meal planning, recovery and unified athlete coaching. It supersedes no completed cycling-specific work. Deliver the migration in small, independently reviewable phases while preserving existing provider authority and the cycling UI.
+The [consolidation roadmap](hybrid-athlete-consolidation-plan.md) keeps the current FastAPI/Jinja, PostgreSQL and cycling planning stack. Ship **one useful feature at a time** and migrate only the private knowledge it needs; no generic CMS, parallel cycling plan store or new server is a prerequisite.
 
-- [x] **Step 0 — structural inventory:** Audit both repositories, confirm source schemas and live strength workbook structure, classify authoritative vs. derived/duplicate data, and document field ownership. See [inventory](hybrid-athlete-step-0-inventory.md).
-- [ ] **Step 0 — recovery gate:** Privately export the full original workbook and private Git source, verify off-site Neon backup/isolated restore, and compare live Intervals.icu coverage. These actions are not verified by the public PR. See [recovery runbook](hybrid-athlete-step-0-recovery.md).
-- [ ] **Step 1:** Security, database and migration foundations with recovery evidence.
-- [ ] **Steps 2–3:** Import canonical knowledge and full historical strength source; then introduce native workout logging and a controlled write cutover.
-- [ ] **Steps 4–6:** Build cross-sport weekly planning, native meal planning, and a unified readiness-aware coach.
-- [ ] **Step 7:** Archive legacy sources only after independent per-domain reconciliation and acceptance gates.
+- [x] **Step 0 — structural inventory:** Audit both repositories, core source schemas and live strength workbook structure; document authority and destinations. See [inventory](hybrid-athlete-step-0-inventory.md).
+- [ ] **Step 1 — safety for the first production import:** Verify a private source export and an isolated Neon restore; harden any concrete auth/privacy gaps and add only needed strength tables. These checks are **not** prerequisites to merging the documentation PR. See [recovery checks](hybrid-athlete-step-0-recovery.md).
+- [ ] **Step 2 — strength vertical slice:** Import the full authoritative strength workbook and the relevant active blueprint, then ship a usable native logger. Cut over to a single writer only after reconciliation.
+- [ ] **Step 3 — training continuity:** Use existing cycling plan/delivery models for previous-week review and combine actual strength and cycling context in the weekly view.
+- [ ] **Step 4 — meals:** Start with meal cards and a weekly meal schedule; add structured recipe ingredients/shopping as needed.
+- [ ] **Step 5 — recovery and relevant knowledge:** Add check-ins and migrate other rules/notes when used by a real workflow.
+- [ ] **Step 6 — legacy retirement:** Verify remaining dependencies and recovery archives before disabling old syncs and archiving the private repository. An Intervals.icu coverage check is required before removing its old snapshot workflow, **not** before the strength feature.
 
 ## 5. Cycling-focused UI refresh
 
