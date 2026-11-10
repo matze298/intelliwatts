@@ -28,6 +28,18 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 - [x] **Reduce concentrated responsibilities:** Separate Dashboard and Settings routes, Dashboard API loading/cache, and planner SSE progress from `app/routes/web.py`, retaining the existing URLs and regression coverage. Coach-context normalization can be extracted separately when it next changes.
 - [ ] **Improve coaching context:** Prioritize planned-versus-completed training and recovery changes against an athlete's baseline, with clear missing-data indicators. Add richer signals only when their use in planning is defined.
 
+## Future hybrid-athlete consolidation
+
+The [consolidation roadmap](hybrid-athlete-consolidation-plan.md) keeps the current FastAPI/Jinja, PostgreSQL and cycling planning stack. Ship **one useful feature at a time** and migrate only the private knowledge it needs; no generic CMS, parallel cycling plan store or new server is a prerequisite.
+
+- [x] **Step 0 — structural inventory:** Audit both repositories, core source schemas and live strength workbook structure; document authority and destinations. See [inventory](hybrid-athlete-step-0-inventory.md).
+- [ ] **Step 1 — safety for the first production import:** Verify a private source export and an isolated Neon restore; harden any concrete auth/privacy gaps and add only needed strength tables. These checks are **not** prerequisites to merging the documentation PR. See [recovery checks](hybrid-athlete-step-0-recovery.md).
+- [ ] **Step 2 — strength vertical slice:** Import the full authoritative strength workbook and the relevant active blueprint, then ship a usable native logger. Cut over to a single writer only after reconciliation.
+- [ ] **Step 3 — training continuity:** Use existing cycling plan/delivery models for previous-week review and combine actual strength and cycling context in the weekly view.
+- [ ] **Step 4 — meals:** Start with meal cards and a weekly meal schedule; add structured recipe ingredients/shopping as needed.
+- [ ] **Step 5 — recovery and remaining knowledge:** Add check-ins; import remaining wanted personal documents as simple database-backed Markdown, without a generic CMS or activating every note as a rule.
+- [ ] **Step 6 — legacy retirement:** Account for every private source file (imported, obsolete/duplicate, or excluded) and verify recovery archives before disabling old syncs and archiving the private repository. An Intervals.icu coverage check is required before removing its old snapshot workflow, **not** before the strength feature.
+
 ## 5. Cycling-focused UI refresh
 
 - [x] Restore a first-party cycling-chainring brand mark and responsive app navigation.
