@@ -37,8 +37,8 @@ The [consolidation roadmap](hybrid-athlete-consolidation-plan.md) keeps the curr
 - [ ] **Step 2 — strength vertical slice:** Import the full authoritative strength workbook and the relevant active blueprint, then ship a usable native logger. Cut over to a single writer only after reconciliation.
 - [ ] **Step 3 — training continuity:** Use existing cycling plan/delivery models for previous-week review and combine actual strength and cycling context in the weekly view.
 - [ ] **Step 4 — meals:** Start with meal cards and a weekly meal schedule; add structured recipe ingredients/shopping as needed.
-- [ ] **Step 5 — recovery and relevant knowledge:** Add check-ins and migrate other rules/notes when used by a real workflow.
-- [ ] **Step 6 — legacy retirement:** Verify remaining dependencies and recovery archives before disabling old syncs and archiving the private repository. An Intervals.icu coverage check is required before removing its old snapshot workflow, **not** before the strength feature.
+- [ ] **Step 5 — recovery and remaining knowledge:** Add check-ins; import remaining wanted personal documents as simple database-backed Markdown, without a generic CMS or activating every note as a rule.
+- [ ] **Step 6 — legacy retirement:** Account for every private source file (imported, obsolete/duplicate, or excluded) and verify recovery archives before disabling old syncs and archiving the private repository. An Intervals.icu coverage check is required before removing its old snapshot workflow, **not** before the strength feature.
 
 ## 5. Cycling-focused UI refresh
 
