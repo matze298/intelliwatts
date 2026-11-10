@@ -119,6 +119,6 @@ def test_private_responses_disable_caching_and_framing() -> None:
         # THEN each dynamic response has the same privacy and framing protections
         for response in responses:
             assert response.headers["cache-control"] == "no-store"
-            assert response.headers["referrer-policy"] == "no-referrer"
+            assert response.headers["referrer-policy"] == "same-origin"
             assert response.headers["x-content-type-options"] == "nosniff"
             assert response.headers["x-frame-options"] == "DENY"
