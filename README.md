@@ -258,6 +258,7 @@ IntelliWatts is planned to expand from cycling into a database-backed hybrid-ath
 - [Consolidation roadmap and staged exit gates](docs/hybrid-athlete-consolidation-plan.md)
 - [Step 0: source inventory and migration classification](docs/hybrid-athlete-step-0-inventory.md)
 - [Step 0: private export, backup, and restoration runbook](docs/hybrid-athlete-step-0-recovery.md)
+- [Step 1: strength database foundation and private deployment gates](docs/hybrid-athlete-step-1-foundation.md)
 
 The public repository must not contain private athlete records, workout exports, provider credentials, or production database dumps. Step 0's **structural inventory is complete**; private backups and restore checks remain outstanding **before the applicable production imports or legacy cutovers**, not before merging a documentation-only PR. No legacy source has been retired.
 
