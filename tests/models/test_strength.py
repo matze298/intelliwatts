@@ -99,10 +99,8 @@ def test_strength_sets_keep_missing_metrics_and_unilateral_sides() -> None:
 def test_strength_session_requires_explicit_status() -> None:
     """A missing source status must not become an automatically completed workout."""
     with pytest.raises(ValidationError, match="status"):
-        StrengthSession.model_validate(
-            {
-                "user_id": uuid.uuid4(),
-                "session_date": date(2026, 1, 1),
-                "workout_type": "Workout A",
-            }
-        )
+        StrengthSession.model_validate({
+            "user_id": uuid.uuid4(),
+            "session_date": date(2026, 1, 1),
+            "workout_type": "Workout A",
+        })
