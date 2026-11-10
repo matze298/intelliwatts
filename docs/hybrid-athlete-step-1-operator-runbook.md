@@ -76,7 +76,7 @@ sha256sum "$BACKUP"  # Or: shasum -a 256 "$BACKUP" on macOS
 
 4. Encrypt and transfer a copy to storage **independent of Neon**; optionally use an encrypted external disk or `age -p` with an interactively supplied secret. Test downloading/decrypting that **stored** copy. Keep the original production branch untouched.
 5. Create a **separate empty restore database** (local PostgreSQL of a compatible major version, or an isolated empty Neon test project). Do not restore onto a production branch or into a branch with existing tables.
-6. Configure a second libpq service `intelliwatts-restore-test` pointing to **that empty database**; verify its endpoint/project is different before restoring:
+6. Configure a second libpq service `intelliwatts-restore-test` pointing to **that empty database**; verify its endpoint/project is different before restoring. Point `BACKUP` to a **separately retrieved and decrypted copy** of the independent backup, not just the original local dump:
 
 ```bash
 psql "service=intelliwatts-restore-test" -c 'SELECT current_database(), current_user;'
@@ -124,8 +124,8 @@ cd "$HOME/private-athlete-recovery"
 
 git clone --mirror git@github.com:matze298/hybrid-athlete-os.git hybrid-athlete-os.git
 git -C hybrid-athlete-os.git fsck --full
-git -C hybrid-athlete-os.git bundle create hybrid-athlete-os.bundle --all
-git -C hybrid-athlete-os.git bundle verify hybrid-athlete-os.bundle
+git -C hybrid-athlete-os.git bundle create ../hybrid-athlete-os.bundle --all
+git -C hybrid-athlete-os.git bundle verify ../hybrid-athlete-os.bundle
 sha256sum hybrid-athlete-os.bundle  # Or: shasum -a 256 on macOS
 ```
 
