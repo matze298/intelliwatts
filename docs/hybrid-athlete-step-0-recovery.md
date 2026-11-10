@@ -1,89 +1,60 @@
-# Step 0 — private export, backup, and restoration runbook
+# Private recovery checks for the consolidation
 
-**Status:** Procedure documented; **execution outstanding** as of 2026-11-10.  
-**Audience:** Owner/operator with direct access to the private source repositories, the strength workbook, Neon and a secure backup destination.
+**Status:** Procedure documented. **Step 0 structural inventory is complete**, but these private checks have **not** been executed or verified here (2026-11-10).  
+**Purpose:** Protect data before each affected production import or source retirement — **not** hold up a documentation-only PR.
 
-This public document contains instructions only. **Never commit, attach to a public issue/PR, or paste into CI logs** a private athlete document, source JSON snapshot, strength workbook, database dump, credentials, API responses or identifiable row-level audit output.
+Do not commit athlete documents, workout exports, database dumps, provider responses, credentials or identifiable reconciliation results to the public IntelliWatts repository, PR, CI logs or screenshots.
 
-## Why this is a release gate
+## One private recovery record
 
-Step 0 cannot be considered fully closed from repository inspection alone. Production Neon connection material and private backup storage are not exposed to this audit, and an immutable full workbook export has not been verified. Do not begin a destructive import, change an authoritative write path, or delete old sources until the artifacts below exist and a representative restore has passed.
+Keep a small restricted-access record **outside Git** for each affected source: encrypted archive location, source version/export date, checksum, test-restore result, relevant counts and unresolved problems. The backup must be independently recoverable; a copy inside the same source account alone is not disaster recovery.
 
-## Secure evidence register (outside Git)
+## A. Before changing production PostgreSQL data
 
-Create a private restricted-access record that contains, for **each artifact**:
+1. Confirm current Neon recovery settings privately; do not expose a connection URL.
+2. Create a full logical `pg_dump` backup in an environment with protected credentials and restricted file permissions; encrypt and store a copy separately from the production database.
+3. Use `pg_restore --list` to check the archive, then restore it to an **isolated test database**. Verify the Alembic schema and a representative sample of existing user, plan and delivery records.
+4. Disable live Intervals.icu publishing and LLM calls in the restore environment. Record the outcome privately.
 
-- Source and scope; export timestamp (UTC); source revision/version where available.
-- Encrypted storage location, retention window, owner, and a checksum recorded **privately**.
-- Whether raw content/notes, legacy rows, formulas, validation metadata and hidden tabs are present.
-- Test-restore date, method, outcome, and reviewer.
-- Row counts / unique identifiers and reconciliation anomalies in a private report, **not in this public repository**.
+**Gate:** A real test restore of the application data passes before the first production-changing schema/import step. Merely having provider point-in-time recovery enabled is not enough.
 
-Prefer encrypted storage independent of the original source account and the production database. A Drive copy inside the same account is convenient but not an independent disaster-recovery backup. A Git clone is not an adequate database backup. Native provider point-in-time recovery alone is not a verified off-site restore.
+## B. Before importing and replacing Google Sheets strength tracking
 
-## A. Hybrid Athlete OS recovery archive
+1. Privately export the **entire** workbook, including core tables, notes, formulas, and hidden/legacy tabs. A complete native Excel export plus an independently stored encrypted archive is an acceptable starting point; CSV-only or generated 84-day caches are not.
+2. Reopen the archive in a private environment. Verify tab presence and representative historical notes, variants, measurements and templates.
+3. Dry-run the strength importer against the export: match original session/set/exercise/template IDs; check duplicate keys, orphan sets, legacy mappings, preserved missing values, unilateral measurements and historical template versions. Keep a private rejected-record report.
+4. Before switching new logs to IntelliWatts, verify completed-session and performed-set reconciliation and native create/edit/read-back behavior.
+5. **Use one writer.** After an approved cutover, Google Sheets becomes read-only. If reverting, first reconcile new native sessions; never simply turn on both writers.
 
-1. With authorized access, clone the **private** repository including history. For an immutable transport artifact, create a private `git bundle` containing all required refs, or equivalent secured repository archive.
-2. Check that all expected refs and relevant file groups exist, including historical generated files and selected journals. Do not publish a path/file-content listing.
-3. Store the archive encrypted in an independent private location. Store its SHA-256 checksum and revision information in the private evidence register.
-4. Perform a test clone or `git bundle verify` and inspect representative content in a non-public environment.
-5. Keep the archive through post-cutover acceptance; do not assume deleting current Git files removes old personal records from Git history.
+**Gate:** The full historical source is recoverable and the imported records reconcile before IntelliWatts becomes the authoritative strength logger.
 
-**Verification:** A restore reproduces expected refs and selected source files byte-for-byte. Never import the historical generated snapshots into the new app merely because they are present in the archive.
+## C. Before importing private coaching documents or meal cards
 
-## B. Strength workbook recovery export
+1. Save a private full-history clone or Git bundle of Hybrid Athlete OS, securely stored outside the repository's original account; verify it by restoring a representative file and the necessary history.
+2. Copy **only** the content needed by the next feature (initially the active strength blueprint and applicable preferences). Preserve original Markdown/frontmatter and source path privately or in protected application data.
+3. Dry-run a repeatable importer, report rejects, and inspect representative rows and relevant conflicting rules. Don't fabricate recipe quantities or promote incidental notes into permanent rules.
+4. Keep the original source read-only and recoverable until the relevant IntelliWatts functionality works. Remaining unused material can stay archived until the last cutover.
 
-1. Using authorized Google Sheets access, export the **entire native workbook** to a multi-tab format such as `.xlsx`. Do not rely on CSV or a generated 84-day strength read model: neither is a full historical backup.
-2. Include core tabs (`Sessions`, `Sets`, `Exercises`, `Workout Templates`, `Migration Map`), analytical/diagnostic tabs, and hidden legacy tabs. Preserve source notes, formulas, versions, special measurement fields and mapping metadata in the recovery artifact.
-3. Preserve an immutable copy of the original export privately, encrypted and independent of the source account. A separately labeled working copy may be used for migration experiments.
-4. In a private test environment, reopen the workbook and compare tab presence, non-empty key counts, unique IDs, preserved notes, old/historical data and expected formulas against the authoritative live Sheet.
-5. For import-specific reconciliation, compare `Sessions.Session ID`, `Sets.Set ID`, `Sets.Session ID`, `Exercises.Exercise ID`, `Workout Templates.Template Row ID`, and legacy mappings. Report missing parents, ambiguous exercise mappings, duplicate keys and blank-vs-zero conversion defects.
-6. Do **not** modify the production Sheet or enable native IntelliWatts strength writes as part of the backup exercise.
+**Gate:** The specific content used by the feature is recoverable and correctly represented; a full generic knowledge-management platform is not a prerequisite.
 
-**Verification:** Core data and the hidden legacy source are recoverable from the exported file and fully reconcilable. Imported records may deliberately omit computed dashboard/formula outputs, but the recovery archive must retain the original.
+## D. Before disabling the old endurance snapshot jobs
 
-## C. Production Neon / IntelliWatts database recovery
+1. Privately compare a bounded sample of Intervals.icu activities and wellness fields with the legacy generated endurance snapshot, including provider IDs, dates and relevant metrics.
+2. Confirm the existing IntelliWatts API and dashboard/planner paths provide the data that the active coaching workflows need; record missing fields and their fallback.
+3. Preserve an archive, then disable the old GitHub snapshot schedule only when no required workflow depends on it.
 
-1. Confirm current Neon project/branch, database, point-in-time retention, available snapshots and access controls privately. Do not copy the database URL into tickets or PRs.
-2. Create a full logical backup with `pg_dump` (custom format recommended) using secure environment-based libpq credentials, file permissions restricted by `umask 077`, and a private output destination. Avoid putting credentials in command arguments or terminal history.
-3. Store a separate encrypted copy outside the production database account and note its checksum privately.
-4. Verify the dump can be enumerated with `pg_restore --list`, then **restore to a separate disposable database/branch**. Run the existing Alembic schema check against the restore and verify representative row counts and relations, including `User`, `TrainingPhase`, `TrainingPlan`, `LongTermPlanArtifact` and `WorkoutDelivery`.
-5. Verify the restore does not contact or publish to a real Intervals.icu account or invoke LLM services; use disabled integrations or test-only secrets. Restrict and securely delete temporary copies after verification.
+**Gate:** Provider coverage and remaining dependencies are verified. **This check is not required to ship the strength logger or to merge this PR.**
 
-**Verification:** A clean isolated restore reproduces schema, key rows and referential integrity. Treat a provider dashboard's claimed restore window as a capability, not proof that our application data was actually restored.
+## What is completed versus pending
 
-## D. Intervals.icu coverage and deduplication baseline
-
-1. Inspect what the active IntelliWatts client fetches for activities, wellness and calendars, and compare the metric coverage with the **schema** of the legacy endurance snapshot.
-2. For a bounded range, privately compare provider activity IDs, dates and relevant metric availability against the existing snapshot; record any unique fields or unexpected gaps in the private register.
-3. Define canonical external activity IDs, source timestamps and cache expiration. Keep completed activity/wellness authority in Intervals.icu; do not seed a second full historical copy from Git.
-4. Check planned vs. completed distinction and deduplicate any same-day or cross-sport records.
-5. Do not delete snapshot data from the recovery archive or disable sync workflows until the new read paths cover actual coaching needs.
-
-**Verification:** The new implementation meets all relied-upon fields, or the unresolved gap is documented and a compatible fallback remains.
-
-## E. Restore and cutover sign-off
-
-Record private evidence for all four areas:
-
-| Gate | Pass condition | Audit result |
+| Check | Status | Required before |
 | --- | --- | --- |
-| Repository archive | Complete encrypted private archive; history restored/tested | **PENDING** |
-| Strength export | Full workbook including hidden tabs and notes recovered, IDs reconciled | **PENDING** |
-| PostgreSQL backup | Off-site logical backup and isolated restore passed | **BLOCKED — no production DB access used** |
-| Endurance source coverage | Representative live provider coverage verified; duplicate policy documented | **PENDING** |
+| Source structure and authority inventory | **Complete** | This documentation PR |
+| Isolated Neon logical-backup restore | **Pending; production access not exercised** | First production schema/data change |
+| Complete strength workbook export and reconciliation | **Pending** | Strength history import and write cutover |
+| Recoverable private repository archive | **Pending** | Import of personal knowledge/meal content; final repo retirement |
+| Live Intervals.icu vs. legacy snapshot coverage | **Pending** | Retiring the old endurance snapshot workflow |
 
-**Approval:** The owner/operator signs off that backup locations are private and restorable, open issues are documented, and each source remains available until its own migration gate has passed. Update the Step-0 status explicitly after verification rather than marking these gates complete by inference.
-
-## Safe rollback principles
-
-- Before the strength write-cutover, Google Sheets remains writable and IntelliWatts strength imports are read-only previews. After the cutover, never blindly resume two independent writers; reconcile any new native sessions before reverting.
-- During knowledge migration, the private repo remains unchanged until database rules and revisions are accepted and exportable. The ability to export IntelliWatts knowledge back to a portable format is an acceptance condition.
-- Keep the old endurance source/snapshot paths available until data coverage is verified; restoring a prior IntelliWatts release must not silently duplicate provider calendar writes.
-- Never roll back by overwriting more recent authoritative workouts or subjective observations without explicit reconciliation.
-
-## Next safe action
-
-Conduct the four **private** export/restore checks, keep the results in the restricted register, and mark the Step-0 gate resolved in the roadmap only once the evidence is actually reviewed. Database schema and importer implementation belong in separate later PRs.
+Each implementing PR documents the **relevant** private recovery check and tests. There is no mandatory ten-stage migration framework, centralized import service, or universal audit table for simple content records. Preserve a clear rollback path where real training data or a source writer changes.
 
 See [inventory](hybrid-athlete-step-0-inventory.md) and [roadmap](hybrid-athlete-consolidation-plan.md).
