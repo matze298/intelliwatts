@@ -1,7 +1,7 @@
 """Native strength persistence foundation; no source import or logging routes yet."""
 
 import uuid
-from datetime import date  # noqa: TC003 - SQLModel resolves field types at runtime
+from datetime import date  # ruff: ignore[typing-only-standard-library-import] - SQLModel resolves at runtime
 from typing import Any
 
 from sqlalchemy import JSON, Column, Text, UniqueConstraint
