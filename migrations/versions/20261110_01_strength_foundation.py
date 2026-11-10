@@ -28,6 +28,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("primary_metric", sa.String(), nullable=True),
         sa.Column("active", sa.Boolean(), nullable=False),
+        sa.Column("source_data", sa.JSON(), nullable=True),
         sa.UniqueConstraint("user_id", "source_id", name="uq_exercise_user_source"),
     )
     op.create_index("ix_exercise_user_id", "exercise", ["user_id"])
