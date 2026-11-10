@@ -55,6 +55,7 @@ def test_strength_session_is_performed_work_not_a_planned_workout() -> None:
     assert session.template_id is None
     assert session.template_version == "1"
     assert session.source_data == original
+    assert session.status == "Completed"
     assert session.session_rpe is None
 
 
