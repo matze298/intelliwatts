@@ -52,7 +52,9 @@ class StrengthSession(SQLModel, table=True):
     workout_type: str
     variant: str | None = None
     template_version: str | None = None
-    status: str = "completed"
+    # Importers and the future logger must explicitly distinguish performed,
+    # skipped, and incomplete sessions; never infer completion.
+    status: str
     duration_minutes: float | None = None
     session_rpe: float | None = None
     readiness: str | None = None
