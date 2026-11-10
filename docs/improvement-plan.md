@@ -28,6 +28,17 @@ Priorities are ordered by risk and user impact. Keep the existing FastAPI, Jinja
 - [x] **Reduce concentrated responsibilities:** Separate Dashboard and Settings routes, Dashboard API loading/cache, and planner SSE progress from `app/routes/web.py`, retaining the existing URLs and regression coverage. Coach-context normalization can be extracted separately when it next changes.
 - [ ] **Improve coaching context:** Prioritize planned-versus-completed training and recovery changes against an athlete's baseline, with clear missing-data indicators. Add richer signals only when their use in planning is defined.
 
+## Future hybrid-athlete consolidation
+
+The proposed [IntelliWatts consolidation roadmap](hybrid-athlete-consolidation-plan.md) extends the existing single-app architecture to native strength tracking, meal planning, recovery and unified athlete coaching. It supersedes no completed cycling-specific work. Deliver the migration in small, independently reviewable phases while preserving existing provider authority and the cycling UI.
+
+- [x] **Step 0 — structural inventory:** Audit both repositories, confirm source schemas and live strength workbook structure, classify authoritative vs. derived/duplicate data, and document field ownership. See [inventory](hybrid-athlete-step-0-inventory.md).
+- [ ] **Step 0 — recovery gate:** Privately export the full original workbook and private Git source, verify off-site Neon backup/isolated restore, and compare live Intervals.icu coverage. These actions are not verified by the public PR. See [recovery runbook](hybrid-athlete-step-0-recovery.md).
+- [ ] **Step 1:** Security, database and migration foundations with recovery evidence.
+- [ ] **Steps 2–3:** Import canonical knowledge and full historical strength source; then introduce native workout logging and a controlled write cutover.
+- [ ] **Steps 4–6:** Build cross-sport weekly planning, native meal planning, and a unified readiness-aware coach.
+- [ ] **Step 7:** Archive legacy sources only after independent per-domain reconciliation and acceptance gates.
+
 ## 5. Cycling-focused UI refresh
 
 - [x] Restore a first-party cycling-chainring brand mark and responsive app navigation.
