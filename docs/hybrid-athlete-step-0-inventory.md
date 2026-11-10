@@ -34,7 +34,7 @@ The generated endurance tree contains 18 JSON files: a manifest, 13 monthly acti
 
 ## 0C. Source-to-destination classification
 
-Classification: **MIGRATE** = preserve for import **when the corresponding feature is built**, not all at once; **REFER** = stay with an external authority; **REBUILD** = derived calculations rather than personal-data copying; **ARCHIVE** = keep recoverable privately without serving it as live content; **REVIEW** = decide relevance or conflicts before import. The proposed destination names are illustrative; do not create every table up front.
+Classification: **MIGRATE** = preserve for import **when the corresponding feature is built**, not all at once; at retirement, every source item is imported, confirmed redundant/obsolete, or explicitly excluded; **REFER** = stay with an external authority; **REBUILD** = derived calculations rather than personal-data copying; **ARCHIVE** = keep recoverable privately without serving it as live content; **REVIEW** = decide relevance or conflicts before import. The proposed destination names are illustrative; do not create every table up front.
 
 | Source group | Disposition | Proposed database target / rationale | Reconciliation needed |
 | --- | --- | --- | --- |
@@ -44,9 +44,9 @@ Classification: **MIGRATE** = preserve for import **when the corresponding featu
 | Private `planning/*.md` | REVIEW + SELECTIVE PORT | Port only decision constraints still needed in the existing planner; do not create a second planning engine | Retain relevant rules, avoid duplicating deployed application logic |
 | Private `nutrition/meals/*.md` and collections | MIGRATE + REVIEW | Start with simple meal text, tags and weekly assignments when meal planning ships; structure ingredients only as needed | Preserve frontmatter and text; missing ingredients/quantities remain missing |
 | Private `nutrition/recipes/*.md`, guides, playbooks and framework | MIGRATE | Versioned recipe/ingredient source where actually structured, plus meal planning and nutrition guidance | Differentiate meal idea from complete recipe; no fabricated macros |
-| Private `knowledge/*.md` | REVIEW / DEFER | Preserve in the private archive and import an evidence note only when a coaching workflow needs it | Preserve source references and distinguish evidence from policy |
-| Private `supplements/*.md` | REVIEW / DEFER | Keep the source recoverable; add relevant guidance only when needed, never implied prescriptions | Human review before any decision-rule promotion |
-| Private `journal/*.md` | REVIEW / DEFER | Keep historical observations recoverable; migrate those used by an implemented feature, never auto-promote to a rule | Provenance, duplicates and privacy classification |
+| Private `knowledge/*.md` | REVIEW / DEFER | Preserve wanted knowledge as Markdown content in PostgreSQL by retirement; activate only relevant evidence in coaching | Preserve source references and distinguish evidence from policy |
+| Private `supplements/*.md` | REVIEW / DEFER | Store wanted source text in PostgreSQL by retirement; activate guidance only when relevant, never implied prescriptions | Human review before any decision-rule promotion |
+| Private `journal/*.md` | REVIEW / DEFER | Preserve wanted observations in PostgreSQL by retirement; never auto-promote a note to a rule | Provenance, duplicates and privacy classification |
 | Private root governance, docs, ADRs and templates | ARCHIVE + SELECTIVE PORT | Preserve as historical archive; port generic architectural decisions or test contracts to public code/docs only when no personal content | No accidental copying of personal data |
 | `generated/endurance/` | REBUILD / RETIRE | Already a noncanonical Intervals.icu cache; do not bulk import to create a second endurance history | Prove provider/IntelliWatts coverage and identify any unique required metric first |
 | `generated/strength/` | NO MIGRATION SOURCE | No committed artifact at audit time; full Google source must be used | Do not treat absence as zero completed sessions |
