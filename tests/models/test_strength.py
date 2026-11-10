@@ -3,6 +3,9 @@
 import uuid
 from datetime import date
 
+import pytest
+from pydantic import ValidationError
+
 from app.models.strength import Exercise, StrengthSession, StrengthSet, StrengthTemplate
 
 
@@ -91,3 +94,15 @@ def test_strength_sets_keep_missing_metrics_and_unilateral_sides() -> None:
     assert left.source_data == {"Raw Reps": "8"}
     assert right.load_kg == 0.0
     assert right.side == "Right"
+
+
+def test_strength_session_requires_explicit_status() -> None:
+    """A missing source status must not become an automatically completed workout."""
+    with pytest.raises(ValidationError, match="status"):
+        StrengthSession.model_validate(
+            {
+                "user_id": uuid.uuid4(),
+                "session_date": date(2026, 1, 1),
+                "workout_type": "Workout A",
+            }
+        )
