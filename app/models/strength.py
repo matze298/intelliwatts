@@ -19,6 +19,8 @@ class Exercise(SQLModel, table=True):
     name: str
     primary_metric: str | None = None
     active: bool = True
+    # Legacy exercise metadata (equipment and comparison flags) stays intact.
+    source_data: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
 
 
 class StrengthTemplate(SQLModel, table=True):
