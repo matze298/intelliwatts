@@ -57,7 +57,26 @@ There are two distinct tests. A Neon branch test proves the **migration** runs o
 ### A. Capture a private, portable production backup
 
 1. In Neon Console, identify the **production project, branch and database**, Postgres major version, recovery window, and **direct (unpooled)** connection. Keep credentials out of shell history and Git.
-2. Configure local, access-restricted libpq service and password files, e.g. `~/.pg_service.conf` and `~/.pgpass`, with mode `0600`. Name the production entry `intelliwatts-production`. Use its real **direct** host and private role; never copy real details into this runbook.
+2. Configure local libpq service and password files, e.g. `~/.pg_service.conf` and `~/.pgpass` (both mode `0600`). Name the production entry `intelliwatts-production`; use its **direct/unpooled** Neon host. Keep the password in `~/.pgpass`, **not** in the service file, command arguments, shell history, or this repository. The service file can look like this (fill in values privately):
+
+```ini
+# ~/.pg_service.conf
+[intelliwatts-production]
+host=<production-direct-host>
+port=5432
+dbname=<database-name>
+user=<database-role>
+sslmode=require
+
+[intelliwatts-restore-test]
+host=<separate-empty-test-database-host>
+port=5432
+dbname=<test-database-name>
+user=<test-role>
+sslmode=require
+```
+
+The private `~/.pgpass` file uses libpq's `host:port:database:user:password` format. Set permissions using `chmod 600 ~/.pg_service.conf ~/.pgpass`. Use a separate restore password and host; do not merely change the database name on the production endpoint.
 3. In a *private, encrypted working directory*, run:
 
 ```bash
@@ -133,11 +152,11 @@ sha256sum hybrid-athlete-os.bundle  # Or: shasum -a 256 on macOS
 3. From the **stored encrypted copy**, decrypt into a restricted temporary workspace and verify recovery:
 
 ```bash
-# Point this variable to your successfully decrypted test copy.
-RESTORED_BUNDLE="/private/recovery-test/hybrid-athlete-os.bundle"
-git clone "$RESTORED_BUNDLE" /private/recovery-test/hybrid-athlete-os-restored
-git -C /private/recovery-test/hybrid-athlete-os-restored fsck --full
-git -C /private/recovery-test/hybrid-athlete-os-restored rev-parse HEAD
+# First retrieve and decrypt the independently stored backup into this private path.
+RESTORED_BUNDLE="$HOME/private-athlete-recovery/recovery-test/hybrid-athlete-os.bundle"
+git clone "$RESTORED_BUNDLE" "$HOME/private-athlete-recovery/recovery-test/restored"
+git -C "$HOME/private-athlete-recovery/recovery-test/restored" fsck --full
+git -C "$HOME/private-athlete-recovery/recovery-test/restored" rev-parse HEAD
 ```
 
 4. Compare the restored default-branch commit with the original mirror and check representative private files (e.g. the active blueprint, recipes, playbooks, and journal) **without printing their contents in any public logs**. If the repository uses Git LFS, submodules, or uncommitted private files, back up those objects separately; a plain Git bundle does not include non-Git resources.
