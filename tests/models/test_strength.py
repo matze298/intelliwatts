@@ -10,7 +10,12 @@ def test_strength_templates_have_explicit_versions_and_ordered_slots() -> None:
     """Changing a plan requires a new version rather than rewriting an old workout."""
     # GIVEN an athlete, an exercise, and a structured template
     user_id = uuid.uuid4()
-    exercise = Exercise(user_id=user_id, source_id="EX-TEST-SQUAT", name="Example squat")
+    exercise = Exercise(
+        user_id=user_id,
+        source_id="EX-TEST-SQUAT",
+        name="Example squat",
+        source_data={"Movement Pattern": "Squat", "Supports Band": False},
+    )
     definition = [{"slot": 1, "exercise_id": str(exercise.id), "sets_min": 3, "reps_max": 8}]
 
     # WHEN a versioned workout template is created
