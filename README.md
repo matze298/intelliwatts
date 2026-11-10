@@ -251,6 +251,16 @@ Use `--theme light` for light-mode screenshots or omit `--theme` to use the syst
 | Styling is stale | Rebuild CSS with `npm ci && npm run build:css` and refresh the browser |
 | Database errors | `DATABASE_URL`, database reachability, and `uv run alembic upgrade head` |
 
+## Future consolidation roadmap
+
+IntelliWatts is planned to expand from cycling into a database-backed hybrid-athlete application with native strength tracking, coordinated weekly planning, meal planning and recovery support. These are **planned capabilities**, not current features. The existing cycling planner remains operational throughout the migration.
+
+- [Consolidation roadmap and staged exit gates](docs/hybrid-athlete-consolidation-plan.md)
+- [Step 0: source inventory and migration classification](docs/hybrid-athlete-step-0-inventory.md)
+- [Step 0: private export, backup, and restoration runbook](docs/hybrid-athlete-step-0-recovery.md)
+
+The public repository must not contain private athlete records, workout exports, provider credentials, or production database dumps. Step 0 has verified source structure but **has not yet verified private backups and restoration**; no legacy source has been retired.
+
 ## Scope
 
 IntelliWatts is a personal training-planning application, not a medical monitoring service. Its metrics and model-generated plans are training aids; they should be interpreted alongside the athlete's own experience and available data.
