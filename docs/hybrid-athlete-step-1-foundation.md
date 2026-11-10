@@ -8,7 +8,7 @@
 - Four empty, user-linked tables: `Exercise`, `StrengthTemplate`, `StrengthSession`, and `StrengthSet`. The existing `User`, `TrainingPhase`, `TrainingPlan`, and `WorkoutDelivery` remain the planning foundation.
 - A reversible additive Alembic migration. Historical sessions record the template version used; sets preserve separate left/right measurements and `NULL` for absent weight, RIR, duration, or distance. Original source IDs and optional source-row JSON support idempotent, inspectable imports later.
 - No new generic knowledge database, import orchestration service, audit framework, VPS or multi-user authentication layer.
-- Non-static HTTP responses now set `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, and `X-Frame-Options: DENY`. Existing signed-cookie login, rate limiting, same-origin mutation checks and secure cookie options remain unchanged.
+- Non-static HTTP responses now set `Cache-Control: no-store`, `Referrer-Policy: same-origin`, `X-Content-Type-Options: nosniff`, and `X-Frame-Options: DENY`. Existing signed-cookie login, rate limiting, same-origin mutation checks and secure cookie options remain unchanged.
 - Synthetic regression tests exercise model defaults and missing values, Postgres migration upgrade/downgrade, persistence across connections, and existing cycling data. **These are test data, never a private workbook export.**
 
 No application route references the new strength tables yet. Step 2 will build the actual importer, mobile strength logger, and a controlled one-writer transition from Google Sheets.
