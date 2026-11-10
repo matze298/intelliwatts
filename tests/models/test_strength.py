@@ -28,6 +28,7 @@ def test_strength_templates_have_explicit_versions_and_ordered_slots() -> None:
     )
 
     # THEN the authored order and exact version are retained
+    assert exercise.source_data == {"Movement Pattern": "Squat", "Supports Band": False}
     assert template.definition == definition
     assert template.version == "1"
     assert template.user_id == user_id
