@@ -1,70 +1,56 @@
 # IntelliWatts consolidation roadmap
 
-**Status:** Proposed; documentation and inventory only  
-**Decision:** IntelliWatts becomes the single web frontend and application backend. PostgreSQL owns application-managed athlete data. Hybrid Athlete OS and the Google Sheets strength tracker are retired through independently verified domain cutovers.  
+**Status:** Proposed, documentation-only. Step 0 structural inventory completed; production recovery checks pending.  
+**Decision:** IntelliWatts becomes the single application for cycling, strength, meals, recovery, and coaching. Its existing PostgreSQL database stores application-owned personal data. Retire Hybrid Athlete OS and Google Sheets **feature by feature**, after verified cutovers.  
 **Updated:** 2026-11-10
 
-## Guiding decisions
+## Keep the architecture small
 
-1. Evolve the existing FastAPI/Jinja/SQLModel/Alembic monolith. No microservices, separate databases, new frontend framework, or VPS is a prerequisite.
-2. Store personal knowledge, goals, recipes, observations, workout history, and plans in the protected backend database, **not in Git**. Public source control holds only code, schema migrations, synthetic tests, and generic documentation.
-3. Keep Intervals.icu authoritative for completed cycling/endurance activities and available provider wellness data. Maintain a bounded, provenance-bearing cache only where justified. Do not migrate redundant Git-generated endurance snapshots as a second source of truth.
-4. Google Sheets owns completed strength history until a separately approved, reconciled write cutover. IntelliWatts then becomes authoritative for new and imported strength logs. Preserve source identifiers and an encrypted immutable export for recovery.
-5. Distinguish planned vs. completed sessions, source measurements vs. interpretations, stable coaching rules vs. generated suggestions, and known missing values vs. zero.
-6. Readiness and cross-sport recommendations are explainable, cautious, and draft-first; external publishing and durable rule changes require explicit user approval.
-7. Protect sensitive content in server logs, error reports, third-party LLM prompts, database dumps, PRs, CI artifacts, and screenshots. In Manual / External LLM mode, show the context being disclosed before the user copies it.
-8. Every migration is repeatable and idempotent, preserving external identifiers, provenance, version history, audit results, and a rollback path. Do not delete a legacy source during the same change that first imports it.
+1. **One application and database.** Extend the current FastAPI/Jinja/SQLModel/Alembic stack on Render + Neon. Do not introduce microservices, a new frontend, a VPS, or a separate general-purpose knowledge platform without a demonstrated need.
+2. **Reuse what exists.** Keep `User`, `TrainingPhase`, `TrainingPlan`, `LongTermPlanArtifact`, and `WorkoutDelivery` as the cycling/planning foundation. Extend the existing prompt/context flow for previous-week reviews. A unified weekly **view** need not imply a new `training_week` table or parallel cycling plan store.
+3. **One owner per source of truth.** Intervals.icu remains authoritative for completed endurance activities, available wellness, and its workout calendar. Google Sheets remains authoritative for strength sessions until the native logger's cutover. Afterwards IntelliWatts owns new strength logs and the imported history. Git-generated provider snapshots are replaceable caches, not second histories.
+4. **Database, not Git, for personal content.** Athlete preferences, active rules, strength logs, meal cards, and check-ins move into protected app data as their features ship. The public repository contains code, schema migrations, generic documentation, and synthetic fixtures only. Keep secrets in a secret store and tested private backups outside the primary database.
+5. **Structured where useful.** Use relational tables for exercise/session/set records and other data that must be queried. A simple text/Markdown column with a category and original source reference is sufficient for an initial imported playbook or meal idea. Introduce recipe ingredients, explicit rule versions, or a content editing interface **when the feature needs them**, not as prerequisites for everything.
+6. **Protect actual training history.** Planned sessions are not completed sessions; changes to templates must not rewrite past execution. Preserve source IDs, measurement units, blanks, unilateral sets, and approved edits. Model predictions and wearable estimates do not override an explicit current check-in.
+7. **Review consequential changes.** LLM plans and external writes remain drafts until approved. API and Manual / External LLM paths should share relevant context, with clear disclosure of private fields before manual copying.
 
-## Destination design
+## Minimal model additions by feature
 
-| Area | Application-owned model | Provider boundary |
+| Delivery | Data additions | Reuse |
 | --- | --- | --- |
-| Athlete | Athlete settings, goals, equipment, constraints, preferences | User-confirmed facts and edits |
-| Coaching knowledge | Versioned rules, playbooks, personal observations, evidence notes | Imported legacy Markdown; no runtime Git dependence after cutover |
-| Weekly planning | Unified training week and planned sessions, revisions, approval states | Provider calendar is read and confirmed writes are tracked |
-| Cycling | Preserve existing cycling workout representation, analysis, and delivery | Intervals.icu retains completed endurance/wellness authority |
-| Strength | Exercise catalog, versioned workout templates, prescribed sets, performed sessions/sets, changes, progression | Google Sheets historical import then native logging |
-| Nutrition | Meal ideas, recipes, ingredients, variants, serving rules, meal plans, shopping lists | Data authored and edited in IntelliWatts |
-| Recovery | Dated subjective check-ins, context and adaptation recommendations | Wearables via Intervals.icu; current self-report overrides stale estimates |
-| Operations | Source map, import batches, content hashes, sync status, audit events | Secure secrets outside Git and ordinary app data |
+| First strength slice | `Exercise`, a versioned strength workout template (structured rows or JSON as required), `StrengthSession`, `StrengthSet`; retain original source IDs on imported rows | Existing `User` and database/migration stack; import the current strength blueprint as plain stored content |
+| Weekly continuity | Concise previous-week planned-vs-recorded context; cross-sport schedule presentation | Existing `TrainingPlan`, `WorkoutDelivery`, Intervals.icu client, cycling workflow and manual prompt builder |
+| First meal slice | Meal card text + useful tags, weekly meal assignments | Existing user/profile data and Jinja UI; add ingredient quantities and shopping automation only when a usable recipe exists |
+| Recovery and later knowledge | Small dated check-in and additional relevant rule/observation content | Existing Intervals.icu wellness and shared prompt context |
 
-Prefer relational tables for queryable records and stable foreign keys; use JSONB for genuinely varying detail and Markdown/text for rich knowledge. Scope all personal rows by athlete. Version templates and coaching rules; a subsequent edit must not rewrite historical execution. Define retention and deletion explicitly before ingesting additional wellness or health-related records.
+These are **candidate shapes, not a mandate to create all tables up front**. Keep a private mapping of original source IDs and import results; a one-off importer can be a repeatable script with a dry-run report. Do not build generic import-batch, audit-event, synchronization or rule-engine subsystems unless sustained operations actually require them. Auth should be hardened appropriately for a private single-athlete app without building multi-user account management prematurely.
 
-A single unified calendar coordinates sport-specific session types; it does **not** flatten cycling interval structures and strength sets into one incompatible schema. Importers map historical IDs to stable destination IDs; import metadata must include source, source key, original representation, import timestamp and version/hash.
+## Ordered delivery: the smallest useful vertical slices
 
-## Staged delivery and exit gates
-
-| Step | Delivery | Exit gate |
+| Step | Work | Definition of done |
 | --- | --- | --- |
-| **0. Inventory and recovery baseline** | Source catalogue, authority and redundancy decisions, source-to-destination mapping, export plan, safety baseline | All in-scope systems inventoried; any unverified private export/backup/restore is visible as a blocker rather than marked complete |
-| **1. Security and data foundation** | Owner-scoped auth/session protection, Alembic model extensions, audit/import contracts, tested off-site database backups | Production-like restore works; no cross-user or unapproved data exposure; cycling regression tests pass |
-| **2. Knowledge migration** | Private one-time Markdown/frontmatter importer and native editing for profile, goals, preferences, coaching rules, playbooks and observations | Source coverage and human-reviewed conflicts accounted for; coaching can work without a GitHub read |
-| **3. Strength import and native logger** | Exercise library, versioned templates, sessions/sets and mobile-friendly execution flow; full workbook importer | Row/ID and content reconciliation, historical fidelity, read-back verification, corrected duplicates; new logging works without Sheets |
-| **4. Unified training planning** | Planned-vs-completed reconciliation, shared calendar, cross-sport load placement and staged publishing | Week N+1 uses earlier prescriptions and execution, including missing/modified sessions, in API and manual LLM modes |
-| **5. Meals and nutrition** | Migrate meal cards, enrich unquantified recipes, support weekly meals, leftovers and shopping | Full meal-to-shopping workflow in IntelliWatts; missing ingredient quantities are not fabricated |
-| **6. Readiness and integrated coach** | Short check-ins, adaptation options, consolidated training/recovery/nutrition context | Changes are explainable and reviewable, with explicit uncertainty and no unapproved external writes |
-| **7. Legacy shutdown** | Switch off old scheduled jobs, integrations and writes; archive private source safely | No runtime dependencies on Hybrid Athlete OS or Sheets; complete export/restore and workflow verification |
+| **0 — Inventory (this PR)** | Catalogue sources, authority and redundancies; document mapping and the private recovery checklist | Structural inventory documented and verified; outstanding private actions are explicitly marked, not presented as completed |
+| **1 — Safety before imports** | Verify private source exports and an isolated production-database restore; address concrete security gaps; introduce only the schema required for the first strength slice | Restorable backups for affected sources, safe importer dry run, cycling regression coverage |
+| **2 — Strength tracker** | Import full authoritative Google Sheets exercise/templates/session/set history; migrate only the active blueprint and preferences needed for strength; build a mobile-friendly native logger | Counts, IDs, joins and historical details reconcile; new session logging works natively; Google Sheets becomes read-only **only after** an approved one-writer cutover |
+| **3 — Training continuity** | Compare prior saved cycling plans with recorded activity, incorporate native strength sessions, and show a coordinated weekly schedule | Week N+1 explicitly considers Week N prescriptions and actual execution in API and manual mode, without duplicating current planner tables |
+| **4 — Meal planning** | Migrate meal cards and relevant nutrition rules; add simple weekly meal assignments; add structured recipe/ingredient/shopping functionality incrementally | Weekly meals are editable; missing recipe quantities are not invented; the useful old meal workflow is replaced |
+| **5 — Recovery and remaining knowledge** | Add short readiness check-ins and migrate recovery playbooks, observations, evidence notes and other documents **only when used by a real workflow** | The new coaching workflow runs without runtime reads from the old repository; deferred unused material remains recoverable |
+| **6 — Retirement** | Disable superseded GitHub syncs, retire Sheets as the strength writer, and archive the private source repository | No required workflow depends on either legacy system; private source archives and restores are verified |
 
-**Ordering:** Each step is its own focused PR or small PR sequence after this planning/Step-0 PR. Production-changing migrations require dry runs and approval. The order of independent UI enhancements may change, but never bypass source verification or the strength write-cutover gate.
+**Rule for scope:** Finish the smallest valuable working feature and its needed content, then expand. Do not build a generic CMS, cross-sport scheduler, rule engine, import service, or analytics warehouse ahead of their first clear use case. Keep each implementation PR reviewable and the cycling app functioning throughout.
 
-## Domain migration contract
+## Right-sized migration safeguards
 
-For every domain: (1) inventory canonical sources and derived/duplicate data; (2) define target schema and mapping; (3) take a private immutable source export; (4) run a dry-run import with rejected-record report; (5) import idempotently and compare source identifiers/counts, required fields and representative history; (6) verify backup restoration; (7) preview the new workflow alongside the old; (8) change ownership of **new writes** once; (9) monitor and retain rollback access; (10) disable the legacy integration only after a signed-off gate.
+For **any source import**, ensure (a) a private recoverable source copy, (b) a repeatable dry-run import, (c) validation of relevant records and original identifiers, and (d) no private data in public commits or CI artifacts.
 
-Never silently convert blank RIR, weight, exercise side, subjective readiness, meal quantities, or missing activity data into a default. Keep exercise IDs stable and distinguish exercise identity from equipment/setup variants. For completed training, the actual recorded session is immutable historical evidence; corrections are auditable.
+For **authoritative operational cutovers** such as strength workout logging, additionally require (e) restoration of affected application data, (f) comparison of imported sessions/sets, relationships and blanks, (g) one active writer at a time, and (h) an explicit rollback/reconciliation plan. Historical training corrections must be visible and must not silently rewrite previous records.
 
-## Hosting decision
+For **simple content imports** such as meal ideas, preserve the original Markdown and tags, report rejects, and verify representative records. Do not require the same operational migration machinery as a workout-log cutover.
 
-Keep Render + Neon PostgreSQL initially. Secure backups and dependable operation are higher priority than a VPS. Evaluate paid managed hosting or a worker for scheduled ingestion and resilience before considering a self-managed server. Revisit a VPS only if actual workloads need long-running private processes, custom compute, high-frequency cross-provider ingestion, or capabilities unavailable affordably through managed services.
+The [Step 0 inventory](hybrid-athlete-step-0-inventory.md) is the deliverable of this documentation PR. The [private recovery runbook](hybrid-athlete-step-0-recovery.md) lists **outstanding execution checks**. Their completion is required **before the affected production import or source cutover**, not before merging a documentation-only PR. A full Intervals.icu-vs-snapshot comparison is required before retiring the endurance snapshot, not before adding strength tables.
 
-## Immediate Step-0 evidence and next actions
+## Hosting and ownership
 
-See [Step-0 source inventory](hybrid-athlete-step-0-inventory.md) and [private recovery checklist](hybrid-athlete-step-0-recovery.md). The inventory audit is documentation-only: it **does not** transfer data, establish a new authoritative source, revoke access, or perform an unverified backup. Outstanding private recovery gates must be resolved before Step 1 changes production data.
+Start on existing Render + Neon infrastructure. Prioritize trustworthy backups and reliable operations over buying a VPS. Reassess a paid managed instance/worker before self-hosting if actual background jobs or compute justify it. Keep private records out of Git and credentials outside ordinary application content. Do not copy the Hybrid Athlete OS generated endurance cache into PostgreSQL simply to consolidate storage.
 
-## Completion rules
-
-- No production secrets or personal exports in this public repository, including Git history and CI artifacts.
-- No provider write or destructive source change during inventory.
-- A rollback is possible at each source-of-truth transition.
-- A current source is not considered redundant merely because a subset of its fields appears somewhere else.
-- Keep the existing cycling planner operational through each step; test current UI and API workflows.
+**Outcome:** One IntelliWatts UI and database, native strength and meal workflows, one coordinated coach, and no required dependency on Hybrid Athlete OS or Google Sheets after their feature cutovers.
