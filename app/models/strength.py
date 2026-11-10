@@ -1,7 +1,7 @@
 """Native strength persistence foundation; no source import or logging routes yet."""
 
 import uuid
-from datetime import date
+from datetime import date  # noqa: TC003 - SQLModel resolves field types at runtime
 from typing import Any
 
 from sqlalchemy import JSON, Column, Text, UniqueConstraint
@@ -24,9 +24,7 @@ class Exercise(SQLModel, table=True):
 class StrengthTemplate(SQLModel, table=True):
     """A versioned workout definition; historical versions remain independent."""
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "name", "variant", "version", name="uq_strengthtemplate_version"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "name", "variant", "version", name="uq_strengthtemplate_version"),)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
