@@ -74,7 +74,7 @@ class AccessMiddleware(BaseHTTPMiddleware):
         # retained in browser/proxy caches, including login and error responses.
         if not path.startswith("/static/"):
             response.headers["Cache-Control"] = "no-store"
-            response.headers["Referrer-Policy"] = "no-referrer"
+            response.headers["Referrer-Policy"] = "same-origin"
             response.headers["X-Content-Type-Options"] = "nosniff"
             response.headers["X-Frame-Options"] = "DENY"
         return response
