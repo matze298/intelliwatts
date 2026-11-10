@@ -253,13 +253,13 @@ Use `--theme light` for light-mode screenshots or omit `--theme` to use the syst
 
 ## Future consolidation roadmap
 
-IntelliWatts is planned to expand from cycling into a database-backed hybrid-athlete application with native strength tracking, coordinated weekly planning, meal planning and recovery support. These are **planned capabilities**, not current features. The existing cycling planner remains operational throughout the migration.
+IntelliWatts is planned to expand from cycling into a database-backed hybrid-athlete application with native strength tracking, coordinated weekly planning, meal planning and recovery support. These are **planned capabilities**, not current features. Work will start with a complete, verified strength-history import and usable native logger, not an upfront knowledge-platform rewrite. The existing cycling planner and models remain operational throughout.
 
 - [Consolidation roadmap and staged exit gates](docs/hybrid-athlete-consolidation-plan.md)
 - [Step 0: source inventory and migration classification](docs/hybrid-athlete-step-0-inventory.md)
 - [Step 0: private export, backup, and restoration runbook](docs/hybrid-athlete-step-0-recovery.md)
 
-The public repository must not contain private athlete records, workout exports, provider credentials, or production database dumps. Step 0 has verified source structure but **has not yet verified private backups and restoration**; no legacy source has been retired.
+The public repository must not contain private athlete records, workout exports, provider credentials, or production database dumps. Step 0's **structural inventory is complete**; private backups and restore checks remain outstanding **before the applicable production imports or legacy cutovers**, not before merging a documentation-only PR. No legacy source has been retired.
 
 ## Scope
 
