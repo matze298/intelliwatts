@@ -55,16 +55,29 @@ class AccessMiddleware(BaseHTTPMiddleware):
         """
         settings = get_settings()
         path = request.url.path
-        if request.method not in {"GET", "HEAD", "OPTIONS"}:
-            origin = request.headers.get("origin", "")
-            if not secrets.compare_digest(origin.encode(), settings.APP_ORIGIN.encode()):
-                return JSONResponse({"detail": "Invalid request origin"}, status_code=403)
-        public = self.is_public(path)
-        if not public and not _valid_session(request.cookies.get(COOKIE_NAME, "")):
+        origin = request.headers.get("origin", "")
+        invalid_origin = request.method not in {"GET", "HEAD", "OPTIONS"} and not secrets.compare_digest(
+            origin.encode(), settings.APP_ORIGIN.encode()
+        )
+
+        if invalid_origin:
+            response = JSONResponse({"detail": "Invalid request origin"}, status_code=403)
+        elif not self.is_public(path) and not _valid_session(request.cookies.get(COOKIE_NAME, "")):
             if path.startswith("/api/") or request.method not in {"GET", "HEAD"}:
-                return JSONResponse({"detail": "Authentication required"}, status_code=401)
-            return RedirectResponse("/login", status_code=303)
-        return await call_next(request)
+                response = JSONResponse({"detail": "Authentication required"}, status_code=401)
+            else:
+                response = RedirectResponse("/login", status_code=303)
+        else:
+            response = await call_next(request)
+
+        # Personal plans, prompt context, and future strength records must not be
+        # retained in browser/proxy caches, including login and error responses.
+        if not path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Referrer-Policy"] = "no-referrer"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "DENY"
+        return response
 
 
 def _login_response(request: Request, *, error: str | None = None, status_code: int = 200) -> Response:
