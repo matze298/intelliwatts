@@ -66,6 +66,7 @@ def _seed_strength_history(db_session: Session, user_id: uuid.UUID) -> tuple[uui
         session_date=date(2026, 1, 6),
         workout_type="Workout A",
         template_version="1",
+        status="Completed",
         source_data={"source": "synthetic"},
     )
     db_session.add(performed)
