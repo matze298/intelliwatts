@@ -40,7 +40,11 @@ def test_reject_non_postgres_database_url() -> None:
 
 
 def _seed_strength_history(db_session: Session, user_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID]:
-    """Persist one synthetic historical strength session for migration tests."""
+    """Persist a synthetic historical strength session for migration tests.
+
+    Returns:
+        Session and performed-set identifiers.
+    """
     exercise = Exercise(user_id=user_id, source_id="EX-SYNTHETIC", name="Synthetic squat")
     db_session.add(exercise)
     db_session.flush()
