@@ -6,7 +6,7 @@
 ## Delivered in code
 
 - Four empty, user-linked tables: `Exercise`, `StrengthTemplate`, `StrengthSession`, and `StrengthSet`. The existing `User`, `TrainingPhase`, `TrainingPlan`, and `WorkoutDelivery` remain the planning foundation.
-- A reversible additive Alembic migration. Historical sessions record the template version used; sets preserve separate left/right measurements and `NULL` for absent weight, RIR, duration, or distance. Original source IDs and optional source-row JSON support idempotent, inspectable imports later.
+- A reversible additive Alembic migration. Historical sessions require an **explicit source status** and record the template version used; sets preserve separate left/right measurements and `NULL` for absent weight, RIR, duration, or distance. Original source IDs and optional source-row JSON support idempotent, inspectable imports later.
 - No new generic knowledge database, import orchestration service, audit framework, VPS or multi-user authentication layer.
 - Non-static HTTP responses now set `Cache-Control: no-store`, `Referrer-Policy: same-origin`, `X-Content-Type-Options: nosniff`, and `X-Frame-Options: DENY`. Existing signed-cookie login, rate limiting, same-origin mutation checks and secure cookie options remain unchanged.
 - Synthetic regression tests exercise model defaults and missing values, Postgres migration upgrade/downgrade, persistence across connections, and existing cycling data. **These are test data, never a private workbook export.**
@@ -38,5 +38,7 @@ The temporary export was not committed to Git, embedded into CI, or copied into 
 3. Confirm the restored database retains pre-existing `User`, `TrainingPhase`, `TrainingPlan`, `LongTermPlanArtifact`, and `WorkoutDelivery` data. Use disabled/test provider integrations; never publish live workouts from a test restore.
 4. Record success/failure and limited non-sensitive gate status in the PR. Once recovery is verified, review the SQL migration and merge only with an explicit plan for deployment/rollback.
 5. In Step 2, validate the importer first with synthetic fixtures, then dry-run against the private workbook, reconcile sessions/sets/versions and only then switch new strength writes away from Google Sheets.
+
+**Detailed operator instructions:** [Google Sheets migration, Neon backup/restore and test-branch migration, Hybrid Athlete OS full-history backup](hybrid-athlete-step-1-operator-runbook.md). These instructions document prerequisites, not completed actions.
 
 See [consolidation roadmap](hybrid-athlete-consolidation-plan.md) and [Step 0 inventory](hybrid-athlete-step-0-inventory.md).
