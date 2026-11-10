@@ -39,7 +39,7 @@ Classification: **MIGRATE** = authoritative content/records requiring import; **
 | Source group | Disposition | Proposed database target / rationale | Reconciliation needed |
 | --- | --- | --- | --- |
 | Private `athlete/*.md` | MIGRATE + REVIEW | Athlete profile, equipment, goals, recurring constraints and preferences; merge conflicts with existing IntelliWatts user/phase records | Per-document coverage, human-approved value precedence, original source refs |
-| Private `training/active-blueprint.md` and playbooks | MIGRATE + REVIEW | Versioned coaching rules, training blueprint and strength program intent; transform workout structures only when explicit | Rules and variants mapped, no invented performed sessions |
+| Private `training/active-blueprint.md` and playbooks | MIGRATE + REVIEW | Versioned coaching rules, training blueprint and strength program intent; convert workout structures only when explicitly specified | Rules and variants mapped, no invented performed sessions |
 | Private `recovery/*.md` | MIGRATE | Versioned readiness, pain/illness and return-to-training playbooks; not diagnostic or automatic medical policy | Rule provenance, reviewed adaptation logic |
 | Private `planning/*.md` | MIGRATE + REVIEW | Planner workflows, weekly review instructions and decision constraints | Retain relevant rules, avoid duplicating deployed application logic |
 | Private `nutrition/meals/*.md` and collections | MIGRATE + REVIEW | Meal catalog, categorical tags, diet/context variants and collection membership | Preserve frontmatter and text; missing ingredients/quantities remain missing |
