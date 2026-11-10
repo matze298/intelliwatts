@@ -33,7 +33,7 @@ Keep a small restricted-access record **outside Git** for each affected source: 
 1. Save a private full-history clone or Git bundle of Hybrid Athlete OS, securely stored outside the repository's original account; verify it by restoring a representative file and the necessary history.
 2. Copy **only** the content needed by the next feature (initially the active strength blueprint and applicable preferences). Preserve original Markdown/frontmatter and source path privately or in protected application data.
 3. Dry-run a repeatable importer, report rejects, and inspect representative rows and relevant conflicting rules. Don't fabricate recipe quantities or promote incidental notes into permanent rules.
-4. Keep the original source read-only and recoverable until the relevant IntelliWatts functionality works. Remaining unused material can stay archived until the last cutover.
+4. Keep the source read-only and recoverable until its IntelliWatts feature works. At final retirement, classify every document: import personal content selected for retention into PostgreSQL (plain Markdown is enough), or explicitly mark it duplicate, obsolete, or excluded. The private archive is recovery evidence, not the primary knowledge store.
 
 **Gate:** The specific content used by the feature is recoverable and correctly represented; a full generic knowledge-management platform is not a prerequisite.
 
