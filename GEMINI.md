@@ -33,7 +33,7 @@
 - **Pre-commit**: Ensure pre-commit hooks are respected (managed via `prek`).
 - **Commit Messages**: Use **Freeform (Descriptive)** sentences. Focus on "why" rather than just "what".
 - **Documentation**: Always keep **`README.md`** updated when making changes that affect setup, usage, or features.
-- **Improvement Plan**: Always keep **`docs/improvement-plan.md`** updated with your latest changes.
+- **Product Roadmap**: Keep **`docs/hybrid-athlete-consolidation-plan.md`** as the single source of truth for future features and open priorities. Use **`README.md`** only for shipped behavior and setup. Do not create a parallel enhancement backlog.
 - **Superpowers**: NEVER commit files in the **`docs/superpowers/`** directory. These are internal development aids.
 
 ## Known Best-Practices
