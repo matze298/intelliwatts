@@ -251,15 +251,9 @@ Use `--theme light` for light-mode screenshots or omit `--theme` to use the syst
 | Styling is stale | Rebuild CSS with `npm ci && npm run build:css` and refresh the browser |
 | Database errors | `DATABASE_URL`, database reachability, and `uv run alembic upgrade head` |
 
-## Future consolidation roadmap
+## Future product direction
 
-IntelliWatts is planned to expand from cycling into a database-backed hybrid-athlete application with native strength tracking, coordinated weekly planning, meal planning and recovery support. These are **planned capabilities**, not current features. Work will start with a complete, verified strength-history import and usable native logger, not an upfront knowledge-platform rewrite. The existing cycling planner and models remain operational throughout.
-
-- [Consolidation roadmap and staged exit gates](docs/hybrid-athlete-consolidation-plan.md)
-- [Step 0: source inventory and migration classification](docs/hybrid-athlete-step-0-inventory.md)
-- [Step 0: private export, backup, and restoration runbook](docs/hybrid-athlete-step-0-recovery.md)
-
-The public repository must not contain private athlete records, workout exports, provider credentials, or production database dumps. Step 0's **structural inventory is complete**; private backups and restore checks remain outstanding **before the applicable production imports or legacy cutovers**, not before merging a documentation-only PR. No legacy source has been retired.
+The **[unified athlete coaching roadmap](docs/hybrid-athlete-consolidation-plan.md)** is the single source of truth for proposed strength, cross-sport planning, shared coaching context, health/recovery and nutrition features. It builds on the existing cycling planner and keeps the integrated model and Manual / External LLM prompt flows. These are **proposed capabilities, not shipped features**. Source audits and recovery instructions are linked from the roadmap; no backup, production restore or source cutover is implied by the documentation.
 
 ## Scope
 
