@@ -10,18 +10,18 @@ A useful result: “Given my cycling, strength, football, sleep/recovery, availa
 
 IntelliWatts is **already the starting point**: it has FastAPI, SQLModel/PostgreSQL, Intervals.icu data ingestion, deterministic analytics, saved cycling plans, model-based generation, and a **Manual / External LLM** flow that exports enhanced prompts and validates the returned plan JSON. **Extend this system, do not replace it.**
 
-Non-goals unless a real need emerges: a second web app, microservices, a generic CMS or rule engine, a vector database, arbitrary LLM-generated SQL, an MCP server, a complete replication of external provider datasets, a dedicated LLM chat frontend before core workflows work, or a VPS migration.
+Non-goals unless a real need emerges: a second web app, microservices, a generic CMS or rule engine, a vector database, arbitrary LLM-generated SQL, a compulsory MCP server, complete replication of external provider datasets, or a custom chat frontend before useful workflows exist. **A personal VPS is a viable deployment option**, not an architectural rewrite.
 
 ## 2. Architectural decision
 
-**One FastAPI monolith + one app-owned PostgreSQL database + existing provider adapters + one shared coaching-context assembly path.** Keep Jinja/Tailwind for the small number of structured screens that are faster than conversation.
+**One FastAPI monolith + PostgreSQL for app-owned data + task-specific context providers + one shared context assembler.** Keep Jinja/Tailwind for structured workflows. The deployment may remain managed or move to a privately accessed VPS; the application architecture stays the same.
 
-1. **The backend accesses data, not the LLM.** SQLModel/SQLAlchemy queries stay server-side with parameterized statements, least-privileged database credentials and TLS; no DB URL or direct SQL access is exposed to the model, browser, external chat, or a public MCP endpoint. Provider secrets remain server-side.
+1. **Providers fetch data on behalf of the model.** Small typed providers query PostgreSQL through SQLModel/SQLAlchemy, read Intervals.icu or other authenticated APIs, and return normalized, time-stamped data. The LLM chooses a **named capability or provider scope**, not raw SQL. Provider tokens and DB connections stay server-side. For an external client, use a narrowly authenticated FastAPI API or optional MCP adapter over those exact same providers.
 2. **Extend current domain objects.** Reuse `User`, `TrainingPhase`, `LongTermPlanArtifact`, `TrainingPlan`, `WorkoutDelivery`, the Intervals client and `app/services/coach_context.py`. The existing cycling planner is the starting workflow; avoid introducing a second general weekly-plan store just to display multiple sports. Start with a joined weekly *view* over saved cycling plans, performed strength, provider activities and commitments. When scheduling prescribed strength becomes necessary, add the **smallest explicit planned-strength-session record**, linked to the existing week/phase, rather than encoding strength sets as cycling intervals.
 3. **Separate facts, calculations and decisions.** Source records are facts; source-aware, testable functions calculate metrics; the LLM interprets compact, bounded evidence and proposes actions. Do not rely on a prompt to compute strength volume, activity counts, missingness, or source deduplication. Do not equate cycling TSS with uncalibrated strength/football loads.
-4. **One context pipeline, two delivery modes.** The same context selection and prompt assembly serves provider API generation **and** the existing Manual / External LLM mode. A user can inspect/redact what leaves IntelliWatts, copy the enhanced prompt, and import a schema-validated response. Keep current approval gates before publishing or modifying durable plans.
-5. **Future free-form coach chat is optional.** When practical questions justify it, reuse the backend's read-only, bounded domain operations (e.g. recent sessions, training trends, meal candidates), via internal function calling. MCP/ChatGPT connectors may be added as an *adapter* only if external clients later require authenticated live access. No new generic tool platform is a prerequisite.
-6. **Privacy by default.** Store personal rows in protected app storage, limit what reaches third-party LLMs and logs, display prompt disclosure in manual mode, and give explicit control of sensitive health details. Distinguish clinical/medical information from coaching observations; never issue autonomous medical diagnoses or medication prescriptions.
+4. **One context pipeline, multiple delivery modes.** For predefined planning tasks, the backend selects domain providers and assembles a compact context for either API model generation or the existing Manual / External LLM prompt. For future free-form questions, the user/model may select additional **read-only provider calls** through bounded FastAPI endpoints or internal function calling. All write operations still use validated proposals and a deliberate confirmation step.
+5. **Free-form access is a supported direction, not a second data plane.** Expose explicit read capabilities such as `get_endurance`, `get_strength_history`, `get_recovery`, `get_athlete_context`, `get_meals` and `get_week_review`, and optionally `get_everything` as a **bounded manifest + compact cross-domain summary**, not a raw dump. A lightweight `GET /api/v1/context` (scopes, date ranges, detail level) can serve an authenticated external client or a copied enhanced prompt. Keep interactive chat optional; MCP is merely one future transport.
+6. **Personal-use security and data hygiene.** This is a **single-owner project**: no multi-user roles, registration, consent-management system or compliance bureaucracy is required for ordinary personal use. Keep private data/credentials out of Git, logs and unwanted LLM prompts; choose which health details to share. Preserve source fidelity and the ability to export or delete your own records. Wellness indicators support coaching, not autonomous medical diagnosis.
 
 ### Source ownership (logical unity, not compulsory data copying)
 
@@ -37,16 +37,71 @@ Non-goals unless a real need emerges: a second web app, microservices, a generic
 
 At eventual retirement, every private Hybrid Athlete OS item should be **imported if wanted, marked duplicate/obsolete, or deliberately excluded**. A private Git archive is a recovery copy, not the active knowledge base. Neither Git snapshots nor spreadsheet dashboards become additional authorities.
 
-### A shared, compact coaching context
+### Architecture and request flow
 
-Evolve `app/services/coach_context.py` and current planner orchestration rather than adding a replacement pipeline:
+```mermaid
+flowchart TB
+    UI["IntelliWatts UI: planner / strength / meals"]
+    Manual["Manual enhanced prompt / external chat"]
+    Chat["Optional future in-app coach chat"]
+    API["Authenticated FastAPI context and action endpoints"]
+    Planner["Coaching service: task, scope, context assembler"]
+    Registry["Typed context providers"]
+    PG["PostgreSQL: strength, plans, preferences, meals, notes"]
+    IC["Intervals.icu: completed endurance and wellness"]
+    H["Other health / calendar sources as needed"]
+    Analytics["Deterministic summaries, freshness and provenance"]
+    LLM["Configured LLM API"]
+    Review["Validated draft and explicit approval"]
 
-- Select the question/task, goal, date/week and minimal relevant domains.
-- Query app-owned records through services, then external provider clients through adapters. Preserve freshness, source ID, units, null/missing semantics and any coverage gaps.
-- Derive deterministic training/recovery summaries, actual-vs-planned comparisons, relevant coaching rules and a brief explanation of limitations.
-- Render a stable context/prompt envelope for **both** provider-backed model generation and Manual / External LLM. Keep response schema validation and plan-approval/write boundaries the same.
-- Budget context size and sensitive fields; do not send the whole database, whole raw workbook, every recipe or unbounded health logs. First use relational filters, tags and simple text search; only consider embeddings/vector search after a demonstrated search failure.
-- For an eventual question-answer chat, add narrowly scoped read-only tools; proposed writes always require validation and user confirmation.
+    UI --> Planner
+    Chat --> API
+    Manual <-->|"copy context / import validated answer"| Planner
+    API --> Planner
+    Planner --> Registry
+    Registry --> PG
+    Registry --> IC
+    Registry --> H
+    Registry --> Analytics
+    Analytics --> Planner
+    Planner -->|"bounded prepared context"| LLM
+    LLM --> Review
+    Review --> UI
+    Review -.->|"approved write via backend"| PG
+    Review -.->|"approved publish"| IC
+```
+
+The **backend is the data broker**. Providers are Python functions or focused service classes, not separate microservices or one network connector per source. A future chat may ask for follow-up data without starting a new planning job. Existing API and Manual / External LLM modes continue working without chat.
+
+### Provider contract and query modes
+
+Start by extracting common selection logic from the existing `app/services/coach_context.py` and planner adapters **only when a second caller needs it**. Avoid replacing the working cycling flow up front. Each provider accepts typed inputs (time window, requested domain, detail limit) and returns source IDs, units, timestamps/freshness, missing-data indicators and normalized results; add deterministic calculations only where the provider owns them.
+
+| Capability | Typical data | Baseline implementation |
+| --- | --- | --- |
+| `get_athlete_context` | Goals, schedule, preferences and active coaching constraints | Existing user/phase/profile and selected retained Markdown |
+| `get_endurance` | Recent activities, load, planned-vs-performed cycling, provider wellness | Existing Intervals client and analytics; preserve source IDs and dates |
+| `get_strength_history` | Sessions, comparable exercise progression, last set measurements | Native strength tables after verified Sheets import |
+| `get_recovery` | Dated check-ins, available baseline and wellbeing signals | Existing coach-context recovery calculations; add private records only when needed |
+| `get_week_review` | Intended sessions, actual activity, conflicts and uncertainty | Small composition of existing plans, strength history and provider evidence |
+| `get_meals` | Meal cards, preferences and candidate recipes | Protected app content and tags after meal feature ships |
+| `get_everything` | Overview of **available domains**, timestamps, concise aggregates and links to further scopes | **Composition** of the above, bounded by dates/size; never an unrestricted SQL query or entire private history |
+
+**Specific task mode:** Weekly planning selects a predictable small bundle of providers, computes factual summaries and sends one context envelope to the configured model or Manual prompt. This makes results comparable and reduces tokens.
+
+**Free-flowing mode:** An authenticated client calls a documented endpoint such as `GET /api/v1/context?scopes=endurance,strength,recovery&from=...&to=...&detail=summary`. The backend validates ranges, response sizes, access and requested fields; returns JSON with source/freshness warnings. The LLM can request a second provider only when needed. A `get_everything` request returns a **bounded overview** with an available-domains manifest and suggested follow-up scopes, not every set/note/health reading. Detailed bulk export is a separate deliberate owner action, not a conversational default.
+
+**API exposure distinction:** “Public FastAPI endpoints” may mean *documented API routes* (and optional OpenAPI schemas). It must **not** mean unauthenticated athlete-data URLs. If hosted on a VPS, the API can be private to Tailscale or protected by Cloudflare Access; if an outside LLM service must call it directly, that specific client needs a separately authorized access route. A Cloudflare Tunnel alone provides connectivity, not identity verification. Always restrict API access and avoid static credentials inside shared enhanced prompts.
+
+**Writes:** Context endpoints are read-only. Plan generation returns a validated draft, and publishing or editing data occurs through existing authenticated application actions after your explicit review. Any future LLM action tool has a narrower permission contract than the context reader.
+
+### Context acceptance tests
+
+- **Provider fidelity:** Latest source values, IDs, units, blanks and freshness survive normalization; provider outage is reported as unknown, not “no training”.
+- **Composability:** A free-form question about cycling + strength can retrieve those providers without loading unrelated nutrition/health records. A scoped `get_everything` remains bounded, paginated or summary-only under large histories.
+- **Plan continuity:** Week N+1 considers approved Week N plans, performed work, rescheduled/skipped/modified/unmatched sessions, and conflicting football/strength days; no matches based on date alone when identity is ambiguous.
+- **Model independence:** The provider/API path and Manual enhanced prompt use the same normalized evidence and validation; generated prompts show what athlete information would leave the application.
+- **Permission boundary:** Unauthenticated context reads fail; a model cannot request unrestricted SQL, credentials or mutations through a read provider. Synthetic tests cover injection attempts and oversized time windows.
 
 ## 3. Delivery sequence and acceptance gates
 
