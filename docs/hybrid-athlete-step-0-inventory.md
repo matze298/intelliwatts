@@ -4,6 +4,8 @@
 **Status:** **Step 0 structural inventory completed.** Private exports, database restoration, and provider comparison remain outstanding operational safeguards for their respective migrations. No cutover is authorized.  
 **Scope:** Existing IntelliWatts `main`, private Hybrid Athlete OS `main`, and the strength workbook identified by the private integration manifest. Read-only inspection only.
 
+**Document role:** Historical source audit and reconciliation evidence, **not a product roadmap**. Current sequence and architectural decisions live only in the [unified athlete coaching roadmap](hybrid-athlete-consolidation-plan.md). References to destination models here are audit-time proposals, not a requirement to build a generalized knowledge platform.
+
 > This file is in a **public repository**. It intentionally contains no athlete facts, workout logs, IDs from individual records, spreadsheet link/ID, free-text notes, credentials, private source content, individual measurements, or source export. The secure evidence register and original exports must remain outside Git.
 
 ## 0A. Access and inventory evidence
