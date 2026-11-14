@@ -255,6 +255,8 @@ Use `--theme light` for light-mode screenshots or omit `--theme` to use the syst
 
 The **[unified athlete coaching roadmap](docs/hybrid-athlete-consolidation-plan.md)** is the single source of truth for proposed strength, cross-sport planning, shared coaching context, health/recovery and nutrition features. It builds on the existing cycling planner and keeps the integrated model and Manual / External LLM prompt flows. These are **proposed capabilities, not shipped features**. Source audits and recovery instructions are linked from the roadmap; no backup, production restore or source cutover is implied by the documentation.
 
+**Phase 1 (proposed, not deployed):** [strength database foundation and release gates](docs/hybrid-athlete-step-1-foundation.md) plus the [private Google Sheets / Neon / Git backup runbook](docs/hybrid-athlete-step-1-operator-runbook.md). The additive migration must **not** reach production before a real independently stored Neon backup, isolated restore and production-like test-branch migration succeed.
+
 ## Scope
 
 IntelliWatts is a personal training-planning application, not a medical monitoring service. Its metrics and model-generated plans are training aids; they should be interpreted alongside the athlete's own experience and available data.
