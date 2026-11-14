@@ -134,7 +134,9 @@ async def test_future_generation_prompt_includes_saved_previous_week(session: Se
         patch("app.services.planner.orchestrator._get_analysis", return_value=analysis),
         patch("app.services.planner.orchestrator.build_coach_context", return_value=coach),
         patch("app.services.planner.orchestrator.derive_weekly_brief", return_value="Brief"),
-        patch("app.services.planner.orchestrator.registry.get_specialist_context", new_callable=AsyncMock) as specialists,
+        patch(
+            "app.services.planner.orchestrator.registry.get_specialist_context", new_callable=AsyncMock
+        ) as specialists,
         patch("app.services.planner.orchestrator.load_week_commitments", return_value="No scheduled events"),
     ):
         specialists.return_value = "Specialist context"
