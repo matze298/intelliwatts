@@ -102,6 +102,9 @@ def test_build_coach_context_produces_weekly_and_daily_sections(
     assert context.daily_ledger[0].weekday in {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
     assert "recovery" in context.brief_context.lower() or "load" in context.brief_context.lower()
     assert "FTP Trajectory" not in context.render()
+    assert "Athlete-reported check-ins" in context.brief_context
+    assert "2026-05-12:" not in context.brief_context
+    assert "fatigue=4" in context.brief_context
     assert "Recent Training" not in context.render()
 
 

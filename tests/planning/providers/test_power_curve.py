@@ -21,7 +21,7 @@ async def test_power_curve_provider_context() -> None:
     context = await provider.provide_context(result)
 
     # THEN: The context should include peak power values.
-    assert "Season Peak Power:" in context
+    assert "90-day observed best cycling power" in context
     assert "1s: 1000W" in context
     assert "15s: 800W" in context
     assert "1m: 400W" in context

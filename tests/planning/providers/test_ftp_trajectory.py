@@ -1,5 +1,9 @@
 """Tests for the FTP trajectory provider."""
 
+from datetime import date
+
+import polars as pl
+
 from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider, FTPTrajectoryResult
 
 
@@ -37,3 +41,21 @@ def test_ftp_trajectory_empty() -> None:
 
     # THEN returns None
     assert widget is None
+
+
+def test_ftp_trajectory_uses_activity_fields_and_filters_sports() -> None:
+    """Use the actual aggregated activity columns, not a nonexistent scalar FTP column."""
+    # GIVEN mixed sports, a conflicting day's FTP, and unsorted dates
+    daily = pl.DataFrame({
+        "date": [date(2026, 5, 10), date(2026, 5, 1), date(2026, 5, 8), date(2026, 5, 9)],
+        "types": [["Ride", "Run"], ["VirtualRide"], ["Ride", "Ride"], ["Run"]],
+        "activity_ftp": [[255.0, 400.0], [250.0], [245.0, 260.0], [500.0]],
+    })
+
+    # WHEN calculating the trajectory
+    result = FTPTrajectoryProvider().calculate(daily)
+
+    # THEN only chronological, unambiguous cycling values are retained
+    assert result is not None
+    assert result.dates == ["2026-05-01", "2026-05-10"]
+    assert result.ftp_values == [250.0, 255.0]

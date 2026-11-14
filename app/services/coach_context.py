@@ -10,6 +10,8 @@ from operator import attrgetter
 from statistics import fmean, pstdev
 from typing import TYPE_CHECKING, Any, cast
 
+from app.intervals.models import CYCLING_TYPES
+
 if TYPE_CHECKING:
     from app.models.plan import LongTermPlanArtifact, LongTermPlanStructuredData, TrainingPhase
 
@@ -25,7 +27,6 @@ MIN_RECENT_SAMPLES = 3
 MULTI_SIGNAL_COUNT = 2
 # Used only to identify a noteworthy change, never to cancel a session automatically.
 MIN_RELATIVE_CHANGE = {"hrv": 0.05, "resting_hr": 0.05, "sleep_score": 0.08}
-CYCLING_TYPES = {"ride", "virtualride", "ebikeride", "gravelride", "mountainbikeride", "handcycle"}
 
 DailyRecordInput = Mapping[str, object]
 
@@ -44,6 +45,11 @@ class CoachDailyRecord:
     cycling_duration_h: float = 0.0
     cycling_training_stress: float = 0.0
     cycling_sessions: int = 0
+    sleep_quality: float | None = None
+    fatigue: float | None = None
+    soreness: float | None = None
+    stress: float | None = None
+    readiness: float | None = None
 
 
 @dataclass(frozen=True)
@@ -266,6 +272,28 @@ def _build_brief_context(
     return (
         f"Recent 14d completed cycling: {cycling_hours:.1f}h, {cycling_tss:.0f} cycling TSS. "
         f"{baseline_text} {sports_text} {block_hint}"
+        f"{_subjective_checkins(latest)}"
+    )
+
+
+def _subjective_checkins(records: Sequence[CoachDailyRecord]) -> str:
+    """Include recent subjective values without assuming the scale or interpreting missing data.
+
+    Returns:
+        A dated list of available check-ins, or an empty string.
+    """
+    labels = ("sleep_quality", "fatigue", "soreness", "stress", "readiness")
+    rows = []
+    for record in records:
+        values = [f"{label}={value:g}" for label in labels if (value := getattr(record, label)) is not None]
+        if values:
+            rows.append(f"{record.date}: {', '.join(values)}")
+    if not rows:
+        return ""
+    return (
+        "\nAthlete-reported check-ins (last 7 recorded calendar days; original source scales): "
+        + "; ".join(rows)
+        + ". Unreported values are unknown; combine subjective and objective recovery evidence."
     )
 
 
@@ -432,6 +460,11 @@ def _parse_record(record: DailyRecordInput) -> CoachDailyRecord | None:
         cycling_duration_h=cycling_hours,
         cycling_training_stress=cycling_tss,
         cycling_sessions=cycling_sessions,
+        sleep_quality=_to_optional_float(record.get("sleep_quality")),
+        fatigue=_to_optional_float(record.get("fatigue")),
+        soreness=_to_optional_float(record.get("soreness")),
+        stress=_to_optional_float(record.get("stress")),
+        readiness=_to_optional_float(record.get("readiness")),
     )
 
 

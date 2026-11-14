@@ -3,11 +3,12 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, override
 
+import polars as pl
+
+from app.intervals.models import CYCLING_TYPES
 from app.planning.providers.interfaces import DashboardWidget, MetricProvider
 
 if TYPE_CHECKING:
-    import polars as pl
-
     from app.intervals.client import IntervalsClient
 
 
@@ -50,12 +51,28 @@ class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
         Returns:
             The structured calculation result or None if no data available.
         """
-        # FTP trajectory depends on the 'ftp' column being present in daily_df
-        if "ftp" not in daily_df.columns:
+        # Daily aggregation preserves aligned activity types and FTP values, not a scalar FTP column.
+        if not {"date", "types", "activity_ftp"}.issubset(daily_df.columns):
             return None
 
-        # Filter to dates where FTP is not null
-        ftp_df = daily_df.filter(daily_df["ftp"].is_not_null())
+        ftp_df = (
+            daily_df
+            .select("date", "types", "activity_ftp")
+            .explode("types", "activity_ftp")
+            .filter(
+                pl.col("types").str.to_lowercase().is_in(sorted(CYCLING_TYPES)),
+                pl.col("activity_ftp").is_finite(),
+                pl.col("activity_ftp") > 0,
+            )
+            .group_by("date")
+            .agg(
+                pl.col("activity_ftp").n_unique().alias("distinct_values"),
+                pl.col("activity_ftp").first().alias("ftp"),
+            )
+            # On days with conflicting values, the daily aggregate cannot determine their temporal order.
+            .filter(pl.col("distinct_values") == 1)
+            .sort("date")
+        )
         if ftp_df.is_empty():
             return None
 
@@ -83,10 +100,11 @@ class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
         change_pct = (change / initial_ftp) * 100 if initial_ftp > 0 else 0
 
         return (
-            f"FTP Trajectory (Last {len(result.dates)} days):\n"
-            f"- Starting FTP: {initial_ftp:.1f}W\n"
-            f"- Current FTP: {current_ftp:.1f}W\n"
-            f"- Total Change: {change:+.1f}W ({change_pct:+.1f}%)"
+            f"Recorded cycling FTP values ({len(result.dates)} unambiguous dated observations):\n"
+            f"- Earliest recorded FTP ({result.dates[0]}): {initial_ftp:.1f}W\n"
+            f"- Latest recorded FTP ({result.dates[-1]}): {current_ftp:.1f}W\n"
+            f"- Recorded change: {change:+.1f}W ({change_pct:+.1f}%)\n"
+            "- Activity FTP settings are not proof of a new fitness test or current configured FTP."
         )
 
     async def provide_coach_context(self, result: FTPTrajectoryResult | None) -> str:
