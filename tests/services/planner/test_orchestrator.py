@@ -126,6 +126,7 @@ async def test_generate_weekly_plan(  # ruff: ignore[too-many-arguments, too-man
     mock_analysis.daily_records = []
     with (
         patch("app.services.planner.orchestrator.Session"),
+        patch("app.services.planner.orchestrator.load_previous_week_plan_context", return_value=""),
         patch("app.services.planner.orchestrator._get_analysis", return_value=mock_analysis),
     ):
         result = await generate_weekly_plan(mock_user, mock_settings, week_start=target_week_start)
@@ -239,6 +240,7 @@ async def test_generate_weekly_plan_uses_loaded_settings(  # ruff: ignore[too-ma
     with (
         patch("app.services.planner.orchestrator.get_settings", return_value=mock_settings),
         patch("app.services.planner.orchestrator.Session"),
+        patch("app.services.planner.orchestrator.load_previous_week_plan_context", return_value=""),
         patch("app.services.planner.orchestrator._get_analysis", return_value=mock_analysis),
     ):
         result = await generate_weekly_plan(mock_user, None, week_start=target_week_start)

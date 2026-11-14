@@ -26,6 +26,7 @@ from app.services.long_term_planner import (
 )
 from app.services.planner.analysis import get_analysis
 from app.services.planner.calendar import load_week_commitments
+from app.services.planner.continuity import load_previous_week_plan_context
 from app.services.planner.manual import parse_manual_response
 from app.services.planner.persistence import save_and_stage_weekly_plan
 from app.services.planner.preferences import preferred_model
@@ -153,6 +154,7 @@ async def update_training_plan(  # ruff: ignore[too-many-arguments]
             phase_start=phase.start_date,
         )
         artifact = get_current_long_term_plan_artifact(session, phase_id=phase.id)
+        preceding_plan = load_previous_week_plan_context(session=session, phase_id=phase.id, week_start=monday)
 
     # Release the database session before slow Intervals.icu and model calls.
     _report(progress, "Refreshing training, recovery and scheduled activities")
@@ -171,7 +173,8 @@ async def update_training_plan(  # ruff: ignore[too-many-arguments]
         "content": (
             f"{feedback}\n\n"
             f"Latest recorded context (supersedes older observations):\n{latest_context}\n\n"
-            f"{date_rules}\n"
+            f"{date_rules}\n\n"
+            f"{preceding_plan + chr(10) + chr(10) if preceding_plan else ''}"
             f"Available cycling days: {', '.join(user.available_cycling_days)}; "
             f"at most {user.weekly_sessions} cycling sessions and {user.weekly_hours} cycling hours. "
             "Other sports affect recovery/timing, never the cycling budget. "
@@ -249,6 +252,7 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
     with Session(engine) as db_session:
         phase = get_or_create_active_phase(db_session, user.id)
         artifact = get_current_long_term_plan_artifact(db_session, phase_id=phase.id)
+        preceding_plan = load_previous_week_plan_context(session=db_session, phase_id=phase.id, week_start=week_start)
         coach_context = build_coach_context(
             daily_records=analysis.daily_records,
             phase=phase,
@@ -274,6 +278,9 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
                 task_prompt=settings.USER_PROMPT,
             )
         )
+
+    if preceding_plan:
+        full_summary += "\n\n" + preceding_plan
 
     _report(progress, "Checking upcoming sports and race commitments")
     # Add date rules even when athletes override the default coach prompt.
