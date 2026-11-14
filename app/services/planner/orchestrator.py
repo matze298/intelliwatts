@@ -26,6 +26,7 @@ from app.services.long_term_planner import (
 )
 from app.services.planner.analysis import get_analysis
 from app.services.planner.calendar import load_week_commitments
+from app.services.planner.continuity import load_previous_week_plan_context
 from app.services.planner.manual import parse_manual_response
 from app.services.planner.persistence import save_and_stage_weekly_plan
 from app.services.planner.preferences import preferred_model
@@ -153,6 +154,7 @@ async def update_training_plan(  # ruff: ignore[too-many-arguments]
             phase_start=phase.start_date,
         )
         artifact = get_current_long_term_plan_artifact(session, phase_id=phase.id)
+        preceding_plan = load_previous_week_plan_context(session=session, phase_id=phase.id, week_start=monday)
 
     # Release the database session before slow Intervals.icu and model calls.
     _report(progress, "Refreshing training, recovery and scheduled activities")
@@ -171,7 +173,8 @@ async def update_training_plan(  # ruff: ignore[too-many-arguments]
         "content": (
             f"{feedback}\n\n"
             f"Latest recorded context (supersedes older observations):\n{latest_context}\n\n"
-            f"{date_rules}\n"
+            f"{date_rules}\n\n"
+            f"{preceding_plan + chr(10) + chr(10) if preceding_plan else ''}"
             f"Available cycling days: {', '.join(user.available_cycling_days)}; "
             f"at most {user.weekly_sessions} cycling sessions and {user.weekly_hours} cycling hours. "
             "Other sports affect recovery/timing, never the cycling budget. "
@@ -269,7 +272,17 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
                 weekly_hours=weekly_hours,
                 weekly_sessions=weekly_sessions,
                 weekly_brief=weekly_brief,
-                coach_text=coach_context.render(),
+                coach_text="\n\n".join(
+                    filter(
+                        None,
+                        (
+                            coach_context.render(),
+                            load_previous_week_plan_context(
+                                session=db_session, phase_id=phase.id, week_start=week_start
+                            ),
+                        ),
+                    )
+                ),
                 specialist_text=specialist_text,
                 task_prompt=settings.USER_PROMPT,
             )
