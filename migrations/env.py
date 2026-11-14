@@ -7,7 +7,17 @@ from sqlalchemy import create_engine, pool
 from sqlmodel import SQLModel
 
 from app.db import DATABASE_URL
-from app.models import LongTermPlanArtifact, TrainingPhase, TrainingPlan, User, WorkoutDelivery  # ruff: ignore[unused-import]
+from app.models import (  # ruff: ignore[unused-import]
+    Exercise,
+    LongTermPlanArtifact,
+    StrengthSession,
+    StrengthSet,
+    StrengthTemplate,
+    TrainingPhase,
+    TrainingPlan,
+    User,
+    WorkoutDelivery,
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
