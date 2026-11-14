@@ -209,13 +209,29 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         context += f"Overall Style (Power-based): {result.style}"
         return context
 
-    async def provide_coach_context(self, result: IntensityResult) -> str:
+    @staticmethod
+    async def provide_coach_context(result: IntensityResult) -> str:
         """Provides intensity context for the coach prompt.
 
         Returns:
             The intensity prompt context.
         """
-        return await self.provide_context(result)
+        lines = ["Recorded time in zones across available activities (full analysis lookback, not cycling-filtered):"]
+        if result.power_total_mins > 0:
+            zones = ", ".join(f"Z{index + 1}={value:.1f}%" for index, value in enumerate(result.power_zones_pct[:7]))
+            lines.extend([
+                f"- Power: {zones}; {result.power_total_mins:.0f} recorded zone minutes.",
+                f"- Sweet spot overlap: {result.power_ss_pct:.1f}% (not additional time).",
+            ])
+        if result.hr_total_mins > 0:
+            hr_zones = ", ".join(f"Z{index + 1}={value:.1f}%" for index, value in enumerate(result.hr_zones_pct))
+            lines.append(f"- HR (all sports): {hr_zones}; {result.hr_total_mins:.0f} recorded zone minutes.")
+        if len(lines) == 1:
+            return "Intensity distribution unavailable (no recorded zone time)."
+        lines.append(
+            "Zone coverage and thresholds can vary by sport; do not infer a training style from these percentages alone."
+        )
+        return "\n".join(lines)
 
     @override
     def get_dashboard_widget(self, result: IntensityResult, display_days: int | None = None) -> DashboardWidget | None:
