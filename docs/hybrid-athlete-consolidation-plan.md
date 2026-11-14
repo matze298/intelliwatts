@@ -152,7 +152,7 @@ The prior `docs/dashboard-expansions.md` listed five delivered chart enhancement
 
 **Scope:** This system is primarily for **one person**. There is no need for user registration, multiple roles, consent-management workflows, organizational compliance machinery or a custom identity platform just because health-related data is involved. The owner decides what to record and sends to LLM services. Security still matters because it protects a real personal training history, API tokens and private notes.
 
-**Current access:** IntelliWatts uses a master password, signed session cookie (12-hour expiry), rate limiting and origin checking; [PR #155](https://github.com/matze298/intelliwatts/pull/155) adds privacy-related HTTP response headers. Current public hosting exposes the sign-in page on the internet; that is a larger attack surface than a genuine private network. Nothing here claims a live security assessment.
+**Current access:** IntelliWatts uses a master password, signed session cookie (12-hour expiry), rate limiting and origin checking; [draft Phase 1 PR #158](https://github.com/matze298/intelliwatts/pull/158) proposes privacy-related HTTP response headers. Current public hosting exposes the sign-in page on the internet; that is a larger attack surface than a genuine private network. Nothing here claims a live security assessment.
 
 **Proportional work, in order of value:**
 
