@@ -209,7 +209,8 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         context += f"Overall Style (Power-based): {result.style}"
         return context
 
-    async def provide_coach_context(self, result: IntensityResult) -> str:
+    @staticmethod
+    async def provide_coach_context(result: IntensityResult) -> str:
         """Provides intensity context for the coach prompt.
 
         Returns:
@@ -227,7 +228,9 @@ class IntensityProvider(MetricProvider[IntensityResult]):
             lines.append(f"- HR (all sports): {hr_zones}; {result.hr_total_mins:.0f} recorded zone minutes.")
         if len(lines) == 1:
             return "Intensity distribution unavailable (no recorded zone time)."
-        lines.append("Zone coverage and thresholds can vary by sport; do not infer a training style from these percentages alone.")
+        lines.append(
+            "Zone coverage and thresholds can vary by sport; do not infer a training style from these percentages alone."
+        )
         return "\n".join(lines)
 
     @override
