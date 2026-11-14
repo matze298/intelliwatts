@@ -252,7 +252,6 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
     with Session(engine) as db_session:
         phase = get_or_create_active_phase(db_session, user.id)
         artifact = get_current_long_term_plan_artifact(db_session, phase_id=phase.id)
-        preceding_plan = load_previous_week_plan_context(session=db_session, phase_id=phase.id, week_start=week_start)
         coach_context = build_coach_context(
             daily_records=analysis.daily_records,
             phase=phase,
@@ -273,14 +272,21 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
                 weekly_hours=weekly_hours,
                 weekly_sessions=weekly_sessions,
                 weekly_brief=weekly_brief,
-                coach_text=coach_context.render(),
+                coach_text="\n\n".join(
+                    filter(
+                        None,
+                        (
+                            coach_context.render(),
+                            load_previous_week_plan_context(
+                                session=db_session, phase_id=phase.id, week_start=week_start
+                            ),
+                        ),
+                    )
+                ),
                 specialist_text=specialist_text,
                 task_prompt=settings.USER_PROMPT,
             )
         )
-
-    if preceding_plan:
-        full_summary += "\n\n" + preceding_plan
 
     _report(progress, "Checking upcoming sports and race commitments")
     # Add date rules even when athletes override the default coach prompt.

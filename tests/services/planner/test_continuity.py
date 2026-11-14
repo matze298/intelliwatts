@@ -2,10 +2,10 @@
 
 import uuid
 from datetime import date
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlmodel import Session
 
 from app.models.plan import TrainingPhase, TrainingPlan
 from app.models.user import User
@@ -15,6 +15,9 @@ from app.services.planner.continuity import (
     load_previous_week_plan_context,
 )
 from app.services.planner.orchestrator import generate_weekly_plan, update_training_plan
+
+if TYPE_CHECKING:
+    from sqlmodel import Session
 
 
 def _previous_week_plan(phase_id: uuid.UUID, *, week_start: date = date(2026, 11, 9)) -> TrainingPlan:
@@ -53,9 +56,7 @@ def test_prior_week_plan_is_explicitly_planned_even_when_not_finished(session: S
     session.commit()
 
     # WHEN constructing week two's continuity context
-    context = load_previous_week_plan_context(
-        session=session, phase_id=phase_id, week_start=date(2026, 11, 16)
-    )
+    context = load_previous_week_plan_context(session=session, phase_id=phase_id, week_start=date(2026, 11, 16))
 
     # THEN both structure and narrative are included, with unambiguous planned-only labels
     assert "PLANNED ONLY (2026-11-09 to 2026-11-15)" in context
@@ -74,12 +75,10 @@ def test_no_adjacent_plan_does_not_invent_history(session: Session) -> None:
     session.commit()
 
     # WHEN requesting week three (2026-11-23), whose immediate predecessor is missing
-    result = load_previous_week_plan_context(
-        session=session, phase_id=phase_id, week_start=date(2026, 11, 23)
-    )
+    result = load_previous_week_plan_context(session=session, phase_id=phase_id, week_start=date(2026, 11, 23))
 
     # THEN no historic planned work is invented
-    assert result == ""
+    assert not result
 
 
 def test_plan_context_is_bounded_and_keeps_invalid_dates_uncertain() -> None:
