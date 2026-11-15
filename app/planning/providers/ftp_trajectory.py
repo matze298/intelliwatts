@@ -108,7 +108,8 @@ class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
             "- Activity FTP settings are not proof of a new fitness test or current configured FTP."
         )
 
-    async def provide_coach_context(self, result: FTPTrajectoryResult | None) -> str:
+    @staticmethod
+    async def provide_coach_context(result: FTPTrajectoryResult | None) -> str:
         """Provides FTP trajectory context for the coach prompt.
 
         Returns:
