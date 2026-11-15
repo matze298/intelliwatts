@@ -10,6 +10,9 @@ if TYPE_CHECKING:
     from app.planning.providers.interfaces import DashboardWidget
 
 
+CYCLING_TYPES = {"ride", "virtualride", "ebikeride", "gravelride", "mountainbikeride", "handcycle"}
+
+
 @dataclass(frozen=True)
 class TrainingLoad:
     """Training load."""

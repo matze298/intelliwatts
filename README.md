@@ -255,7 +255,9 @@ Use `--theme light` for light-mode screenshots or omit `--theme` to use the syst
 
 The **[unified athlete coaching roadmap](docs/hybrid-athlete-consolidation-plan.md)** is the single source of truth for proposed strength, cross-sport planning, shared coaching context, health/recovery and nutrition features. It builds on the existing cycling planner and keeps the integrated model and Manual / External LLM prompt flows. These are **proposed capabilities, not shipped features**. Source audits and recovery instructions are linked from the roadmap; no backup, production restore or source cutover is implied by the documentation.
 
-**Phase 1 (proposed, not deployed):** [strength database foundation and release gates](docs/hybrid-athlete-step-1-foundation.md) plus the [private Google Sheets / Neon / Git backup runbook](docs/hybrid-athlete-step-1-operator-runbook.md). The additive migration must **not** reach production before a real independently stored Neon backup, isolated restore and production-like test-branch migration succeed.
+## Strength persistence
+
+The database includes exercise identities, versioned strength templates, sessions and performed sets. This is a storage foundation only; no native strength logger or Sheets importer is included. See the [strength foundation](docs/hybrid-athlete-step-1-foundation.md) for the data model and the [operator runbook](docs/hybrid-athlete-step-1-operator-runbook.md) for recovery requirements.
 
 ## Scope
 

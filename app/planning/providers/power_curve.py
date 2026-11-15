@@ -106,7 +106,7 @@ class PowerCurveProvider(MetricProvider[PowerCurveResult | None]):
             return "No power curve data available."
 
         return (
-            "Season Peak Power:\n"
+            "90-day observed best cycling power (not guaranteed maximal efforts):\n"
             f"- 1s: {result.peak_1s or '-'}W\n"
             f"- 15s: {result.peak_15s or '-'}W\n"
             f"- 1m: {result.peak_1m or '-'}W\n"

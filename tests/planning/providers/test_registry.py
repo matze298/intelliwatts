@@ -130,5 +130,6 @@ async def test_metric_registry_specialist_context() -> None:
 
     # THEN only the specialist provider should contribute text.
     assert context == (
-        "FTP Trajectory (Last 2 days):\n- Starting FTP: 250.0W\n- Current FTP: 255.0W\n- Total Change: +5.0W (+2.0%)"
+        "Optional recorded cycling FTP setting: latest 255 W on 2026-05-08; "
+        "change over available observations +5 W. These are settings, not verified fitness changes or test dates."
     )
