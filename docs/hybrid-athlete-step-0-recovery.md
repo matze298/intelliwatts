@@ -3,7 +3,7 @@
 **Status:** Procedure documented. **Step 0 structural inventory is complete**, but these private checks have **not** been executed or verified here (2026-11-10).  
 **Purpose:** Protect data before each affected production import or source retirement — **not** hold up a documentation-only PR.
 
-**Document role:** Operational recovery checklist, not a parallel enhancement plan. The [unified athlete coaching roadmap](hybrid-athlete-consolidation-plan.md) owns priorities and phase gates; this checklist owns how to verify private exports/restores. [PR #155](https://github.com/matze298/intelliwatts/pull/155) has a more detailed proposed Step 1 operator runbook on its draft branch.
+**Document role:** Operational recovery checklist, not a parallel enhancement plan. The [unified athlete coaching roadmap](hybrid-athlete-consolidation-plan.md) owns priorities and phase gates; this checklist owns how to verify private exports/restores. See the [Phase 1 operator runbook](hybrid-athlete-step-1-operator-runbook.md) for source-to-schema mapping, isolated Neon restore, migration testing and a private full-history Git bundle procedure. Commands are **not** proof of execution.
 
 Do not commit athlete documents, workout exports, database dumps, provider responses, credentials or identifiable reconciliation results to the public IntelliWatts repository, PR, CI logs or screenshots.
 

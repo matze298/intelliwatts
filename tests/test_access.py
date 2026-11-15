@@ -103,3 +103,61 @@ def test_session_expires_and_password_rotation_revokes_it(monkeypatch: pytest.Mo
         monkeypatch.setattr(settings, "APP_PASSWORD", secrets.token_urlsafe(32))
         assert client.get("/", follow_redirects=False).status_code == 303
     _clear_login_failures()
+
+
+def test_private_responses_disable_caching_and_framing() -> None:
+    """Do not let personal training pages, prompts, or errors be cached or embedded."""
+    # GIVEN an unauthenticated client
+    with TestClient(app, base_url="https://testserver") as client:
+        # WHEN login, a protected API, and an invalid-origin request are returned
+        responses = [
+            client.get("/login"),
+            client.get("/api/settings"),
+            client.post("/api/settings", json={}, headers={"origin": "https://evil.example"}),
+        ]
+
+        # THEN each dynamic response has the same privacy and framing protections
+        for response in responses:
+            assert response.headers["cache-control"] == "no-store"
+            assert response.headers["referrer-policy"] == "same-origin"
+            assert response.headers["x-content-type-options"] == "nosniff"
+            assert response.headers["x-frame-options"] == "DENY"
+
+
+def test_authenticated_responses_disable_cache_but_static_assets_remain_cacheable() -> None:
+    """Protect signed-in training data without changing static asset cache behavior."""
+    # GIVEN a signed-in test client
+    _clear_login_failures()
+    with TestClient(app, base_url="https://testserver") as client:
+        login_response = client.post(
+            "/login",
+            data={"password": TEST_PASSWORD},
+            headers={"origin": "https://testserver"},
+            follow_redirects=False,
+        )
+        assert login_response.status_code == 303
+
+        # WHEN fetching authenticated pages, API data and a public static asset
+        responses = [
+            client.get("/"),
+            client.get("/settings"),
+            client.post(
+                "/api/settings",
+                json={"developer_mode_enabled": get_profile().developer_mode_enabled},
+                headers={"origin": "https://testserver"},
+            ),
+        ]
+        asset = client.get("/static/intelliwatts-logo.webp")
+        conditional = client.get("/static/intelliwatts-logo.webp", headers={"if-none-match": asset.headers["etag"]})
+
+        # THEN private content is protected and static conditional requests still work
+        for response in responses:
+            assert response.status_code == 200
+            assert response.headers["cache-control"] == "no-store"
+            assert response.headers["referrer-policy"] == "same-origin"
+            assert response.headers["x-content-type-options"] == "nosniff"
+            assert response.headers["x-frame-options"] == "DENY"
+        assert asset.status_code == 200
+        assert asset.headers.get("cache-control") != "no-store"
+        assert conditional.status_code == 304
+    _clear_login_failures()
