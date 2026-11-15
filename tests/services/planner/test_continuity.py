@@ -138,7 +138,7 @@ async def test_future_generation_prompt_includes_saved_previous_week(session: Se
         ) as specialists,
         patch("app.services.planner.orchestrator.load_week_commitments", return_value="No scheduled events"),
     ):
-        specialists.return_value = "Specialist context"
+        specialists.return_value = ""
         result = await generate_weekly_plan(user, settings, week_start=date(2026, 11, 16), prompt_only=True)
 
     # THEN the assembled model message has distinct planned and recorded sections
@@ -147,6 +147,8 @@ async def test_future_generation_prompt_includes_saved_previous_week(session: Se
     assert "Threshold build" in prompt
     assert "Thursday strength; Friday football" in prompt
     assert "No completed activities" in prompt
+    assert "even if FTP is unknown, stale or unchanged" in prompt
+    assert "a recent FTP test is not required" in prompt
     assert "never count a planned session as completed" in prompt
 
 

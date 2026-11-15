@@ -1,18 +1,18 @@
 # IntelliWatts — unified athlete coaching roadmap
 
-**Status:** Authoritative product and architecture plan (2026-11-12). This document is the **single source of truth for future work** on IntelliWatts. It replaces the previous cycling-dashboard extension and general improvement backlogs; completed functionality is described in the README, while source audits and backup instructions remain separate operational references.
+**Purpose:** The authoritative target architecture, outstanding delivery work and permanent product principles. This is not a changelog or a description of shipped functionality. See the [README](../README.md) for the implemented baseline, [AGENTS.md](../AGENTS.md) for development instructions, and pull requests/Git history for completed changes. Remove work from the active roadmap only after its acceptance gate is satisfied; retain outstanding requirements for partially delivered phases.
 
-## 1. Product goal and non-goals
+## 1. Product vision and non-goals
 
 Build one dependable personal coaching system that can **collect and interpret health/recovery, endurance, strength and nutrition context**, and help plan training across sports so decisions build on prior prescriptions and actual execution.
 
 A useful result: “Given my cycling, strength, football, sleep/recovery, available time, goals and nutrition preferences, propose next week; explain conflicts and trade-offs; keep changes as drafts until approved.”
 
-IntelliWatts is **already the starting point**: it has FastAPI, SQLModel/PostgreSQL, Intervals.icu data ingestion, deterministic analytics, saved cycling plans, model-based generation, and a **Manual / External LLM** flow that exports enhanced prompts and validates the returned plan JSON. **Extend this system, do not replace it.**
+**Extend the existing IntelliWatts application; do not replace it.**
 
 Non-goals unless a real need emerges: a second web app, microservices, a generic CMS or rule engine, a vector database, arbitrary LLM-generated SQL, a compulsory MCP server, complete replication of external provider datasets, or a custom chat frontend before useful workflows exist. **A personal VPS is a viable deployment option**, not an architectural rewrite.
 
-## 2. Architectural decision
+## 2. Target architecture
 
 **One FastAPI monolith + PostgreSQL for app-owned data + task-specific context providers + one shared context assembler.** Keep Jinja/Tailwind for structured workflows. The deployment may remain managed or move to a privately accessed VPS; the application architecture stays the same.
 
@@ -23,9 +23,9 @@ Non-goals unless a real need emerges: a second web app, microservices, a generic
 5. **Free-form access is a supported direction, not a second data plane.** Expose explicit read capabilities such as `get_endurance`, `get_strength_history`, `get_recovery`, `get_athlete_context`, `get_meals` and `get_week_review`, and optionally `get_everything` as a **bounded manifest + compact cross-domain summary**, not a raw dump. A lightweight `GET /api/v1/context` (scopes, date ranges, detail level) can serve an authenticated external client or a copied enhanced prompt. Keep interactive chat optional; MCP is merely one future transport.
 6. **Personal-use security and data hygiene.** This is a **single-owner project**: no multi-user roles, registration, consent-management system or compliance bureaucracy is required for ordinary personal use. Keep private data/credentials out of Git, logs and unwanted LLM prompts; choose which health details to share. Preserve source fidelity and the ability to export or delete your own records. Wellness indicators support coaching, not autonomous medical diagnosis.
 
-### Source ownership (logical unity, not compulsory data copying)
+### Target source ownership (logical unity, not compulsory data copying)
 
-| Domain | Authority | What IntelliWatts holds |
+| Domain | Target authority / transition | Intended IntelliWatts responsibility |
 | --- | --- | --- |
 | Cycling/endurance completed activities, power, available wellness | **Intervals.icu** | Read through existing adapter; cache bounded summaries with IDs, timestamps and freshness only when justified |
 | Strength performed sessions/sets | **Google Sheets until verified cutover; then IntelliWatts** | Stable exercise IDs, immutable historical execution with auditable corrections, templates/versions, native new logs |
@@ -37,7 +37,9 @@ Non-goals unless a real need emerges: a second web app, microservices, a generic
 
 At eventual retirement, every private Hybrid Athlete OS item should be **imported if wanted, marked duplicate/obsolete, or deliberately excluded**. A private Git archive is a recovery copy, not the active knowledge base. Neither Git snapshots nor spreadsheet dashboards become additional authorities.
 
-### Architecture and request flow
+### Target architecture and request flow
+
+The diagram describes the intended system, including future providers and optional chat; it does not imply these features are shipped.
 
 ```mermaid
 flowchart TB
@@ -77,7 +79,7 @@ The **backend is the data broker**. Providers are Python functions or focused se
 
 Start by extracting common selection logic from the existing `app/services/coach_context.py` and planner adapters **only when a second caller needs it**. Avoid replacing the working cycling flow up front. Each provider accepts typed inputs (time window, requested domain, detail limit) and returns source IDs, units, timestamps/freshness, missing-data indicators and normalized results; add deterministic calculations only where the provider owns them.
 
-| Capability | Typical data | Baseline implementation |
+| Proposed capability | Typical data | Implementation starting point |
 | --- | --- | --- |
 | `get_athlete_context` | Goals, schedule, preferences and active coaching constraints | Existing user/phase/profile and selected retained Markdown |
 | `get_endurance` | Recent activities, load, planned-vs-performed cycling, provider wellness | Existing Intervals client and analytics; preserve source IDs and dates |
@@ -103,58 +105,73 @@ Start by extracting common selection logic from the existing `app/services/coach
 - **Model independence:** The provider/API path and Manual enhanced prompt use the same normalized evidence and validation; generated prompts show what athlete information would leave the application.
 - **Permission boundary:** Unauthenticated context reads fail; a model cannot request unrestricted SQL, credentials or mutations through a read provider. Synthetic tests cover injection attempts and oversized time windows.
 
-## 3. Delivery sequence and acceptance gates
+## 3. Active delivery roadmap
 
-Deliver the smallest working feature with its relevant source data. These are **independently reviewable PRs**, not a mandate to create every candidate table immediately.
+Only outstanding work belongs here. Phase numbers are stable for existing references; completed or deferred phases are not active tasks. Status describes delivery, not merely code availability: **In review / blocked** means implementation is proposed but the release gate is outstanding; **Open** means further implementation or verification is required; **Planned** means a later deliverable. CI success alone does not establish operational or coaching acceptance.
 
-| Phase | Deliverable | Exit gate |
+### Delivery phases
+
+| Phase | Status / priority | Remaining deliverable | Acceptance gate |
+| --- | --- | --- | --- |
+| **1 — Safety and strength persistence** | **In review / blocked** | Review [draft PR #158](https://github.com/matze298/intelliwatts/pull/158) (minimal strength schema and privacy headers); independently encrypted Neon logical backup, retrieval and actual isolated restore; production-like test-branch Alembic upgrade; remaining session/secrets review | Actual backup restore and test migration succeed **before merging/deploying** the schema; startup runs migrations. Synthetic CI is not restoration evidence. |
+| **2 — Native strength logging** | **Planned** | Verified independently recoverable full Sheets export and private Git history before their respective imports; exercise library, versioned templates, mobile-friendly logger, idempotent complete history and active blueprint import | Reconcile IDs/joins/statuses/sets/versions/unknowns; verify edits/readback, final source delta and exactly one writer after approval. |
+| **3 — Shared context providers and API** | **Open / high priority** | Remaining cycling-context gaps below; add native strength reads and task-specific context composition; expose authenticated read-only scopes and bounded `get_everything` | Manual and API generation share evidence; custom questions select scopes/periods; outages, freshness, permissions and oversized requests are handled. |
+| **4 — Joint week planning** | **Open / high priority** | Actual-versus-planned session analysis and upcoming commitments below; coordinate cycling, strength and other sports; add minimal planned strength entries only when necessary | Week N+1 considers earlier intentions and actual execution, resolves conflicts without confusing sports' budgets, explains trade-offs, and requires approval before publishing. |
+| **5 — Meals and nutrition** | **Planned** | Meal ideas, tags/preferences, weekly assignments, leftovers and training-day fueling; recipes, quantities and shopping lists only where supported | Meals account for demanding sessions; no invented portions, macros, deficits or intake. |
+| **6 — Recovery/health and retained knowledge** | **Planned** | Lightweight dated check-ins, verified relevant wearable measurements and wanted private notes; proportionate authentication, data-access and retention safeguards before expanding sensitive detail | Current check-ins and freshness; protected retention, tested auth/deletion/disclosure; no invented clinical conclusions. |
+| **8 — Retire legacy systems** | **Planned / after cutover** | Account for every old file and Sheets record, check Intervals snapshot coverage, stop obsolete syncs and archive sources | No runtime dependence on private repo or Sheets writer; independent recovery and domain reconciliation verified. |
+
+### Remaining work within phases 3–6
+
+These are refinements of the phases above, not separate projects. Cycling improvements can ship independently before strength consolidation.
+
+| Work item | Phase / priority | Acceptance |
 | --- | --- | --- |
-| **0 — Inventory** | Structural audit of both repos and the Google workbook, source ownership, recovery runbook | **Done: structural only.** Private backups and restore tests are **not** thereby verified |
-| **1 — Safety and strength persistence** | Independently encrypted source backups, actual Neon `pg_dump` → isolated `pg_restore`, restricted test-branch Alembic upgrade; minimal strength schema, basic HTTP/privacy fixes and a security review of existing secrets/session access | Real restore and test-branch migration succeed **before deploy**. [Implementation PR #155](https://github.com/matze298/intelliwatts/pull/155) remains separate; passing CI does not authorize production deployment |
-| **2 — Native strength logging** | Exercise library, versioned templates, mobile-friendly workout logger; idempotent import of the complete authoritative Sheets history and active strength blueprint | Reconcile source IDs/joins/statuses/sets/versions/unknowns; verify edited/read-back native sessions; take final source delta; switch to **one** writer only after approval |
-| **3 — Shared context providers and API** | Reuse existing coach-context + Intervals services, add native strength and bounded typed provider reads; assemble task-specific context; expose *authenticated* read-only context scopes and compact `get_everything` | API model and Manual enhanced prompts share evidence; custom questions can select scopes/periods; provider failure, data freshness and oversized requests are explicitly handled |
-| **4 — Joint week planning** | Coordinate cycling + strength + football/other commitments, prior load and recovery in one weekly plan/review; preserve sport-specific structures; add minimal planned-strength entries only when needed | Week N+1 accounts for Week N intentions **and** actual execution, detects conflicts, explains trade-offs, and never publishes externally without approval |
-| **5 — Meals and nutrition** | Import meal ideas, tags and preferences; weekly assignments, leftovers and training-day fueling suggestions; add complete recipes, quantities and shopping lists only where supported | Weekly meal workflow accounts for long rides, strength and other sessions; no invented portions, macros, nutrient deficits or logged intake |
-| **6 — Recovery/health and retained knowledge** | Add lightweight dated check-ins; selectively integrate verified wearable measurements and remaining wanted Markdown notes; complete additional authentication, data-access and retention safeguards **before** importing more sensitive health details | Current check-ins and provider freshness are handled responsibly; private records selected for retention are in protected DB; authentication, deletion and disclosure rules are tested; no invented clinical conclusions |
-| **7 — Optional coach chat** | If open-ended conversations justify it, add a small in-app chat using the **same providers and authenticated context endpoints**, rather than another data integration platform | Multi-turn questions can request additional scoped evidence; prompt-injection and permission tests pass; unapproved mutations remain impossible and Manual enhanced prompts still work |
-| **8 — Retire legacy systems** | Account for every old file and Sheets record, verify Intervals snapshot coverage, stop obsolete syncs, archive sources | No runtime reliance on the private repo or Google Sheets as a writer; recovery and per-domain reconciliation independently verified |
+| Plan adherence and interval execution | 3–4 / high | Match stable IDs where available; distinguish canceled, shifted, missed, unrecorded and modified sessions. Compare key interval dose, quality and available RPE/feedback. Never match merely by date or rewrite approved history silently. |
+| Cycling intensity and performance | 3 / high | Cycling-only 7/28-day power/HR zone distributions, definitions and recording coverage, hard-session frequency and long-ride duration; goal-relevant power-duration trends without assuming maximal efforts. |
+| Data coverage and prompt consistency | 3 / high | Preserve valid activity identity and duration when stress is unknown; distinguish no observations from zero load/rest, report freshness/coverage, refresh specialist evidence on revisions and bound history while retaining current plan/feedback. Deduplicate macro and workload summaries. |
+| Upcoming commitments | 4 / high | Include relevant races and sports from today through target week; deduplicate published workouts by ID and refresh provisional future plans after actual sessions. |
+| Practical athlete constraints | 4 / as needed | Optional daily time, indoor/outdoor preferences, event demands and current limitations only where they improve scheduling. |
+| Recovery evidence and baseline | 3, 6 / as needed | Extend existing personal baseline comparisons with relevant new sources and coverage; add selective dated feedback without assuming scales or inventing symptoms. |
+| Additional sport/health adapters | 3, 4, 6 / as needed | Use Intervals data first; add task-relevant typed providers with stable units, dates and source ownership, not one integration per LLM. |
 
-**Ordering flexibility:** The read-only provider/API layer may begin while the strength logger is built; meals and recovery check-ins can move earlier when useful. Chat is not a dependency. **Hard gates:** verified private DB restore before production schema changes; one-writer reconciliation before strength cutover; authenticated access and adequate backup hygiene before exposing additional health records. Security sophistication should be proportional to this single-owner deployment; this documentation PR does not itself prove those checks.
+**Ordering:** Read-only context work can proceed independently of strength logging; meals and recovery check-ins can move earlier if useful. Chat is not a dependency.
 
-## 4. Open points retained from the former planning documents
+**Hard gates:** Verified private DB restore and production-like migration before deploying schema changes; source-specific recoverable archives before respective imports; one-writer reconciliation before strength cutover; authenticated access and adequate backup hygiene before exposing additional health records. Security sophistication remains proportional to a single-owner deployment.
 
-These are **ideas or unsatisfied requirements**, not claims that the data or features already exist. Keep them prioritized under the phases above rather than maintaining a second enhancement roadmap.
+**Operational references:** [Source and authority inventory](hybrid-athlete-step-0-inventory.md) and [private backup/restore checklist](hybrid-athlete-step-0-recovery.md) describe source evidence and recovery procedures. The more detailed Phase 1 operator runbook is in [draft PR #158](https://github.com/matze298/intelliwatts/pull/158). Do not interpret inventory or documented commands as verified recovery.
 
-| Open work | Where addressed | Scope control / proof of value |
-| --- | --- | --- |
-| **Planned vs. actual performance and plan adherence**, including Intervals scheduled workouts | Phases 3–4 | Establish session matching rules, provider IDs, statuses and explicit unknowns; distinguish canceled, shifted, missed, unrecorded and modified sessions; don't assume same-day means same workout and don't silently rewrite approved history |
-| **Recovery change against individual baseline** with missing-data indicators | Phases 3 and 6 | Extend current coach-context logic only as needed; don't replace its working cycling summaries or use one wearable number as a hard stop |
-| **Sleep quality vs. training load** deeper analysis (e.g. REM/deep-sleep associations) | Phase 6, **deferred** | Validate upstream data coverage, timestamps and confounders first; explore trends descriptively, not as causal or medical claims |
-| **Nutrition and fueling insights**, potentially informed by food logging tools | Phase 5, **optional extension** | Start with recipes/meal planning; no mandatory MyFitnessPal integration or automatic burned-versus-eaten calorie balance without reliable intake data |
-| **Postgres recovery, source archive, Google Sheets fidelity and Intervals snapshot coverage** | Phases 1, 2 and 8 | Real private backup + restore and source-specific reconciliations; no public exports |
-| **Broader sports data/health source adapters** | Phases 3, 4 and 6 | Use existing Intervals data first; add only task-relevant typed providers with stable units, freshness and source ownership; avoid one external LLM connector per backend |
-| **Improved UI, trend charts, build/CI reliability** | **Already delivered**, summarized in README and test suite | Do not reopen completed dashboard design, 365-day range, activity mix, intensity/power and weekly-volume charts as new projects without a new defect |
+## 4. Deferred and optional features
 
-The prior `docs/dashboard-expansions.md` listed five delivered chart enhancements and three unbuilt ideas. The prior `docs/improvement-plan.md` listed completed security, backend, UI and CI improvements and one open coaching-context task. **Only the remaining work is carried forward here.** Completed implementation and tests remain in Git history and the README.
+These are not delivery gates. Promote an item into the active roadmap only when a concrete need justifies it.
 
-## 5. Lightweight implementation rules
+| Option | Condition for pursuing |
+| --- | --- |
+| Configured FTP reference and effective date | Useful execution calibration only; never required for a relative %FTP prescription or fitness assessment. |
+| Cycling-only CTL/ATL trends | If they improve decisions beyond existing workload/recovery evidence; include adequate warm-up, dates and explicit assumptions. |
+| Sleep architecture vs. load (e.g. REM/deep sleep) | Validate coverage, timestamps and confounders; descriptive trends only, not causal or clinical claims. |
+| Nutrition/food logging integration | Only if useful after meal workflow exists; no mandatory MyFitnessPal or inferred burned-versus-eaten balance. |
+| **Phase 7 — Optional coach chat / MCP** | If free-flowing use warrants it, use the same authenticated providers and endpoints. Multi-turn scoped retrieval, prompt-injection/permission tests and deliberate write approval; keep Manual prompts working. |
+| Stronger sign-in / MFA / passkeys and hosting migration | Based on actual exposure, convenience and operational trade-offs; follow security principles and hosting strategy below. |
+
+## 5. Permanent implementation principles
 
 - **Native operations where chat is slower:** strength set logging, plan/calendar review, recipe/meal selection and approvals deserve simple interfaces. A large multi-tab “fitness OS” is not required.
 - **Strength fidelity:** exercise identity survives variations; preserve historical per-side data, units, blank-vs-zero, RIR and template version; never mark unknown sessions completed or invent performed sets. Keep import reports private.
 - **Planning safety:** distinguish plans, completions, current self-reported state and model suggestions. Existing cycling-hours/session limits remain **cycling-specific**; only introduce an explicit overall training-time/strain budget and secondary goal priorities when a concrete cross-sport conflict requires them. Save a revision/draft; publish to Intervals only after explicit review; retain existing cycling regressions.
+- **FTP-independent planning:** prescribe relative %FTP workouts regardless of whether FTP is missing, old or unchanged; prioritize actual execution, workload and recovery, with RPE/HR cues for calibration. Don't invent watt targets, infer stagnation or require a recent FTP test.
+- **Relevant coaching evidence:** keep prompts dated, compact and task-specific. Do not routinely send raw historical activities, GPS, full wellness notes, all-time curves or mixed-sport load as cycling fitness. Avoid universal recovery thresholds and intensity-style labels unsupported by actual distribution.
 - **Nutrition:** start with meal cards and dietary preferences; consider meal/fueling timing around long rides and demanding sessions. Do not infer grams, calories, macros, energy availability or actual food intake where unknown. Treat nutrition recommendations as coaching support, not medical advice.
 - **Backups:** a test branch is not an off-provider backup; a download is not an independently stored archive. A real restore of production data is required before changing production schema. Rollback must account for writes made after cutover.
 - **Security:** no arbitrary SQL from LLM; no DB/API secrets in client prompts, browser JavaScript or public Git; no unbounded health record dumps. Keep personal export/delete practical, authenticate all data endpoints and require approval for actions. Do not add multi-user registration, per-user consent screens or enterprise compliance processes for this single-owner app.
 - **Hosting:** Render + Neon and a small Tailscale-protected VPS are both credible. Choose on price, availability, remote access, backups and actual maintenance effort; no architectural dependency on either. Keep independent encrypted off-host backups for both.
-- **Testing and release:** each feature PR uses synthetic fixtures, typed validation, database migration tests when applicable and cycling workflow regression tests. For cross-sport proposals, test a real scheduling conflict and a missing-data case, not only an ideal week. Separate operational recovery sign-off from CI. No dual writers during source cutover.
+- **Testing and release:** each feature PR uses synthetic fixtures, typed validation, database migration tests when applicable and cycling workflow regression tests. Cover mixed sports, sparse/stale observations, missed intervals, future weeks, revisions and provider outages; privately compare representative prompts and prescriptions before claiming improved coaching. Separate operational recovery sign-off from CI. No dual writers during source cutover.
 
-## 6. Proportional security for a single-owner application
+### Proportional security for a single-owner application
 
 **Scope:** This system is primarily for **one person**. There is no need for user registration, multiple roles, consent-management workflows, organizational compliance machinery or a custom identity platform just because health-related data is involved. The owner decides what to record and sends to LLM services. Security still matters because it protects a real personal training history, API tokens and private notes.
 
-**Current access:** IntelliWatts uses a master password, signed session cookie (12-hour expiry), rate limiting and origin checking; [PR #155](https://github.com/matze298/intelliwatts/pull/155) adds privacy-related HTTP response headers. Current public hosting exposes the sign-in page on the internet; that is a larger attack surface than a genuine private network. Nothing here claims a live security assessment.
-
-**Proportional work, in order of value:**
+**Security requirements, in order of value:**
 
 1. **Restrict who can reach the app.** On a VPS, prefer Tailscale-only access for personal devices; if browser access outside the tailnet is required, use a Cloudflare Tunnel **with Cloudflare Access authentication/policies**, not a freely reachable tunnel URL. Tailscale itself restricts the app at the network layer; configure bind addresses, firewall and proxy ingress so the origin is **not also directly reachable** on a public IP. An OpenAPI description can be visible to the owner without exposing real records to anonymous callers.
 2. **Protect the data and recovery path.** Keep provider and PostgreSQL secrets out of public Git, local copies of enhanced prompts and logs; use least-privileged roles, TLS when crossing networks, encrypted **off-VPS and off-provider backups**, and actually test restoring them. If app + DB share one VPS, a failed host must not take the only backup with it. Keep a simple data export/delete capability for personal control, not consent screens.
@@ -164,7 +181,7 @@ The prior `docs/dashboard-expansions.md` listed five delivered chart enhancement
 
 **Deployment-dependent gate:** If the site is publicly reachable, stronger web authentication (e.g. Cloudflare Access with an appropriate second factor or a managed passkey flow) is worth prioritizing before expanding sensitive health detail. If the app is genuinely restricted to your Tailscale devices, existing password + safe sessions + protected backups may be entirely proportional. The network perimeter **must be tested**, not assumed; a tunnel alone does not prove that unauthenticated outsiders cannot access it. No blanket requirement for MFA or consent UI in a personal-only tool.
 
-## 7. Hosting decision: managed services or a personal VPS?
+## 6. Hosting strategy: managed services or a personal VPS?
 
 **Both choices are reasonable.** Codex/automation can reduce the setup burden of Linux hardening, Tailscale, reverse proxies and backups, so a VPS should not be dismissed as inherently too hard. Automation does not, however, eliminate responsibility for security patches, credential rotation, backup restoration and diagnosing outages.
 
@@ -179,17 +196,6 @@ The prior `docs/dashboard-expansions.md` listed five delivered chart enhancement
 
 **Decision approach:** compare total monthly spend, cold starts, latency, recovery time, actual DB footprint, job scheduling needs and ongoing maintenance. Record simple target numbers (e.g. maximum acceptable restore data loss, time to restore, app wake-up delay) rather than debating unspecified SLA promises. A managed DB can be worth paying for independently of where FastAPI runs.
 
-**Current recommendation:** Do not migrate infrastructure just to implement the unified coach. A **Tailscale-restricted VPS is a credible alternative**, especially given your willingness to administer it with Codex; evaluate VPS+Neon versus VPS+Postgres and managed hosting after the existing backup gate is satisfied. If you move, perform a rehearsal deployment and isolated data restoration first, keep a rollback window, and turn off old hosting only after equivalent functions and backups are verified.
+**Decision principle:** Do not migrate infrastructure just to implement the unified coach. A **Tailscale-restricted VPS is a credible alternative**, especially given your willingness to administer it with Codex; evaluate VPS+Neon versus VPS+Postgres and managed hosting after the existing backup gate is satisfied. If you move, perform a rehearsal deployment and isolated data restoration first, keep a rollback window, and turn off old hosting only after equivalent functions and backups are verified.
 
 Provider pricing and free limits change; check [Render Free](https://render.com/docs/free), [Render pricing](https://render.com/pricing), [Neon pricing](https://neon.com/pricing), [Tailscale documentation](https://tailscale.com/kb) and [Cloudflare Access documentation](https://developers.cloudflare.com/cloudflare-one/identity/) before committing to a provider or security feature.
-
-## 8. Status, artifacts and decision log
-
-- **Current shipped baseline:** The [README](../README.md) documents the cycling planner, coach prompt, Intervals.icu dashboard, manual enhanced-prompt/import path, secure sign-in and managed PostgreSQL persistence. Do not represent planned strength, meals, free-form chat or unified coaching as shipped.
-- **Step 0 inventory:** [Source and authority audit](hybrid-athlete-step-0-inventory.md) records inspected file groups and mapping evidence, **not future architecture policy**.
-- **Operational recovery:** [Private backup/restore checklist](hybrid-athlete-step-0-recovery.md) records mandatory source-specific safeguards, **not a competing delivery roadmap**.
-- **Step 1 implementation:** [Draft PR #155](https://github.com/matze298/intelliwatts/pull/155) proposes strength tables and response privacy hardening; it carries additional operator instructions on its branch. **Reconcile it with this plan before merging.** Its Neon restoration gates remain unverified until separately evidenced.
-
-**Decision:** IntelliWatts is a single-owner coaching application and secure data broker. **Context-aware Python providers** collect relevant PostgreSQL and external-service evidence, and the assembler produces compact enhanced prompts or provider-backed model calls. **Authenticated, scoped FastAPI context endpoints** support future free-flowing requests, including bounded `get_everything` summaries; optional MCP or in-app chat can wrap the same service. Neither raw SQL access for an LLM nor anonymous access to personal health data is required. Both managed hosting and a Tailscale-restricted VPS remain valid deployment choices.
-
-**Maintenance convention:** Update **this file** for roadmap priorities, architecture choices, deferred ideas and completion state. The README describes implemented behavior; source inventories and recovery runbooks hold operational evidence; don't create another feature backlog in Markdown.

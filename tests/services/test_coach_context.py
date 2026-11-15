@@ -102,6 +102,10 @@ def test_build_coach_context_produces_weekly_and_daily_sections(
     assert context.daily_ledger[0].weekday in {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
     assert "recovery" in context.brief_context.lower() or "load" in context.brief_context.lower()
     assert "FTP Trajectory" not in context.render()
+    assert "Athlete-reported check-ins" in context.brief_context
+    assert "2026-05-12:" in context.brief_context
+    assert "2026-05-05:" not in context.brief_context
+    assert "fatigue=4" in context.brief_context
     assert "Recent Training" not in context.render()
 
 
@@ -206,3 +210,46 @@ def test_cross_sport_context_counts_multiple_sports_on_same_day(
     assert "Soccer (2d)" in context.brief_context
     assert any("Ride + Soccer" in day.activity_type for day in context.daily_ledger)
     assert "400 TSS" not in context.render()
+
+
+def test_observations_use_analysis_date_not_target_week(
+    coach_phase: TrainingPhase,
+    coach_artifact: LongTermPlanArtifact,
+    coach_daily_records: list[dict[str, object]],
+) -> None:
+    """Exclude future observations and keep valid in-week check-ins during revisions."""
+    # GIVEN an observation cutoff one day into a selected week
+    context = coach_context.build_coach_context(
+        daily_records=coach_daily_records,
+        phase=coach_phase,
+        artifact=coach_artifact,
+        week_start=date(2026, 5, 4),
+        as_of=date(2026, 5, 5),
+    )
+
+    # THEN May 5 is usable, but subsequent data is not
+    assert "2026-05-05:" in context.brief_context
+    assert "2026-05-06:" not in context.brief_context
+    assert "2026-04-28:" not in context.brief_context
+    assert context.daily_ledger[-1].date == "2026-05-05"
+    assert "analysis as of 2026-05-05" in context.brief_context
+
+
+def test_stale_checkins_not_treated_as_current(
+    coach_phase: TrainingPhase,
+    coach_daily_records: list[dict[str, object]],
+) -> None:
+    """A gap in records is unknown, rather than recovered or rested."""
+    # GIVEN observation history ending weeks before the planning date
+    context = coach_context.build_coach_context(
+        daily_records=coach_daily_records,
+        phase=coach_phase,
+        artifact=None,
+        week_start=date(2026, 6, 1),
+        as_of=date(2026, 6, 1),
+    )
+
+    # THEN no stale subjective score or false zero recent volume appears
+    assert "Athlete-reported check-ins" not in context.brief_context
+    assert "no dated observations; training unknown" in context.brief_context
+    assert "Observations through 2026-05-12" in context.brief_context

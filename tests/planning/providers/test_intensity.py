@@ -66,3 +66,28 @@ async def test_intensity_context() -> None:
     assert "85.0% Low" in context
     assert "Polarized" in context
     assert "Power-based" in context
+
+
+@pytest.mark.asyncio
+async def test_coach_intensity_reports_observations_not_style() -> None:
+    """Coaching sees zone percentages and measurement coverage rather than a style heuristic."""
+    # GIVEN data used in both dashboard and coach
+    result = IntensityResult(
+        hr_zones_pct=[80.0, 20.0],
+        power_zones_pct=[10.0, 70.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        power_ss_pct=12.0,
+        hr_total_mins=100.0,
+        power_total_mins=90.0,
+        polarized_score=80.0,
+        style="Base Building",
+    )
+
+    # WHEN rendering the coach-specific context
+    context = await IntensityProvider().provide_coach_context(result)
+
+    # THEN the factual distribution, overlap and scope are clear
+    assert "Z2=70.0%" in context
+    assert "90 recorded zone minutes" in context
+    assert "Sweet spot overlap: 12.0%" in context
+    assert "not cycling-filtered" in context
+    assert "Base Building" not in context

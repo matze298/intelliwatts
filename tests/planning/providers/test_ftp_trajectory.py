@@ -1,5 +1,10 @@
 """Tests for the FTP trajectory provider."""
 
+from datetime import date
+
+import polars as pl
+import pytest
+
 from app.planning.providers.ftp_trajectory import FTPTrajectoryProvider, FTPTrajectoryResult
 
 
@@ -37,3 +42,55 @@ def test_ftp_trajectory_empty() -> None:
 
     # THEN returns None
     assert widget is None
+
+
+def test_ftp_trajectory_uses_activity_fields_and_filters_sports() -> None:
+    """Use the actual aggregated activity columns, not a nonexistent scalar FTP column."""
+    # GIVEN mixed sports, a conflicting day's FTP, and unsorted dates
+    daily = pl.DataFrame({
+        "date": [date(2026, 5, 10), date(2026, 5, 1), date(2026, 5, 8), date(2026, 5, 9)],
+        "types": [["Ride", "Run"], ["VirtualRide"], ["Ride", "Ride"], ["Run"]],
+        "activity_ftp": [[255.0, 400.0], [250.0], [245.0, 260.0], [500.0]],
+    })
+
+    # WHEN calculating the trajectory
+    result = FTPTrajectoryProvider().calculate(daily)
+
+    # THEN only chronological, unambiguous cycling values are retained
+    assert result is not None
+    assert result.dates == ["2026-05-01", "2026-05-10"]
+    assert result.ftp_values == [250.0, 255.0]
+
+
+def test_ftp_trajectory_handles_all_null_activity_ftp() -> None:
+    """Missing FTP must not block otherwise valid activity analysis."""
+    # GIVEN a ride without FTP information
+    daily = pl.DataFrame({
+        "date": [date(2026, 5, 1)],
+        "types": [["Ride"]],
+        "activity_ftp": [[None]],
+    })
+
+    # WHEN calculating the optional FTP signal
+    result = FTPTrajectoryProvider().calculate(daily)
+
+    # THEN it is unavailable, not an analysis failure
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_ftp_coach_context_missing_or_unchanged() -> None:
+    """Optional FTP settings do not establish test recency or fitness change."""
+    # GIVEN missing and unchanged observations
+    provider = FTPTrajectoryProvider()
+    unchanged = FTPTrajectoryResult(dates=["2025-01-01", "2025-04-01"], ftp_values=[250.0, 250.0])
+
+    # WHEN rendering the evidence
+    missing = await provider.provide_coach_context(None)
+    context = await provider.provide_coach_context(unchanged)
+
+    # THEN omit absent data and accurately describe the known settings
+    assert not missing
+    assert "250 W on 2025-04-01" in context
+    assert "+0 W" in context
+    assert "not verified fitness changes or test dates" in context

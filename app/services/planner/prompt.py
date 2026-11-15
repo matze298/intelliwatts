@@ -13,6 +13,16 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
+FTP_PLANNING_GUIDANCE = (
+    "Relative cycling prescription: generate a useful plan even if FTP is unknown, stale or unchanged; "
+    "a recent FTP test is not required. Use %FTP targets, recent workload, interval execution and recovery "
+    "to guide progression; give practical RPE and heart-rate/talk-test cues where appropriate. "
+    "Do not invent watts, fitness changes or a test date, require testing, or reduce training solely because "
+    "FTP evidence is missing or old. If execution suggests the training FTP is inaccurate, suggest optional "
+    "calibration rather than silently changing it."
+)
+
+
 @dataclass(frozen=True)
 class PromptSummaryContext:
     """Container for the prompt assembly inputs."""

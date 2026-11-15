@@ -10,6 +10,8 @@ from operator import attrgetter
 from statistics import fmean, pstdev
 from typing import TYPE_CHECKING, Any, cast
 
+from app.intervals.models import CYCLING_TYPES
+
 if TYPE_CHECKING:
     from app.models.plan import LongTermPlanArtifact, LongTermPlanStructuredData, TrainingPhase
 
@@ -25,7 +27,6 @@ MIN_RECENT_SAMPLES = 3
 MULTI_SIGNAL_COUNT = 2
 # Used only to identify a noteworthy change, never to cancel a session automatically.
 MIN_RELATIVE_CHANGE = {"hrv": 0.05, "resting_hr": 0.05, "sleep_score": 0.08}
-CYCLING_TYPES = {"ride", "virtualride", "ebikeride", "gravelride", "mountainbikeride", "handcycle"}
 
 DailyRecordInput = Mapping[str, object]
 
@@ -44,6 +45,11 @@ class CoachDailyRecord:
     cycling_duration_h: float = 0.0
     cycling_training_stress: float = 0.0
     cycling_sessions: int = 0
+    sleep_quality: float | None = None
+    fatigue: float | None = None
+    soreness: float | None = None
+    stress: float | None = None
+    readiness: float | None = None
 
 
 @dataclass(frozen=True)
@@ -125,6 +131,7 @@ def build_coach_context(
     phase: TrainingPhase,
     artifact: LongTermPlanArtifact | None,
     week_start: date,
+    as_of: date | None = None,
 ) -> CoachContext:
     """Build the prompt-facing coach context packet.
 
@@ -132,11 +139,15 @@ def build_coach_context(
         A compact coach context object for prompt assembly.
     """
     parsed_records = _prepare_records(daily_records)
+    if as_of is not None:
+        parsed_records = [record for record in parsed_records if record.date <= as_of]
     if not parsed_records:
         return CoachContext(
             weekly_summaries=[],
             daily_ledger=[],
-            brief_context=_build_brief_context(phase=phase, artifact=artifact, week_start=week_start, records=[]),
+            brief_context=_build_brief_context(
+                phase=phase, artifact=artifact, week_start=week_start, records=[], as_of=as_of
+            ),
         )
 
     recent_records = parsed_records[-WEEKLY_SUMMARY_DAYS:]
@@ -147,6 +158,7 @@ def build_coach_context(
         artifact=artifact,
         week_start=week_start,
         records=parsed_records,
+        as_of=as_of,
     )
     return CoachContext(
         weekly_summaries=weekly_summaries,
@@ -247,6 +259,7 @@ def _build_brief_context(
     artifact: LongTermPlanArtifact | None,
     week_start: date,
     records: Sequence[CoachDailyRecord],
+    as_of: date | None = None,
 ) -> str:
     """Summarize recent load and individual recovery trends without absolute cutoffs.
 
@@ -256,21 +269,49 @@ def _build_brief_context(
     if not records:
         return f"Recent training data unavailable; plan conservatively for {phase.primary_goal}."
 
-    recent = records[-RECENT_BRIEF_DAYS:]
-    baseline, latest = _split_recovery_windows(records)
+    observation_date = as_of or records[-1].date
+    recent = [record for record in records if observation_date - timedelta(days=RECENT_BRIEF_DAYS) < record.date]
+    baseline, latest = _split_recovery_windows(records, as_of=observation_date)
     cycling_hours = _sum_values(recent, "cycling_duration_h")
     cycling_tss = _sum_values(recent, "cycling_training_stress")
     baseline_text = _recovery_comparison(baseline, latest)
     sports_text = _other_sports_summary(recent)
     block_hint = _current_block_hint(artifact, week_start)
+    recent_load = (
+        f"Recent 14d completed cycling: {cycling_hours:.1f}h, {cycling_tss:.0f} cycling TSS."
+        if recent
+        else "Recent 14d completed cycling: no dated observations; training unknown."
+    )
     return (
-        f"Recent 14d completed cycling: {cycling_hours:.1f}h, {cycling_tss:.0f} cycling TSS. "
+        f"{recent_load} Observations through {records[-1].date}; analysis as of {observation_date}. "
         f"{baseline_text} {sports_text} {block_hint}"
+        f"{_subjective_checkins(latest)}"
+    )
+
+
+def _subjective_checkins(records: Sequence[CoachDailyRecord]) -> str:
+    """Include recent subjective values without assuming the scale or interpreting missing data.
+
+    Returns:
+        A dated list of available check-ins, or an empty string.
+    """
+    labels = ("sleep_quality", "fatigue", "soreness", "stress", "readiness")
+    rows = []
+    for record in records:
+        values = [f"{label}={value:g}" for label in labels if (value := getattr(record, label)) is not None]
+        if values:
+            rows.append(f"{record.date}: {', '.join(values)}")
+    if not rows:
+        return ""
+    return (
+        "\nAthlete-reported check-ins (last 7 calendar days as of analysis; original source scales): "
+        + "; ".join(rows)
+        + ". Unreported values are unknown; combine subjective and objective recovery evidence."
     )
 
 
 def _split_recovery_windows(
-    records: Sequence[CoachDailyRecord],
+    records: Sequence[CoachDailyRecord], *, as_of: date | None = None
 ) -> tuple[list[CoachDailyRecord], list[CoachDailyRecord]]:
     """Compare recent seven days with preceding eight weeks of available history.
 
@@ -279,7 +320,7 @@ def _split_recovery_windows(
     """
     if not records:
         return [], []
-    latest_date = records[-1].date
+    latest_date = as_of or records[-1].date
     cutoff = latest_date - timedelta(days=RECOVERY_WINDOW_DAYS)
     oldest_baseline_date = cutoff - timedelta(days=BASELINE_LOOKBACK_DAYS)
     baseline = [record for record in records if oldest_baseline_date < record.date <= cutoff]
@@ -432,6 +473,11 @@ def _parse_record(record: DailyRecordInput) -> CoachDailyRecord | None:
         cycling_duration_h=cycling_hours,
         cycling_training_stress=cycling_tss,
         cycling_sessions=cycling_sessions,
+        sleep_quality=_to_optional_float(record.get("sleep_quality")),
+        fatigue=_to_optional_float(record.get("fatigue")),
+        soreness=_to_optional_float(record.get("soreness")),
+        stress=_to_optional_float(record.get("stress")),
+        readiness=_to_optional_float(record.get("readiness")),
     )
 
 
