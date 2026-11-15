@@ -67,7 +67,6 @@ class StrengthSession(SQLModel, table=True):
     # making Sheet-specific calculated/formula fields first-class columns.
     source_data: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
 
-
     @field_validator("status")
     @classmethod
     def validate_status(cls, value: str) -> str:

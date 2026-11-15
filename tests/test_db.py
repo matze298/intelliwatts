@@ -142,7 +142,6 @@ def isolated_migration_engine(monkeypatch: pytest.MonkeyPatch) -> Iterator[Engin
         admin.dispose()
 
 
-
 def test_init_db_creates_schema_and_persists_data(isolated_migration_engine: Engine) -> None:
     """Apply the baseline and preserve cycling plus new strength data across connections."""
     # GIVEN an isolated schema in the test Postgres database
@@ -303,9 +302,7 @@ def test_strength_database_rejects_blank_status(isolated_migration_engine: Engin
 
         # WHEN inserting a session without a meaningful status
         session.add(
-            StrengthSession(
-                user_id=user.id, session_date=date(2026, 1, 5), workout_type="Workout A", status=status
-            )
+            StrengthSession(user_id=user.id, session_date=date(2026, 1, 5), workout_type="Workout A", status=status)
         )
 
         # THEN PostgreSQL rejects the row, regardless of constructor validation behavior
