@@ -45,7 +45,10 @@ class StrengthSession(SQLModel, table=True):
 
     __table_args__ = (
         UniqueConstraint("user_id", "source_id", name="uq_strengthsession_user_source"),
-        CheckConstraint("status ~ '[^[:space:]]'", name="ck_strengthsession_status_nonblank"),
+        # The production migration enforces this on PostgreSQL; SQLite is used only in unit fixtures.
+        CheckConstraint("status ~ '[^[:space:]]'", name="ck_strengthsession_status_nonblank").ddl_if(
+            dialect="postgresql"
+        ),
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

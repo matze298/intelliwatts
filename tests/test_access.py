@@ -138,7 +138,15 @@ def test_authenticated_responses_disable_cache_but_static_assets_remain_cacheabl
         assert login_response.status_code == 303
 
         # WHEN fetching authenticated pages, API data and a public static asset
-        responses = [client.get("/"), client.get("/api/settings")]
+        responses = [
+            client.get("/"),
+            client.get("/settings"),
+            client.post(
+                "/api/settings",
+                json={"developer_mode_enabled": get_profile().developer_mode_enabled},
+                headers={"origin": "https://testserver"},
+            ),
+        ]
         asset = client.get("/static/intelliwatts-logo.webp")
         conditional = client.get("/static/intelliwatts-logo.webp", headers={"if-none-match": asset.headers["etag"]})
 
