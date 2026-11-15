@@ -59,6 +59,7 @@ class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
             daily_df
             .select("date", "types", "activity_ftp")
             .explode("types", "activity_ftp")
+            .with_columns(pl.col("activity_ftp").cast(pl.Float64, strict=False))
             .filter(
                 pl.col("types").str.to_lowercase().is_in(sorted(CYCLING_TYPES)),
                 pl.col("activity_ftp").is_finite(),
@@ -113,7 +114,14 @@ class FTPTrajectoryProvider(MetricProvider[FTPTrajectoryResult | None]):
         Returns:
             The FTP trajectory prompt context.
         """
-        return await self.provide_context(result)
+        if result is None or not result.ftp_values:
+            return ""
+        return (
+            f"Optional recorded cycling FTP setting: latest {result.ftp_values[-1]:.0f} W "
+            f"on {result.dates[-1]}; "
+            f"change over available observations {result.ftp_values[-1] - result.ftp_values[0]:+.0f} W. "
+            "These are settings, not verified fitness changes or test dates."
+        )
 
     @override
     def get_dashboard_widget(

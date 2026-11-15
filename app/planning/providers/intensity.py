@@ -229,7 +229,7 @@ class IntensityProvider(MetricProvider[IntensityResult]):
         if len(lines) == 1:
             return "Intensity distribution unavailable (no recorded zone time)."
         lines.append(
-            "Zone coverage and thresholds can vary by sport; do not infer a training style from these percentages alone."
+            "Zone coverage and thresholds vary by sport; do not use this as recent cycling-only evidence or infer a style."
         )
         return "\n".join(lines)
 

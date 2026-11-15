@@ -131,6 +131,7 @@ def build_coach_context(
     phase: TrainingPhase,
     artifact: LongTermPlanArtifact | None,
     week_start: date,
+    as_of: date | None = None,
 ) -> CoachContext:
     """Build the prompt-facing coach context packet.
 
@@ -138,11 +139,15 @@ def build_coach_context(
         A compact coach context object for prompt assembly.
     """
     parsed_records = _prepare_records(daily_records)
+    if as_of is not None:
+        parsed_records = [record for record in parsed_records if record.date <= as_of]
     if not parsed_records:
         return CoachContext(
             weekly_summaries=[],
             daily_ledger=[],
-            brief_context=_build_brief_context(phase=phase, artifact=artifact, week_start=week_start, records=[]),
+            brief_context=_build_brief_context(
+                phase=phase, artifact=artifact, week_start=week_start, records=[], as_of=as_of
+            ),
         )
 
     recent_records = parsed_records[-WEEKLY_SUMMARY_DAYS:]
@@ -153,6 +158,7 @@ def build_coach_context(
         artifact=artifact,
         week_start=week_start,
         records=parsed_records,
+        as_of=as_of,
     )
     return CoachContext(
         weekly_summaries=weekly_summaries,
@@ -253,6 +259,7 @@ def _build_brief_context(
     artifact: LongTermPlanArtifact | None,
     week_start: date,
     records: Sequence[CoachDailyRecord],
+    as_of: date | None = None,
 ) -> str:
     """Summarize recent load and individual recovery trends without absolute cutoffs.
 
@@ -262,15 +269,21 @@ def _build_brief_context(
     if not records:
         return f"Recent training data unavailable; plan conservatively for {phase.primary_goal}."
 
-    recent = records[-RECENT_BRIEF_DAYS:]
-    baseline, latest = _split_recovery_windows(records)
+    observation_date = as_of or records[-1].date
+    recent = [record for record in records if observation_date - timedelta(days=RECENT_BRIEF_DAYS) < record.date]
+    baseline, latest = _split_recovery_windows(records, as_of=observation_date)
     cycling_hours = _sum_values(recent, "cycling_duration_h")
     cycling_tss = _sum_values(recent, "cycling_training_stress")
     baseline_text = _recovery_comparison(baseline, latest)
     sports_text = _other_sports_summary(recent)
     block_hint = _current_block_hint(artifact, week_start)
+    recent_load = (
+        f"Recent 14d completed cycling: {cycling_hours:.1f}h, {cycling_tss:.0f} cycling TSS."
+        if recent
+        else "Recent 14d completed cycling: no dated observations; training unknown."
+    )
     return (
-        f"Recent 14d completed cycling: {cycling_hours:.1f}h, {cycling_tss:.0f} cycling TSS. "
+        f"{recent_load} Observations through {records[-1].date}; analysis as of {observation_date}. "
         f"{baseline_text} {sports_text} {block_hint}"
         f"{_subjective_checkins(latest)}"
     )
@@ -291,14 +304,14 @@ def _subjective_checkins(records: Sequence[CoachDailyRecord]) -> str:
     if not rows:
         return ""
     return (
-        "\nAthlete-reported check-ins (last 7 recorded calendar days; original source scales): "
+        "\nAthlete-reported check-ins (last 7 calendar days as of analysis; original source scales): "
         + "; ".join(rows)
         + ". Unreported values are unknown; combine subjective and objective recovery evidence."
     )
 
 
 def _split_recovery_windows(
-    records: Sequence[CoachDailyRecord],
+    records: Sequence[CoachDailyRecord], *, as_of: date | None = None
 ) -> tuple[list[CoachDailyRecord], list[CoachDailyRecord]]:
     """Compare recent seven days with preceding eight weeks of available history.
 
@@ -307,7 +320,7 @@ def _split_recovery_windows(
     """
     if not records:
         return [], []
-    latest_date = records[-1].date
+    latest_date = as_of or records[-1].date
     cutoff = latest_date - timedelta(days=RECOVERY_WINDOW_DAYS)
     oldest_baseline_date = cutoff - timedelta(days=BASELINE_LOOKBACK_DAYS)
     baseline = [record for record in records if oldest_baseline_date < record.date <= cutoff]
