@@ -96,6 +96,23 @@ def test_strength_sets_keep_missing_metrics_and_unilateral_sides() -> None:
     assert right.side == "Right"
 
 
+@pytest.mark.parametrize("status", ["", "  ", "\t\n"])
+def test_strength_session_rejects_blank_status(status: str) -> None:
+    """Model validation rejects blank status without inferring a completed session."""
+    # GIVEN a source session with an explicitly blank status
+    data = {
+        "user_id": uuid.uuid4(),
+        "session_date": date(2026, 1, 1),
+        "workout_type": "Workout A",
+        "status": status,
+    }
+
+    # WHEN validating the source data
+    # THEN reject it rather than inventing a status
+    with pytest.raises(ValidationError, match="status"):
+        StrengthSession.model_validate(data)
+
+
 def test_strength_session_requires_explicit_status() -> None:
     """A missing source status must not become an automatically completed workout."""
     with pytest.raises(ValidationError, match="status"):

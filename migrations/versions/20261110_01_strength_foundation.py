@@ -63,6 +63,7 @@ def upgrade() -> None:
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("source_data", sa.JSON(), nullable=True),
         sa.UniqueConstraint("user_id", "source_id", name="uq_strengthsession_user_source"),
+        sa.CheckConstraint("status ~ '[^[:space:]]'", name="ck_strengthsession_status_nonblank"),
     )
     op.create_index("ix_strengthsession_user_id", "strengthsession", ["user_id"])
 

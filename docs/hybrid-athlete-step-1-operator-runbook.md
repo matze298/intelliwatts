@@ -143,23 +143,33 @@ cd "$HOME/private-athlete-recovery"
 
 git clone --mirror git@github.com:matze298/hybrid-athlete-os.git hybrid-athlete-os.git
 git -C hybrid-athlete-os.git fsck --full
+# Store the complete captured ref manifest and default-branch pointer with the bundle.
+git -C hybrid-athlete-os.git for-each-ref --format='%(refname) %(objectname)' | LC_ALL=C sort > source-refs.txt
+git -C hybrid-athlete-os.git symbolic-ref HEAD > source-head-ref.txt
+git -C hybrid-athlete-os.git rev-parse HEAD > source-head-oid.txt
 git -C hybrid-athlete-os.git bundle create ../hybrid-athlete-os.bundle --all
 git -C hybrid-athlete-os.git bundle verify ../hybrid-athlete-os.bundle
 sha256sum hybrid-athlete-os.bundle  # Or: shasum -a 256 on macOS
 ```
 
-2. Encrypt `hybrid-athlete-os.bundle` and store it **independently of the GitHub account**, e.g. on an encrypted external drive or private encrypted backup storage. Do not upload it to IntelliWatts, attach it to the PR, or put it in the public repo. A Git bundle contains all committed private files and reachable history, **including generated snapshots and historical personal content**.
+2. Encrypt the bundle **together with** `source-refs.txt`, `source-head-ref.txt`, and `source-head-oid.txt` and store them **independently of the GitHub account**, e.g. on an encrypted external drive or private encrypted backup storage. Do not upload it to IntelliWatts, attach it to the PR, or put it in the public repo. A Git bundle contains all committed private files and reachable history, **including generated snapshots and historical personal content**.
 3. From the **stored encrypted copy**, decrypt into a restricted temporary workspace and verify recovery:
 
 ```bash
-# First retrieve and decrypt the independently stored backup into this private path.
-RESTORED_BUNDLE="$HOME/private-athlete-recovery/recovery-test/hybrid-athlete-os.bundle"
-git clone "$RESTORED_BUNDLE" "$HOME/private-athlete-recovery/recovery-test/restored"
-git -C "$HOME/private-athlete-recovery/recovery-test/restored" fsck --full
-git -C "$HOME/private-athlete-recovery/recovery-test/restored" rev-parse HEAD
+# First retrieve and decrypt the stored bundle AND its manifests into this private path.
+RECOVERY_DIR="$HOME/private-athlete-recovery/recovery-test"
+git clone --mirror "$RECOVERY_DIR/hybrid-athlete-os.bundle" "$RECOVERY_DIR/restored.git"
+git -C "$RECOVERY_DIR/restored.git" fsck --full
+git -C "$RECOVERY_DIR/restored.git" for-each-ref --format='%(refname) %(objectname)' \
+  | LC_ALL=C sort > "$RECOVERY_DIR/restored-refs.txt"
+git -C "$RECOVERY_DIR/restored.git" symbolic-ref HEAD > "$RECOVERY_DIR/restored-head-ref.txt"
+git -C "$RECOVERY_DIR/restored.git" rev-parse HEAD > "$RECOVERY_DIR/restored-head-oid.txt"
+diff -u "$RECOVERY_DIR/source-refs.txt" "$RECOVERY_DIR/restored-refs.txt"
+diff -u "$RECOVERY_DIR/source-head-ref.txt" "$RECOVERY_DIR/restored-head-ref.txt"
+diff -u "$RECOVERY_DIR/source-head-oid.txt" "$RECOVERY_DIR/restored-head-oid.txt"
 ```
 
-4. Compare the restored default-branch commit with the original mirror and check representative private files (e.g. the active blueprint, recipes, playbooks, and journal) **without printing their contents in any public logs**. If the repository uses Git LFS, submodules, or uncommitted private files, back up those objects separately; a plain Git bundle does not include non-Git resources.
+4. Require all three comparisons and `fsck` to pass; verify every captured ref name and object ID, including tags and non-default branches. If the default branch pointer differs, restore it from the saved manifest only after its target ref and object ID are verified. Check representative private files via a private checkout of the restored mirror (e.g. the active blueprint, recipes, playbooks, and journal) **without printing their contents in any public logs**. If the repository uses Git LFS, submodules, or uncommitted private files, back up those objects separately; a plain Git bundle does not include non-Git resources.
 5. Record the backup date, checksum, encryption/storage method, retrieved-copy verification and source commit **privately**. Keep GitHub as an accessible, read-only rollback source until every desired document is imported, classified duplicate/obsolete, or explicitly excluded.
 6. Back up the Google workbook, Intervals.icu account access, and any non-Git resources separately. A Git mirror does **not** back up GitHub Actions secrets, Google Sheets, or provider databases.
 

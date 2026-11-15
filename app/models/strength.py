@@ -4,7 +4,8 @@ import uuid
 from datetime import date  # ruff: ignore[typing-only-standard-library-import] - SQLModel resolves at runtime
 from typing import Any
 
-from sqlalchemy import JSON, Column, Text, UniqueConstraint
+from pydantic import field_validator
+from sqlalchemy import JSON, CheckConstraint, Column, Text, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -42,7 +43,10 @@ class StrengthTemplate(SQLModel, table=True):
 class StrengthSession(SQLModel, table=True):
     """One performed strength session, distinct from any planned workout."""
 
-    __table_args__ = (UniqueConstraint("user_id", "source_id", name="uq_strengthsession_user_source"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "source_id", name="uq_strengthsession_user_source"),
+        CheckConstraint("status ~ '[^[:space:]]'", name="ck_strengthsession_status_nonblank"),
+    )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
@@ -54,7 +58,7 @@ class StrengthSession(SQLModel, table=True):
     template_version: str | None = None
     # Importers and the future logger must explicitly distinguish performed,
     # skipped, and incomplete sessions; never infer completion.
-    status: str
+    status: str = Field(min_length=1)
     duration_minutes: float | None = None
     session_rpe: float | None = None
     readiness: str | None = None
@@ -62,6 +66,23 @@ class StrengthSession(SQLModel, table=True):
     # Optional original row values support lossless legacy auditing without
     # making Sheet-specific calculated/formula fields first-class columns.
     source_data: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
+
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: str) -> str:
+        """Reject blanks without prematurely restricting the source status vocabulary.
+
+        Returns:
+            The original nonblank status.
+
+        Raises:
+            ValueError: If the status contains only whitespace.
+        """
+        if not value.strip():
+            msg = "Session status must not be blank"
+            raise ValueError(msg)
+        return value
 
 
 class StrengthSet(SQLModel, table=True):

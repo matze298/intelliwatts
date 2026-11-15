@@ -1,15 +1,15 @@
 # Step 1 — native strength foundation and deployment gate
 
-**Status:** Implementation proposed in a draft PR; **do not deploy until a real independent Neon restore and test migration pass**.  
+**Status:** Implementation proposed in [PR #158](https://github.com/matze298/intelliwatts/pull/158); **do not merge or deploy until a real independent Neon restore and test migration pass**.  
 **Scope:** The smallest database foundation for a native strength logger, plus privacy hardening. No personal data import, strength UI, Google Sheets write, or changes to the cycling planner.
 
 ## Delivered in code
 
 - Four empty, user-linked tables: `Exercise`, `StrengthTemplate`, `StrengthSession`, and `StrengthSet`. The existing `User`, `TrainingPhase`, `TrainingPlan`, and `WorkoutDelivery` remain the planning foundation.
-- A reversible additive Alembic migration. Historical sessions require an **explicit source status** and record the template version used; sets preserve separate left/right measurements and `NULL` for absent weight, RIR, duration, or distance. Original source IDs and optional source-row JSON support idempotent, inspectable imports later.
+- A reversible additive Alembic migration. Historical sessions require an **explicit nonblank source status** (model validation and database constraint) and record the template version used; sets preserve separate left/right measurements and `NULL` for absent weight, RIR, duration, or distance. Original source IDs and optional source-row JSON support idempotent, inspectable imports later.
 - No new generic knowledge database, import orchestration service, audit framework, VPS or multi-user authentication layer.
-- Non-static HTTP responses now set `Cache-Control: no-store`, `Referrer-Policy: same-origin`, `X-Content-Type-Options: nosniff`, and `X-Frame-Options: DENY`. Existing signed-cookie login, rate limiting, same-origin mutation checks and secure cookie options remain unchanged.
-- Synthetic regression tests exercise model defaults and missing values, Postgres migration upgrade/downgrade, persistence across connections, and existing cycling data. **These are test data, never a private workbook export.**
+- Handled non-static application and access-gate responses set `Cache-Control: no-store`, `Referrer-Policy: same-origin`, `X-Content-Type-Options: nosniff`, and `X-Frame-Options: DENY`. Existing signed-cookie login, rate limiting, same-origin mutation checks and secure cookie options remain unchanged. Unhandled exceptions processed by outer server-error middleware are outside this header guarantee.
+- Synthetic regression tests exercise model defaults and missing values, Postgres migration upgrade/downgrade against a populated predecessor schema, persistence across connections, and exact existing cycling-row preservation. **These are test data, never a private workbook export.**
 
 No application route references the new strength tables yet. Step 2 will build the actual importer, mobile strength logger, and a controlled one-writer transition from Google Sheets.
 
@@ -24,12 +24,13 @@ The XLSX archive was independently ZIP-integrity checked again on 2026-11-14: al
 | Gate | Required evidence | Status |
 | --- | --- | --- |
 | Production database | Create an independent encrypted logical backup from Neon and successfully restore it to an isolated database; check existing plan/profile data and migrations | **BLOCKED — no production database credentials or restore environment available in this session** |
+| Production-like migration | Upgrade a restricted Neon branch from production and check existing records, empty strength tables and startup. | **PENDING — not executed on production-derived data here** |
 | Strength source recovery | Independently store an encrypted complete workbook export, then reopen it and check representative source rows, notes and legacy tabs | **PARTIAL — archive structure checked; durable recovery copy and row verification pending** |
 | Private knowledge recovery | Save and verify a private full-history Hybrid Athlete OS archive before importing its active blueprint | **PENDING — needed before Step 2 blueprint import** |
 | Migration validation | Add the source-specific importer dry-run and reconciliation tests against private export in Step 2; verify no duplicate or orphaned set IDs | **PENDING — importer not implemented in this PR** |
 | Intervals.icu snapshot comparison | Verify before switching off the old endurance snapshot pipeline, **not** before creating strength tables | **DEFERRED to snapshot retirement** |
 
-**Deployment note:** `app/main.py` currently calls `init_db()` at application import time, so merging/deploying this branch will automatically run the new Alembic migration on Neon. This PR should remain **draft / unmerged** until the Neon backup and isolated restore are proven. Merely passing CI against a synthetic Postgres test database does not verify a production recovery path.
+**Deployment note:** `app/main.py` currently calls `init_db()` at application import time, so merging/deploying this branch will automatically run the new Alembic migration on Neon. Code review may proceed, but this PR must remain **unmerged** until both independent Neon recovery and production-like migration are proven. Merely passing CI against a synthetic Postgres test database does not verify a production recovery path.
 
 ## Private operator checklist
 

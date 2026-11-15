@@ -122,3 +122,34 @@ def test_private_responses_disable_caching_and_framing() -> None:
             assert response.headers["referrer-policy"] == "same-origin"
             assert response.headers["x-content-type-options"] == "nosniff"
             assert response.headers["x-frame-options"] == "DENY"
+
+
+def test_authenticated_responses_disable_cache_but_static_assets_remain_cacheable() -> None:
+    """Protect signed-in training data without changing static asset cache behavior."""
+    # GIVEN a signed-in test client
+    _clear_login_failures()
+    with TestClient(app, base_url="https://testserver") as client:
+        login_response = client.post(
+            "/login",
+            data={"password": TEST_PASSWORD},
+            headers={"origin": "https://testserver"},
+            follow_redirects=False,
+        )
+        assert login_response.status_code == 303
+
+        # WHEN fetching authenticated pages, API data and a public static asset
+        responses = [client.get("/"), client.get("/api/settings")]
+        asset = client.get("/static/intelliwatts-logo.webp")
+        conditional = client.get("/static/intelliwatts-logo.webp", headers={"if-none-match": asset.headers["etag"]})
+
+        # THEN private content is protected and static conditional requests still work
+        for response in responses:
+            assert response.status_code == 200
+            assert response.headers["cache-control"] == "no-store"
+            assert response.headers["referrer-policy"] == "same-origin"
+            assert response.headers["x-content-type-options"] == "nosniff"
+            assert response.headers["x-frame-options"] == "DENY"
+        assert asset.status_code == 200
+        assert asset.headers.get("cache-control") != "no-store"
+        assert conditional.status_code == 304
+    _clear_login_failures()
