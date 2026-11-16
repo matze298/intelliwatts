@@ -197,9 +197,7 @@ def _prepare_records(daily_records: Sequence[DailyRecordInput]) -> list[CoachDai
     return parsed_records
 
 
-def _build_weekly_summaries(
-    records: Sequence[CoachDailyRecord], *, as_of: date
-) -> list[WeeklySummaryRow]:
+def _build_weekly_summaries(records: Sequence[CoachDailyRecord], *, as_of: date) -> list[WeeklySummaryRow]:
     """Build six rolling 7-day summaries from the most recent data.
 
     Returns:

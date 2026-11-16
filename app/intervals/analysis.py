@@ -60,7 +60,8 @@ def compute_analysis(
 
     all_dates = pl.DataFrame({"date": pl.date_range(start=min_date, end=max_date, interval="1d", eager=True)})
     daily = (
-        all_dates.join(daily, on="date", how="left")
+        all_dates
+        .join(daily, on="date", how="left")
         .with_columns([
             pl.col("activity_count").fill_null(0),
             pl.col("missing_load_count").fill_null(0),
@@ -215,12 +216,11 @@ def _get_activity_validation_error(activity: ParsedActivity) -> str | None:
         return "invalid_date"
     if not isinstance(activity.type, str) or not activity.type.strip():
         return "invalid_type"
-    if activity.duration_h is None or not is_optional_number(activity.duration_h) or not isfinite(activity.duration_h):
-        return "invalid_duration_h"
-    if activity.duration_h < 0:
-        return "invalid_duration_h"
     for field_name in numeric_dataclass_field_names(type(activity)):
-        if not is_optional_number(getattr(activity, field_name)):
+        value = getattr(activity, field_name)
+        if not is_optional_number(value) or (
+            field_name == "duration_h" and (value is None or not isfinite(value) or value < 0)
+        ):
             return f"invalid_{field_name}"
     if activity.hr_zone_times is not None and not is_number_list(activity.hr_zone_times):
         return "invalid_hr_zone_times"

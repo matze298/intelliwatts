@@ -108,7 +108,9 @@ class ActivityProvider(MetricProvider[ActivityResult]):
         distance_7d = result.distance_7d
 
         load_note = (
-            f" (recorded subtotal; {result.missing_load_count} sessions without load)" if result.missing_load_count else ""
+            f" (recorded subtotal; {result.missing_load_count} sessions without load)"
+            if result.missing_load_count
+            else ""
         )
         return (
             "Recent Training (Last 7 Days):\n"

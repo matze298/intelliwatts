@@ -72,7 +72,9 @@ class PMCProvider(MetricProvider[PMCResult]):
             ctl=pmc_df["ctl"].to_list(),
             atl=pmc_df["atl"].to_list(),
             tsb=pmc_df["tsb"].to_list(),
-            missing_load_count=(int(daily_df["missing_load_count"].sum()) if "missing_load_count" in daily_df.columns else 0),
+            missing_load_count=(
+                int(daily_df["missing_load_count"].sum()) if "missing_load_count" in daily_df.columns else 0
+            ),
         )
 
     @override
@@ -97,7 +99,11 @@ class PMCProvider(MetricProvider[PMCResult]):
             f"- Fitness (CTL): {last_ctl:.1f}\n"
             f"- Fatigue (ATL): {last_atl:.1f}\n"
             f"- Form (TSB): {last_tsb:.1f}"
-            + (f"\nIncomplete: {result.missing_load_count} sessions without load; recorded-load model only." if result.missing_load_count else "")
+            + (
+                f"\nIncomplete: {result.missing_load_count} sessions without load; recorded-load model only."
+                if result.missing_load_count
+                else ""
+            )
         )
 
     @override
