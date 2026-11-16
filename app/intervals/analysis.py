@@ -2,6 +2,7 @@
 
 from datetime import UTC, date, datetime
 from logging import getLogger
+from math import isfinite
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -58,7 +59,16 @@ def compute_analysis(
         return AnalysisResult()
 
     all_dates = pl.DataFrame({"date": pl.date_range(start=min_date, end=max_date, interval="1d", eager=True)})
-    daily = all_dates.join(daily, on="date", how="left").with_columns(pl.col("training_stress").fill_null(0))
+    daily = (
+        all_dates
+        .join(daily, on="date", how="left")
+        .with_columns([
+            pl.col("activity_count").fill_null(0),
+            pl.col("missing_load_count").fill_null(0),
+            pl.col("training_stress").fill_null(0),
+        ])
+        .sort("date")
+    )
 
     # 3. Join wellness data if provided
     if wellness_data:
@@ -100,18 +110,18 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
     Returns:
         A tuple of (full_activities_df, daily_aggregated_df).
     """
-    if not activities:
-        # Return empty dataframes with correct schemas if no activities
-        df = pl.DataFrame(schema={"date": pl.Date, "training_stress": pl.Float64})
-        return df, df
-
     # Normalize zone data during creation
     # Power zones come as list of dicts [{"secs": 10}, ...], convert to list of ints
     data = []
     for a in activities:
         d = {
             "date": a.date,
-            "training_stress": a.training_stress,
+            "training_stress": (
+                a.training_stress
+                if a.training_stress is not None and isfinite(a.training_stress) and a.training_stress >= 0
+                else None
+            ),
+            "activity_id": a.activity_id,
             "duration_h": a.duration_h,
             "distance_km": a.distance_km,
             "avg_power": a.avg_power,
@@ -128,9 +138,28 @@ def _init_activities_df(activities: list[ParsedActivity]) -> tuple[pl.DataFrame,
             d["power_zone_times"] = []
         data.append(d)
 
-    df = pl.from_dicts(data).with_columns(pl.col("date").str.to_date("%Y-%m-%d"))
+    schema = {
+        "date": pl.String,
+        "training_stress": pl.Float64,
+        "activity_id": pl.String,
+        "duration_h": pl.Float64,
+        "distance_km": pl.Float64,
+        "avg_power": pl.Float64,
+        "avg_hr": pl.Float64,
+        "max_hr": pl.Float64,
+        "elevation_gain": pl.Float64,
+        "ftp": pl.Float64,
+        "hr_zone_times": pl.List(pl.Float64),
+        "type": pl.String,
+        "power_zone_times": pl.List(pl.Float64),
+    }
+    df = pl.from_dicts(data, schema=schema).with_columns(pl.col("date").str.to_date("%Y-%m-%d"))
     daily = df.group_by("date").agg([
+        # Known-load subtotal only; the aligned nulls and count retain missingness.
         pl.sum("training_stress"),
+        pl.len().alias("activity_count"),
+        pl.col("training_stress").null_count().alias("missing_load_count"),
+        pl.col("activity_id").alias("activity_ids"),
         pl.sum("duration_h"),
         pl.sum("distance_km"),
         pl.col("hr_zone_times"),
@@ -185,10 +214,13 @@ def _filter_valid_wellness(wellness_data: list[ParsedWellness]) -> list[ParsedWe
 def _get_activity_validation_error(activity: ParsedActivity) -> str | None:
     if not is_iso_date(activity.date):
         return "invalid_date"
-    if not isinstance(activity.type, str):
+    if not isinstance(activity.type, str) or not activity.type.strip():
         return "invalid_type"
     for field_name in numeric_dataclass_field_names(type(activity)):
-        if not is_optional_number(getattr(activity, field_name)):
+        value = getattr(activity, field_name)
+        if not is_optional_number(value) or (
+            field_name == "duration_h" and (value is None or not isfinite(value) or value < 0)
+        ):
             return f"invalid_{field_name}"
     if activity.hr_zone_times is not None and not is_number_list(activity.hr_zone_times):
         return "invalid_hr_zone_times"

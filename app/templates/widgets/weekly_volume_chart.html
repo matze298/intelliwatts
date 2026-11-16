@@ -4,7 +4,7 @@
     <div class="flex justify-between items-center">
         <div>
             <h2 class="text-lg mt-0 mb-1">Weekly volume</h2>
-            <p class="text-sm text-slate-600">Compare training time and training stress.</p>
+            <p class="text-sm text-slate-600">Compare training time and recorded training stress.{% if widget.data.has_missing_load %} Some sessions lack load; TSS bars are recorded subtotals, not complete totals.{% endif %}</p>
         </div>
         <div class="control-toggle-group">
             {{ render_toggle_button("toggle-hours", "Hours", true, "updateVolumeChart('duration')") }}
