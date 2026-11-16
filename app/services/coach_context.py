@@ -6,6 +6,7 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
+from math import isfinite
 from operator import attrgetter
 from statistics import fmean, pstdev
 from typing import TYPE_CHECKING, Any, cast
@@ -50,6 +51,9 @@ class CoachDailyRecord:
     soreness: float | None = None
     stress: float | None = None
     readiness: float | None = None
+    activity_count: int = 0
+    missing_load_count: int = 0
+    cycling_missing_load_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -65,6 +69,8 @@ class DailyLedgerRow:
     hrv: float | None
     resting_hr: float | None
     signal: str
+    missing_load_count: int = 0
+    activity_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -79,6 +85,9 @@ class WeeklySummaryRow:
     avg_sleep_score: float | None
     avg_hrv: float | None
     avg_resting_hr: float | None
+    recorded_days: int = 0
+    missing_load_count: int = 0
+    activity_days: int = 0
 
 
 @dataclass(frozen=True)
@@ -95,13 +104,16 @@ class CoachContext:
         Returns:
             The formatted coach context text.
         """
-        lines = ["Cycling-only weekly summaries (other sports do not consume cycling hours/sessions):"]
+        lines = [
+            "Cycling-only weekly summaries (other sports do not consume cycling hours/sessions):",
+            "Hours and TSS are recorded subtotals; missing sessions or load are unknown, not zero or rest.",
+            "Dated rows can include interpolated calendar gaps and wellness-only observations.",
+        ]
         if self.weekly_summaries:
             lines.extend([
                 (
-                    f"- {row.week_start} to {row.week_end}: "
-                    f"{row.total_hours:.1f}h, {row.total_tss:.0f} TSS, "
-                    f"{row.sessions} sessions"
+                    f"- {row.week_start} to {row.week_end}: {_weekly_load(row)}; "
+                    f"{row.recorded_days}/7 dated rows, {row.activity_days} cycling days"
                 )
                 for row in self.weekly_summaries
             ])
@@ -113,7 +125,7 @@ class CoachContext:
             lines.extend([
                 (
                     f"- {row.date} {row.weekday}: "
-                    f"{row.duration_h:.1f}h, {row.training_stress:.0f} TSS, "
+                    f"{_ledger_load(row)}, "
                     f"{row.activity_type}, sleep {row.sleep_score if row.sleep_score is not None else '-'}, "
                     f"HRV {row.hrv if row.hrv is not None else '-'}, RHR {row.resting_hr if row.resting_hr is not None else '-'}, "
                     f"{row.signal}"
@@ -150,9 +162,12 @@ def build_coach_context(
             ),
         )
 
-    recent_records = parsed_records[-WEEKLY_SUMMARY_DAYS:]
-    weekly_summaries = _build_weekly_summaries(recent_records)
-    daily_ledger = _build_daily_ledger(parsed_records)
+    observation_date = as_of or parsed_records[-1].date
+    recent_records = [
+        record for record in parsed_records if observation_date - timedelta(days=WEEKLY_SUMMARY_DAYS) < record.date
+    ]
+    weekly_summaries = _build_weekly_summaries(recent_records, as_of=observation_date)
+    daily_ledger = _build_daily_ledger(parsed_records, as_of=observation_date)
     brief_context = _build_brief_context(
         phase=phase,
         artifact=artifact,
@@ -182,7 +197,9 @@ def _prepare_records(daily_records: Sequence[DailyRecordInput]) -> list[CoachDai
     return parsed_records
 
 
-def _build_weekly_summaries(records: Sequence[CoachDailyRecord]) -> list[WeeklySummaryRow]:
+def _build_weekly_summaries(
+    records: Sequence[CoachDailyRecord], *, as_of: date
+) -> list[WeeklySummaryRow]:
     """Build six rolling 7-day summaries from the most recent data.
 
     Returns:
@@ -191,7 +208,7 @@ def _build_weekly_summaries(records: Sequence[CoachDailyRecord]) -> list[WeeklyS
     if not records:
         return []
 
-    last_date = records[-1].date
+    last_date = as_of
 
     summaries: list[WeeklySummaryRow] = []
     for window_index in range(LOOKBACK_WEEKS - 1, -1, -1):
@@ -227,16 +244,19 @@ def _summarize_window(
         avg_sleep_score=avg_sleep_score,
         avg_hrv=avg_hrv,
         avg_resting_hr=avg_resting_hr,
+        recorded_days=len({record.date for record in records}),
+        missing_load_count=sum(record.cycling_missing_load_count for record in records),
+        activity_days=sum(record.cycling_sessions > 0 for record in records),
     )
 
 
-def _build_daily_ledger(records: Sequence[CoachDailyRecord]) -> list[DailyLedgerRow]:
+def _build_daily_ledger(records: Sequence[CoachDailyRecord], *, as_of: date) -> list[DailyLedgerRow]:
     """Build the 14-day ledger from the most recent records.
 
     Returns:
         The 14-day daily ledger rows.
     """
-    recent_records = records[-DAILY_LEDGER_DAYS:]
+    recent_records = [record for record in records if as_of - timedelta(days=DAILY_LEDGER_DAYS) < record.date]
     return [
         DailyLedgerRow(
             date=record.date.isoformat(),
@@ -248,9 +268,42 @@ def _build_daily_ledger(records: Sequence[CoachDailyRecord]) -> list[DailyLedger
             hrv=record.hrv,
             resting_hr=record.resting_hr,
             signal=_signal_for_day(record, records),
+            missing_load_count=record.missing_load_count,
+            activity_count=record.activity_count,
         )
         for record in recent_records
     ]
+
+
+def _weekly_load(row: WeeklySummaryRow) -> str:
+    """Label absent or partial recorded cycling totals.
+
+    Returns:
+        A compact weekly load label.
+    """
+    if not row.sessions:
+        return "no cycling recorded; actual training unknown"
+    if row.missing_load_count == row.sessions:
+        return f"{row.total_hours:.1f}h, TSS unavailable, {row.sessions} recorded sessions"
+    return (
+        f"{row.total_hours:.1f}h, {row.total_tss:.0f} recorded TSS, "
+        f"{row.sessions} recorded sessions, {row.missing_load_count} without TSS"
+    )
+
+
+def _ledger_load(row: DailyLedgerRow) -> str:
+    """Describe recorded load without treating missing activity records as rest.
+
+    Returns:
+        A compact daily load label.
+    """
+    if row.activity_count == 0 and row.duration_h <= 0 and row.training_stress <= 0:
+        return "no activity recorded; actual training unknown"
+    if row.activity_count and row.missing_load_count == row.activity_count:
+        return f"{row.duration_h:.1f}h, TSS unavailable ({row.missing_load_count} without TSS)"
+    if row.missing_load_count:
+        return f"{row.duration_h:.1f}h, {row.training_stress:.0f} recorded TSS (+{row.missing_load_count} unknown)"
+    return f"{row.duration_h:.1f}h, {row.training_stress:.0f} TSS"
 
 
 def _build_brief_context(
@@ -277,14 +330,27 @@ def _build_brief_context(
     baseline_text = _recovery_comparison(baseline, latest)
     sports_text = _other_sports_summary(recent)
     block_hint = _current_block_hint(artifact, week_start)
-    recent_load = (
-        f"Recent 14d completed cycling: {cycling_hours:.1f}h, {cycling_tss:.0f} cycling TSS."
-        if recent
-        else "Recent 14d completed cycling: no dated observations; training unknown."
+    cycling_sessions = sum(record.cycling_sessions for record in recent)
+    missing_cycling = sum(record.cycling_missing_load_count for record in recent)
+    recent_load = "Recent 14d completed cycling: no cycling activities recorded; actual training unknown."
+    if not recent:
+        recent_load = "Recent 14d completed cycling: no dated observations; training unknown."
+    elif cycling_sessions:
+        load = "TSS unavailable" if missing_cycling == cycling_sessions else f"{cycling_tss:.0f} recorded cycling TSS"
+        recent_load = (
+            f"Recent 14d recorded cycling: {cycling_hours:.1f}h, {load}; "
+            f"{cycling_sessions} sessions, {missing_cycling} without TSS."
+        )
+    latest_activity = next((record.date.isoformat() for record in reversed(records) if record.activity_count), "none")
+    coverage = (
+        f"Recent coverage: {len({record.date for record in recent})}/14 dated rows (including gaps/wellness), "
+        f"{sum(record.activity_count for record in recent)} recorded activities; "
+        f"{sum(record.missing_load_count for record in recent)} without load. "
+        f"Last recorded activity: {latest_activity}. Unlogged activity is unknown, not confirmed rest."
     )
     return (
         f"{recent_load} Observations through {records[-1].date}; analysis as of {observation_date}. "
-        f"{baseline_text} {sports_text} {block_hint}"
+        f"{coverage} {baseline_text} {sports_text} {block_hint}"
         f"{_subjective_checkins(latest)}"
     )
 
@@ -375,8 +441,8 @@ def _signal_for_day(record: CoachDailyRecord, records: Sequence[CoachDailyRecord
     Returns:
         An observed activity/recovery label.
     """
-    if record.duration_h <= 0 and record.training_stress <= 0:
-        return "rest_day"
+    if record.activity_count == 0 and record.duration_h <= 0 and record.training_stress <= 0:
+        return "no_activity_recorded"
     past = [item for item in records if item.date <= record.date]
     baseline, recent = _split_recovery_windows(past)
     unfavorable_count = sum(
@@ -396,7 +462,7 @@ def _other_sports_summary(records: Sequence[CoachDailyRecord]) -> str:
     counts: Counter[str] = Counter()
     for record in records:
         for kind in record.activity_type.split(" + "):
-            if kind and kind.casefold() not in CYCLING_TYPES and kind != "Rest":
+            if kind and kind.casefold() not in CYCLING_TYPES and kind not in {"Rest", "No activity recorded"}:
                 counts[kind] += 1
     if not counts:
         return "No other completed sports recorded in the last 14d."
@@ -462,6 +528,7 @@ def _parse_record(record: DailyRecordInput) -> CoachDailyRecord | None:
     if parsed_date is None:
         return None
     cycling_hours, cycling_tss, cycling_sessions = _cycling_totals(record)
+    activity_count, missing_load, cycling_missing_load = _load_coverage(record)
     return CoachDailyRecord(
         date=parsed_date,
         training_stress=_to_optional_float(record.get("training_stress")) or 0.0,
@@ -478,7 +545,32 @@ def _parse_record(record: DailyRecordInput) -> CoachDailyRecord | None:
         soreness=_to_optional_float(record.get("soreness")),
         stress=_to_optional_float(record.get("stress")),
         readiness=_to_optional_float(record.get("readiness")),
+        activity_count=activity_count,
+        missing_load_count=missing_load,
+        cycling_missing_load_count=cycling_missing_load,
     )
+
+
+def _load_coverage(record: DailyRecordInput) -> tuple[int, int, int]:
+    """Count recorded activities and missing load without attributing mixed-sport totals.
+
+    Returns:
+        Activity count, missing load count and cycling-specific missing load count.
+    """
+    raw_types = record.get("types")
+    types = raw_types if isinstance(raw_types, list) else [raw_types] if isinstance(raw_types, str) else []
+    raw_stress = record.get("activity_tss")
+    if isinstance(raw_stress, list) and len(raw_stress) == len(types):
+        stress = raw_stress
+    elif len(types) == 1:
+        stress = [record.get("training_stress")]
+    else:
+        stress = [None] * len(types)
+    missing = [index for index, value in enumerate(stress) if _to_optional_float(value) is None]
+    cycling_missing = sum(
+        isinstance(types[index], str) and types[index].casefold() in CYCLING_TYPES for index in missing
+    )
+    return len(types), len(missing), cycling_missing
 
 
 def _cycling_totals(record: DailyRecordInput) -> tuple[float, float, int]:
@@ -530,7 +622,7 @@ def _primary_activity_type(record: DailyRecordInput) -> str:
         return " + ".join(dict.fromkeys(str(kind) for kind in types if kind))
     if isinstance(types, str) and types:
         return types
-    return "Rest"
+    return "No activity recorded"
 
 
 def _to_optional_float(value: object) -> float | None:
@@ -539,11 +631,11 @@ def _to_optional_float(value: object) -> float | None:
     Returns:
         The float value, or ``None`` when conversion fails.
     """
-    if value is None:
+    if value is None or isinstance(value, bool):
         return None
     try:
-        converted_value = cast("Any", value)
-        return float(converted_value)
+        converted_value = float(cast("Any", value))
+        return converted_value if isfinite(converted_value) else None
     except TypeError, ValueError:
         return None
 
