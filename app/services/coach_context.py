@@ -72,6 +72,20 @@ class DailyLedgerRow:
     missing_load_count: int = 0
     activity_count: int = 0
 
+    def load_label(self) -> str:
+        """Describe recorded load without treating missing activity records as rest.
+
+        Returns:
+            A compact daily load label.
+        """
+        if self.activity_count == 0 and self.duration_h <= 0 and self.training_stress <= 0:
+            return "no activity recorded; actual training unknown"
+        if self.activity_count and self.missing_load_count == self.activity_count:
+            return f"{self.duration_h:.1f}h, TSS unavailable ({self.missing_load_count} without TSS)"
+        if self.missing_load_count:
+            return f"{self.duration_h:.1f}h, {self.training_stress:.0f} recorded TSS (+{self.missing_load_count} unknown)"
+        return f"{self.duration_h:.1f}h, {self.training_stress:.0f} TSS"
+
 
 @dataclass(frozen=True)
 class WeeklySummaryRow:
@@ -125,7 +139,7 @@ class CoachContext:
             lines.extend([
                 (
                     f"- {row.date} {row.weekday}: "
-                    f"{_ledger_load(row)}, "
+                    f"{row.load_label()}, "
                     f"{row.activity_type}, sleep {row.sleep_score if row.sleep_score is not None else '-'}, "
                     f"HRV {row.hrv if row.hrv is not None else '-'}, RHR {row.resting_hr if row.resting_hr is not None else '-'}, "
                     f"{row.signal}"
@@ -288,20 +302,6 @@ def _weekly_load(row: WeeklySummaryRow) -> str:
         f"{row.sessions} recorded sessions, {row.missing_load_count} without TSS"
     )
 
-
-def _ledger_load(row: DailyLedgerRow) -> str:
-    """Describe recorded load without treating missing activity records as rest.
-
-    Returns:
-        A compact daily load label.
-    """
-    if row.activity_count == 0 and row.duration_h <= 0 and row.training_stress <= 0:
-        return "no activity recorded; actual training unknown"
-    if row.activity_count and row.missing_load_count == row.activity_count:
-        return f"{row.duration_h:.1f}h, TSS unavailable ({row.missing_load_count} without TSS)"
-    if row.missing_load_count:
-        return f"{row.duration_h:.1f}h, {row.training_stress:.0f} recorded TSS (+{row.missing_load_count} unknown)"
-    return f"{row.duration_h:.1f}h, {row.training_stress:.0f} TSS"
 
 
 def _build_brief_context(

@@ -422,6 +422,9 @@ async def test_fresh_revision_context_uses_latest_completed_activity_and_calenda
         }
         for index in range(65)
     ]
+    analysis.daily_records[-1]["activity_tss"] = [None]
+    analysis.daily_records[-1]["training_stress"] = 0.0
+    analysis.daily_records[-2] = {"date": analysis.daily_records[-2]["date"], "training_stress": 0.0}
     client = MagicMock()
     with (
         patch("app.services.planner.orchestrator._make_intervals_client", return_value=client),
@@ -440,9 +443,11 @@ async def test_fresh_revision_context_uses_latest_completed_activity_and_calenda
             week_start=date(2026, 11, 9),
         )
 
-    assert "Recent 14d completed cycling" in context
+    assert "Recent 14d recorded cycling" in context
     assert "Other completed sports in last 14d: Soccer" in context
     assert "Last recorded 7 days" in context
+    assert "2026-11-04: Ride, 0.5h, TSS unavailable" in context
+    assert "2026-11-03: No activity recorded, no activity recorded; actual training unknown" in context
     assert "Scheduled calendar commitments" in context
     assert "prior 56d" in context
     assert len(context) < 2300
