@@ -8,7 +8,7 @@
         </span>
         <span class="activity-meta">
             <span>{{ "%.1f"|format(activity.duration_h) }} h</span>
-            <span>{{ "%.0f"|format(activity.training_stress) }} TSS</span>
+            <span>{% if activity.training_stress is not none %}{{ "%.0f"|format(activity.training_stress) }} TSS{% else %}TSS unavailable{% endif %}</span>
             {% if activity.distance_km is not none %}
             <span>{{ "%.1f"|format(activity.distance_km) }} km</span>
             {% endif %}

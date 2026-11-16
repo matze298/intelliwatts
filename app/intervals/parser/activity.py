@@ -20,7 +20,7 @@ class ParsedActivity:
 
     date: str
     duration_h: float
-    training_stress: float
+    training_stress: float | None
     avg_power: float | None
     type: str
     calories: int | float | None
@@ -31,6 +31,7 @@ class ParsedActivity:
     hr_zone_times: list[int] | None
     power_zone_times: list[dict[str, int]] | None
     ftp: float | None = None
+    activity_id: str | None = None
 
 
 def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
@@ -43,10 +44,10 @@ def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
     duration = _number(a.get("moving_time"))
     training_stress = _number(a.get("icu_training_load"))
     activity_type = a.get("type")
-    if not isinstance(date_value, str) or not isinstance(activity_type, str):
+    if not isinstance(date_value, str) or not isinstance(activity_type, str) or not activity_type.strip():
         _LOGGER.warning("Skipping incomplete activity record: missing or invalid analysis fields")
         return None
-    if duration is None or duration <= 0 or training_stress is None or training_stress < 0:
+    if duration is None or duration <= 0:
         _LOGGER.warning("Skipping incomplete activity record: missing or invalid analysis fields")
         return None
 
@@ -66,7 +67,7 @@ def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
     return ParsedActivity(
         date=date_value[:10],
         duration_h=duration / 3600,
-        training_stress=training_stress,
+        training_stress=training_stress if training_stress is not None and training_stress >= 0 else None,
         avg_power=_number(a.get("icu_average_watts")),
         type=activity_type,
         calories=_number(a.get("calories")),
@@ -77,6 +78,7 @@ def parse_activity(a: dict[str, Any]) -> ParsedActivity | None:
         hr_zone_times=cast("list[int] | None", hr_zone_times),
         power_zone_times=cast("list[dict[str, int]] | None", power_zone_times),
         ftp=_number(a.get("icu_ftp")),
+        activity_id=_activity_id(a.get("id")),
     )
 
 
@@ -93,6 +95,19 @@ def parse_activities(activities: Sequence[object]) -> list[ParsedActivity]:
             continue
         parsed_activities.append(parse_activity(activity))
     return [a for a in parsed_activities if a is not None]
+
+
+def _activity_id(value: object) -> str | None:
+    """Preserve a provider ID without inventing one.
+
+    Returns:
+        A nonblank source identifier, or None.
+    """
+    if isinstance(value, str) and value.strip():
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return str(value)
+    return None
 
 
 def _number(value: object) -> int | float | None:
