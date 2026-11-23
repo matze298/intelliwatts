@@ -31,7 +31,9 @@ from app.services.planner.manual import parse_manual_response
 from app.services.planner.persistence import save_and_stage_weekly_plan
 from app.services.planner.preferences import preferred_model
 from app.services.planner.prompt import (
+    CYCLING_VOLUME_GUIDANCE,
     FTP_PLANNING_GUIDANCE,
+    SLEEP_EVIDENCE_GUIDANCE,
     PromptSummaryContext,
     build_prompt_summary,
     workout_date_guidance,
@@ -181,6 +183,8 @@ async def update_training_plan(  # ruff: ignore[too-many-arguments]
             f"Latest recorded context (supersedes older observations):\n{latest_context}\n\n"
             f"{date_rules}\n\n"
             f"{FTP_PLANNING_GUIDANCE}\n\n"
+            f"{CYCLING_VOLUME_GUIDANCE}\n\n"
+            f"{SLEEP_EVIDENCE_GUIDANCE}\n\n"
             f"{preceding_plan + chr(10) + chr(10) if preceding_plan else ''}"
             f"Available cycling days: {', '.join(user.available_cycling_days)}; "
             f"at most {user.weekly_sessions} cycling sessions and {user.weekly_hours} cycling hours. "
@@ -308,6 +312,10 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
         )
         + "\n\n"
         + FTP_PLANNING_GUIDANCE
+        + "\n\n"
+        + CYCLING_VOLUME_GUIDANCE
+        + "\n\n"
+        + SLEEP_EVIDENCE_GUIDANCE
         + "\n\n"
         + await run_in_threadpool(load_week_commitments, client, week_start=week_start, today=datetime.now(UTC).date())
     )

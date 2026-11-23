@@ -13,6 +13,28 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
+CYCLING_VOLUME_GUIDANCE = (
+    "Cycling volume utilization: Max Cycling Hours and Max Cycling Sessions are upper bounds, not minimum "
+    "quotas. Aim to use a substantial, productive share of available cycling time when recent actual cycling "
+    "volume, adaptation, the training phase, recovery and other scheduled sports support it. Prefer adding "
+    "easy aerobic duration over unnecessary hard intervals; do not jump abruptly to the maximum simply "
+    "because time is available. Do not silently produce a substantially under-budget plan: state the "
+    "prescribed cycling hours versus the available cycling-hour ceiling in plan_markdown, and explain any "
+    "material shortfall using concrete evidence, recovery, taper or scheduling reasons. Distinguish observed "
+    "limitations from missing data; consider optional easy additions where realistic. The cycling budget "
+    "is never consumed by soccer or strength. Respect available days, session limits and past-date rules."
+)
+
+SLEEP_EVIDENCE_GUIDANCE = (
+    "Sleep evidence: consider recorded sleep duration, sleep score, HRV and resting-heart-rate trends "
+    "alongside completed training, execution and symptoms. These measurements have limitations; compare "
+    "personal baselines and avoid conclusions from isolated nights. Do not treat the Intervals.icu "
+    "sleepQuality category (1=excellent, 2=good, 3=average, 4=poor) as an objective recovery score, "
+    "assume higher is better, or prioritize it above corroborated evidence. Source-unverified categories "
+    "are excluded from default coaching context. Do not automatically restrict training for a single "
+    "low score or missing field; persistent symptoms and illness still warrant attention."
+)
+
 FTP_PLANNING_GUIDANCE = (
     "Relative cycling prescription: generate a useful plan even if FTP is unknown, stale or unchanged; "
     "a recent FTP test is not required. Use %FTP targets, recent workload, interval execution and recovery "
