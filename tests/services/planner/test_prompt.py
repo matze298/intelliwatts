@@ -135,7 +135,7 @@ def test_budget_guidance_treats_available_time_as_a_training_opportunity() -> No
 
     # THEN seek the full sustainable dose, but require an evidence-based reason to stay lower
     assert "Use as much available cycling time as can be trained productively" in CYCLING_VOLUME_GUIDANCE
-    assert "plan close to the cycling hour/session" in CYCLING_VOLUME_GUIDANCE
+    assert "plan close to available cycling hours" in CYCLING_VOLUME_GUIDANCE
     assert "easy aerobic duration" in CYCLING_VOLUME_GUIDANCE
     assert "progressively build toward available time" in CYCLING_VOLUME_GUIDANCE
     assert "planning 2 of 5 available hours" in CYCLING_VOLUME_GUIDANCE
