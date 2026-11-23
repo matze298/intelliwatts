@@ -22,6 +22,7 @@ class ActivityResult:
     hours_7d: float
     distance_7d: float
     has_activities: bool
+    missing_load_count: int = 0
 
 
 class ActivityProvider(MetricProvider[ActivityResult]):
@@ -85,7 +86,10 @@ class ActivityProvider(MetricProvider[ActivityResult]):
             tss_7d=tss_7d,
             hours_7d=hours_7d,
             distance_7d=distance_7d,
-            has_activities=True,
+            has_activities=bool(recent_df["activity_count"].sum()) if "activity_count" in recent_df.columns else True,
+            missing_load_count=(
+                int(recent_df["missing_load_count"].sum()) if "missing_load_count" in recent_df.columns else 0
+            ),
         )
 
     @override
@@ -103,9 +107,14 @@ class ActivityProvider(MetricProvider[ActivityResult]):
         hours_7d = result.hours_7d
         distance_7d = result.distance_7d
 
+        load_note = (
+            f" (recorded subtotal; {result.missing_load_count} sessions without load)"
+            if result.missing_load_count
+            else ""
+        )
         return (
             "Recent Training (Last 7 Days):\n"
-            f"- Total TSS: {tss_7d:.1f}\n"
+            f"- Total TSS: {tss_7d:.1f}{load_note}\n"
             f"- Total Hours: {hours_7d}h\n"
             f"- Total Distance: {distance_7d}km\n\n"
             "Training Load:\n"
@@ -131,7 +140,11 @@ class ActivityProvider(MetricProvider[ActivityResult]):
         return DashboardWidget(
             name="activity",
             title="Recent Training",
-            value=f"{result.tss_7d:.0f} TSS",
-            trend=f"{result.hours_7d:.1f} hours",
+            value=f"{result.tss_7d:.0f} recorded TSS" if result.missing_load_count else f"{result.tss_7d:.0f} TSS",
+            trend=(
+                f"{result.hours_7d:.1f} hours · {result.missing_load_count} missing load"
+                if result.missing_load_count
+                else f"{result.hours_7d:.1f} hours"
+            ),
             trend_positive=True,
         )

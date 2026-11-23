@@ -42,8 +42,9 @@ def test_parse_activities_skips_malformed_record_without_logging_payload(caplog:
     with caplog.at_level(logging.WARNING):
         parsed = parse_activities(records)
 
-    # THEN the valid activity is preserved and the malformed one is reported without its contents
-    assert len(parsed) == 1
+    # THEN valid activity metadata survives missing load and malformed records do not leak notes
+    assert len(parsed) == 2
+    assert parsed[1].training_stress is None
     assert parsed[0].date == "2026-04-20"
     assert parsed[0].avg_hr is None
     assert "Skipping incomplete activity record" in caplog.text
@@ -71,3 +72,26 @@ def test_parse_activities_skips_intervals_empty_activity_stub(caplog: LogCapture
     # THEN the stub is skipped and a data-quality warning is recorded
     assert len(parsed) == 1
     assert "Skipping incomplete activity record" in caplog.text
+
+
+def test_parse_activities_preserves_identity_and_unknown_load() -> None:
+    """Keep valid duration and identity when stress is unknown; preserve explicit zero."""
+    # GIVEN completed activities with absent, negative, invalid or zero load
+    records = [
+        {
+            "id": f"activity-{index}",
+            "start_date_local": "2026-04-20T08:00:00",
+            "moving_time": 1800,
+            "type": "WeightTraining",
+            "icu_training_load": load,
+        }
+        for index, load in enumerate((None, -1, "invalid", float("inf"), True, 0, 25))
+    ]
+
+    # WHEN parsing
+    parsed = parse_activities(records)
+
+    # THEN activity identity and duration survive and only recorded numeric load is retained
+    assert [item.activity_id for item in parsed] == [f"activity-{index}" for index in range(7)]
+    assert [item.training_stress for item in parsed] == [None, None, None, None, None, 0, 25]
+    assert all(item.duration_h == 0.5 for item in parsed)

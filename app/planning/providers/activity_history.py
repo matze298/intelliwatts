@@ -20,7 +20,7 @@ class ActivityHistoryEntry:
     date: str
     activity_type: str
     duration_h: float
-    training_stress: float
+    training_stress: float | None
     distance_km: float | None
     avg_power: float | None
     avg_hr: float | None
@@ -111,7 +111,7 @@ class ActivityHistoryProvider(MetricProvider[ActivityHistoryResult | None]):
                 "activity_elevation_gain",
                 "activity_ftp",
             ])
-            .drop_nulls(subset=["types", "activity_durations", "activity_tss"])
+            .drop_nulls(subset=["types", "activity_durations"])
             .sort(["date", "activity_durations"], descending=[True, True])
         )
 
@@ -123,7 +123,7 @@ class ActivityHistoryProvider(MetricProvider[ActivityHistoryResult | None]):
                 date=row["date"].strftime("%Y-%m-%d"),
                 activity_type=str(row["types"]),
                 duration_h=round(float(row["activity_durations"]), 1),
-                training_stress=round(float(row["activity_tss"]), 1),
+                training_stress=self._to_optional_float(row["activity_tss"]),
                 distance_km=self._to_optional_float(row["activity_distances"]),
                 avg_power=self._to_optional_float(row["activity_avg_power"]),
                 avg_hr=self._to_optional_float(row["activity_avg_hr"]),
@@ -132,7 +132,7 @@ class ActivityHistoryProvider(MetricProvider[ActivityHistoryResult | None]):
                 ftp=self._to_optional_float(row["activity_ftp"]),
             )
             for row in exploded.to_dicts()
-            if isfinite(float(row["activity_durations"])) and isfinite(float(row["activity_tss"]))
+            if isfinite(float(row["activity_durations"]))
         ]
 
         return ActivityHistoryResult(activities=entries, has_data=bool(entries))
@@ -152,7 +152,8 @@ class ActivityHistoryProvider(MetricProvider[ActivityHistoryResult | None]):
 
         lines = ["Recent Activities:"]
         for activity in result.activities[:5]:
-            summary = f"- {activity.date}: {activity.activity_type}, {activity.duration_h:.1f}h, {activity.training_stress:.0f} TSS"
+            load = f"{activity.training_stress:.0f} TSS" if activity.training_stress is not None else "TSS unavailable"
+            summary = f"- {activity.date}: {activity.activity_type}, {activity.duration_h:.1f}h, {load}"
             if activity.distance_km is not None:
                 summary += f", {activity.distance_km:.1f}km"
             lines.append(summary)

@@ -1,6 +1,6 @@
 """Weekly volume comparison metric provider."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, Any, cast, override
 
@@ -20,6 +20,7 @@ class WeeklyVolumeResult:
     duration_by_type: dict[str, list[float]]
     tss_by_type: dict[str, list[float]]
     has_data: bool
+    missing_load_by_type: dict[str, list[int]] = field(default_factory=dict)
 
 
 class WeeklyVolumeProvider(MetricProvider[WeeklyVolumeResult]):
@@ -99,7 +100,7 @@ class WeeklyVolumeProvider(MetricProvider[WeeklyVolumeResult]):
             df
             .select(["date", "types", "activity_durations", "activity_tss"])
             .explode(["types", "activity_durations", "activity_tss"])
-            .drop_nulls()
+            .drop_nulls(subset=["types", "activity_durations"])
         )
         if df_exploded.is_empty():
             return pl.DataFrame()
@@ -110,7 +111,8 @@ class WeeklyVolumeProvider(MetricProvider[WeeklyVolumeResult]):
             .group_by(["week", "types"])
             .agg([
                 pl.col("activity_durations").sum().alias("duration"),
-                pl.col("activity_tss").sum().alias("tss"),
+                pl.col("activity_tss").cast(pl.Float64).sum().alias("tss"),
+                pl.col("activity_tss").null_count().alias("missing_load"),
             ])
             .sort("week")
         )
@@ -166,6 +168,7 @@ class WeeklyVolumeProvider(MetricProvider[WeeklyVolumeResult]):
             .with_columns([
                 pl.col("duration").fill_null(0.0),
                 pl.col("tss").fill_null(0.0),
+                pl.col("missing_load").fill_null(0),
             ])
             .sort(["types", "week"])
         )
@@ -186,17 +189,20 @@ class WeeklyVolumeProvider(MetricProvider[WeeklyVolumeResult]):
         duration_by_type = {}
 
         tss_by_type = {}
+        missing_load_by_type = {}
 
         for t in all_types:
             type_data = full_weekly.filter(pl.col("types") == t)
             duration_by_type[t] = type_data["duration"].round(1).to_list()
             tss_by_type[t] = type_data["tss"].round(0).to_list()
+            missing_load_by_type[t] = type_data["missing_load"].to_list()
 
         return WeeklyVolumeResult(
             weeks=weeks_str,
             duration_by_type=duration_by_type,
             tss_by_type=tss_by_type,
             has_data=True,
+            missing_load_by_type=missing_load_by_type,
         )
 
     @override
@@ -219,7 +225,9 @@ class WeeklyVolumeProvider(MetricProvider[WeeklyVolumeResult]):
             dur = result.duration_by_type[sport][-1]
             tss = result.tss_by_type[sport][-1]
             if dur > 0 or tss > 0:
-                summary.append(f"- {sport}: {dur}h, {tss:.0f} TSS")
+                missing = result.missing_load_by_type.get(sport, [0])[-1]
+                note = f" (recorded subtotal; {missing} missing load)" if missing else ""
+                summary.append(f"- {sport}: {dur}h, {tss:.0f} TSS{note}")
 
         return "\n".join(summary)
 
@@ -247,5 +255,7 @@ class WeeklyVolumeProvider(MetricProvider[WeeklyVolumeResult]):
                 "weeks": result.weeks,
                 "duration_by_type": result.duration_by_type,
                 "tss_by_type": result.tss_by_type,
+                "missing_load_by_type": result.missing_load_by_type,
+                "has_missing_load": any(any(values) for values in result.missing_load_by_type.values()),
             },
         )
