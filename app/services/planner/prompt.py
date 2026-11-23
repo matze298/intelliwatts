@@ -14,25 +14,21 @@ if TYPE_CHECKING:
 
 
 CYCLING_VOLUME_GUIDANCE = (
-    "Cycling volume utilization: Max Cycling Hours and Max Cycling Sessions are upper bounds, not minimum "
-    "quotas. Aim to use a substantial, productive share of available cycling time when recent actual cycling "
-    "volume, adaptation, the training phase, recovery and other scheduled sports support it. Prefer adding "
-    "easy aerobic duration over unnecessary hard intervals; do not jump abruptly to the maximum simply "
-    "because time is available. Do not silently produce a substantially under-budget plan: state the "
-    "prescribed cycling hours versus the available cycling-hour ceiling in plan_markdown, and explain any "
-    "material shortfall using concrete evidence, recovery, taper or scheduling reasons. Distinguish observed "
-    "limitations from missing data; consider optional easy additions where realistic. The cycling budget "
-    "is never consumed by soccer or strength. Respect available days, session limits and past-date rules."
+    "Cycling volume objective: Use as much available cycling time as can be trained productively and "
+    "sustainably. When recent cycling history and recovery support it, plan close to the cycling hour/session "
+    "budget, usually adding easy aerobic duration rather than unnecessary intensity. If current capacity "
+    "is lower, progressively build toward available time without abrupt jumps. Account for other sports, "
+    "competition, fatigue and tapering, but never count their hours against cycling limits. State planned "
+    "versus available cycling hours in plan_markdown and provide a specific coaching reason for a substantial "
+    "gap (for example, planning 2 of 5 available hours), rather than defaulting to conservatism or treating "
+    "missing data as evidence of poor recovery. Respect cycling hours, sessions and available-day limits."
 )
 
 SLEEP_EVIDENCE_GUIDANCE = (
-    "Sleep evidence: consider recorded sleep duration, sleep score, HRV and resting-heart-rate trends "
-    "alongside completed training, execution and symptoms. These measurements have limitations; compare "
-    "personal baselines and avoid conclusions from isolated nights. Do not treat the Intervals.icu "
-    "sleepQuality category (1=excellent, 2=good, 3=average, 4=poor) as an objective recovery score, "
-    "assume higher is better, or prioritize it above corroborated evidence. Source-unverified categories "
-    "are excluded from default coaching context. Do not automatically restrict training for a single "
-    "low score or missing field; persistent symptoms and illness still warrant attention."
+    "Sleep evidence: interpret recorded sleep duration and sleep score against personal trends, alongside "
+    "HRV, resting heart rate, training execution and symptoms. Device scores have limitations; neither a "
+    "single low score nor missing data automatically requires reducing training. Persistent symptoms and "
+    "illness still warrant attention."
 )
 
 FTP_PLANNING_GUIDANCE = (
