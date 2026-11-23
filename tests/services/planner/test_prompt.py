@@ -129,14 +129,22 @@ def test_existing_phase_start_uses_today_when_later() -> None:
     assert "existing workouts already assigned to past dates may be retained unchanged" in guidance
 
 
-def test_budget_guidance_prefers_productive_time_not_forced_maximum() -> None:
-    """A ceiling is not a mandatory quota, but unused time requires a reason."""
-    # GIVEN shared coaching rules
+def test_budget_guidance_treats_available_time_as_a_training_opportunity() -> None:
+    """Available time is a goal to develop toward, not merely a limit to avoid crossing."""
+    # GIVEN a five-hour cycling opportunity after an earlier two-hour plan
 
-    # THEN empty or stale FTP and poor device scores cannot suppress sensible cycling time
-    assert "upper bounds, not minimum quotas" in CYCLING_VOLUME_GUIDANCE
+    # THEN seek the full sustainable dose, but require an evidence-based reason to stay lower
+    assert "Use as much available cycling time as can be trained productively" in CYCLING_VOLUME_GUIDANCE
+    assert "plan close to the cycling hour/session" in CYCLING_VOLUME_GUIDANCE
     assert "easy aerobic duration" in CYCLING_VOLUME_GUIDANCE
-    assert "prescribed cycling hours" in CYCLING_VOLUME_GUIDANCE
-    assert "do not jump abruptly" in CYCLING_VOLUME_GUIDANCE
-    assert "1=excellent" in SLEEP_EVIDENCE_GUIDANCE
-    assert "excluded from default coaching context" in SLEEP_EVIDENCE_GUIDANCE
+    assert "progressively build toward available time" in CYCLING_VOLUME_GUIDANCE
+    assert "planning 2 of 5 available hours" in CYCLING_VOLUME_GUIDANCE
+    assert "specific coaching reason" in CYCLING_VOLUME_GUIDANCE
+    assert "Respect cycling hours, sessions and available-day limits" in CYCLING_VOLUME_GUIDANCE
+
+
+def test_sleep_guidance_uses_observations_without_low_score_veto() -> None:
+    """Sleep is descriptive context; unsupported quality categories are not part of planning."""
+    assert "recorded sleep duration and sleep score" in SLEEP_EVIDENCE_GUIDANCE
+    assert "single low score nor missing data automatically" in SLEEP_EVIDENCE_GUIDANCE
+    assert "sleepQuality" not in SLEEP_EVIDENCE_GUIDANCE
