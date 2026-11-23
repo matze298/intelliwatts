@@ -102,6 +102,7 @@ def test_build_coach_context_produces_weekly_and_daily_sections(
     assert "recovery" in context.brief_context.lower() or "load" in context.brief_context.lower()
     assert "FTP Trajectory" not in context.render()
     assert "Optional wellness check-ins" in context.brief_context
+    assert "sleep_quality=" not in context.brief_context
     assert "2026-05-12:" in context.brief_context
     assert "2026-05-05:" not in context.brief_context
     assert "fatigue=4" in context.brief_context
