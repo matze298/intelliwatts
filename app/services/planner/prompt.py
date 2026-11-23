@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 CYCLING_VOLUME_GUIDANCE = (
     "Cycling volume objective: Use as much available cycling time as can be trained productively and "
-    "sustainably. When recent cycling history and recovery support it, plan close to the cycling hour/session "
-    "budget, usually adding easy aerobic duration rather than unnecessary intensity. If current capacity "
+    "sustainably. When recent cycling history and recovery support it, plan close to available cycling hours, "
+    "usually adding easy aerobic duration rather than unnecessary intensity. If current capacity "
     "is lower, progressively build toward available time without abrupt jumps. Account for other sports, "
     "competition, fatigue and tapering, but never count their hours against cycling limits. State planned "
     "versus available cycling hours in plan_markdown and provide a specific coaching reason for a substantial "
