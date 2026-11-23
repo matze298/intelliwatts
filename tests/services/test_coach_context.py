@@ -70,7 +70,6 @@ def coach_daily_records() -> list[dict[str, object]]:
             "hrv": 56.0 if offset < 28 else 46.0,
             "resting_hr": 48 if offset < 28 else 53,
             "sleep_score": 84 if offset < 28 else 61,
-            "sleep_quality": 4 if offset < 28 else 2,
             "fatigue": 2 if offset < 28 else 4,
             "soreness": 2 if offset < 28 else 4,
             "stress": 2 if offset < 28 else 4,
