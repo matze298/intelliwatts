@@ -45,7 +45,6 @@ class CoachDailyRecord:
     cycling_duration_h: float = 0.0
     cycling_training_stress: float = 0.0
     cycling_sessions: int = 0
-    sleep_quality: float | None = None
     sleep_duration_h: float | None = None
     fatigue: float | None = None
     soreness: float | None = None
@@ -483,7 +482,6 @@ def _parse_record(record: DailyRecordInput) -> CoachDailyRecord | None:
         cycling_duration_h=cycling_hours,
         cycling_training_stress=cycling_tss,
         cycling_sessions=cycling_sessions,
-        sleep_quality=_to_optional_float(record.get("sleep_quality")),
         sleep_duration_h=_to_optional_float(record.get("sleep_duration_h")),
         fatigue=_to_optional_float(record.get("fatigue")),
         soreness=_to_optional_float(record.get("soreness")),
