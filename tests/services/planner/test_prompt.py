@@ -121,3 +121,17 @@ def test_existing_phase_start_uses_today_when_later() -> None:
     assert "long-term training phase starts on 2026-10-12" in guidance
     assert "earliest date for NEW workouts is 2026-11-07" in guidance
     assert "existing workouts already assigned to past dates may be retained unchanged" in guidance
+
+
+def test_budget_guidance_prefers_productive_time_not_forced_maximum() -> None:
+    """A ceiling is not a mandatory quota, but unused time requires a reason."""
+    # GIVEN shared coaching rules
+    from app.services.planner.prompt import CYCLING_VOLUME_GUIDANCE, SLEEP_EVIDENCE_GUIDANCE
+
+    # THEN empty or stale FTP and poor device scores cannot suppress sensible cycling time
+    assert "upper bounds, not minimum quotas" in CYCLING_VOLUME_GUIDANCE
+    assert "easy aerobic duration" in CYCLING_VOLUME_GUIDANCE
+    assert "prescribed cycling hours" in CYCLING_VOLUME_GUIDANCE
+    assert "do not jump abruptly" in CYCLING_VOLUME_GUIDANCE
+    assert "1=excellent" in SLEEP_EVIDENCE_GUIDANCE
+    assert "excluded from default coaching context" in SLEEP_EVIDENCE_GUIDANCE
