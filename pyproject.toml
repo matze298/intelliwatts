@@ -13,7 +13,7 @@ dependencies = [
     "jinja2",
     "openai",
     "markdown",
-    "nh3>=0.3.7",
+    "nh3>=0.3.8",
     "polars",
     "pydantic",
     "pydantic-settings",
@@ -28,7 +28,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "playwright>=1.64.1",
+    "playwright>=1.65.2",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
