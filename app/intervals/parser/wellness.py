@@ -24,6 +24,7 @@ class ParsedWellness:
     resting_hr: int | float | None = None
     sleep_score: int | float | None = None
     sleep_quality: int | float | None = None
+    sleep_duration_h: float | None = None
     fatigue: int | float | None = None
     soreness: int | float | None = None
     stress: int | float | None = None
@@ -53,6 +54,7 @@ def parse_wellness(w: dict[str, Any]) -> ParsedWellness:
         resting_hr=_number(w.get("restingHR")),
         sleep_score=_number(w.get("sleepScore")),
         sleep_quality=_number(w.get("sleepQuality")),
+        sleep_duration_h=_sleep_hours(w.get("sleepSecs")),
         fatigue=_number(w.get("fatigue")),
         soreness=_number(w.get("soreness")),
         stress=_number(w.get("stress")),
@@ -80,6 +82,18 @@ def parse_wellness_list(wellness_list: Sequence[object]) -> list[ParsedWellness]
         except ValueError:
             _LOGGER.warning("Unable to parse wellness record: index=%s invalid_date", index)
     return parsed_wellness
+
+
+def _sleep_hours(value: object) -> float | None:
+    """Convert reported sleepSecs to hours, preserving absent and invalid values.
+
+    Returns:
+        Total recorded sleep in hours, or None if not usable.
+    """
+    seconds = _number(value)
+    if seconds is None or not 0 < seconds <= 24 * 3600:
+        return None
+    return float(seconds) / 3600
 
 
 def _number(value: object) -> int | float | None:

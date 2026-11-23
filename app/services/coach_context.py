@@ -26,7 +26,7 @@ MIN_BASELINE_SAMPLES = 10
 MIN_RECENT_SAMPLES = 3
 MULTI_SIGNAL_COUNT = 2
 # Used only to identify a noteworthy change, never to cancel a session automatically.
-MIN_RELATIVE_CHANGE = {"hrv": 0.05, "resting_hr": 0.05, "sleep_score": 0.08}
+MIN_RELATIVE_CHANGE = {"hrv": 0.05, "resting_hr": 0.05, "sleep_score": 0.08, "sleep_duration_h": 0.08}
 
 DailyRecordInput = Mapping[str, object]
 
@@ -46,6 +46,7 @@ class CoachDailyRecord:
     cycling_training_stress: float = 0.0
     cycling_sessions: int = 0
     sleep_quality: float | None = None
+    sleep_duration_h: float | None = None
     fatigue: float | None = None
     soreness: float | None = None
     stress: float | None = None
@@ -65,6 +66,7 @@ class DailyLedgerRow:
     hrv: float | None
     resting_hr: float | None
     signal: str
+    sleep_duration_h: float | None = None
 
 
 @dataclass(frozen=True)
@@ -114,7 +116,8 @@ class CoachContext:
                 (
                     f"- {row.date} {row.weekday}: "
                     f"{row.duration_h:.1f}h, {row.training_stress:.0f} TSS, "
-                    f"{row.activity_type}, sleep {row.sleep_score if row.sleep_score is not None else '-'}, "
+                    f"{row.activity_type}, sleep score {row.sleep_score if row.sleep_score is not None else '-'}, "
+                    f"{f'sleep duration {row.sleep_duration_h:.1f}h, ' if row.sleep_duration_h is not None else ''}"
                     f"HRV {row.hrv if row.hrv is not None else '-'}, RHR {row.resting_hr if row.resting_hr is not None else '-'}, "
                     f"{row.signal}"
                 )
@@ -248,6 +251,7 @@ def _build_daily_ledger(records: Sequence[CoachDailyRecord]) -> list[DailyLedger
             hrv=record.hrv,
             resting_hr=record.resting_hr,
             signal=_signal_for_day(record, records),
+            sleep_duration_h=record.sleep_duration_h,
         )
         for record in recent_records
     ]
@@ -295,7 +299,7 @@ def _subjective_checkins(records: Sequence[CoachDailyRecord]) -> str:
     Returns:
         A dated list of available check-ins, or an empty string.
     """
-    labels = ("sleep_quality", "fatigue", "soreness", "stress", "readiness")
+    labels = ("fatigue", "soreness", "stress", "readiness")
     rows = []
     for record in records:
         values = [f"{label}={value:g}" for label in labels if (value := getattr(record, label)) is not None]
@@ -304,7 +308,7 @@ def _subjective_checkins(records: Sequence[CoachDailyRecord]) -> str:
     if not rows:
         return ""
     return (
-        "\nAthlete-reported check-ins (last 7 calendar days as of analysis; original source scales): "
+        "\nOptional wellness check-ins (last 7 calendar days; provenance unverified, original scales): "
         + "; ".join(rows)
         + ". Unreported values are unknown; combine subjective and objective recovery evidence."
     )
@@ -359,14 +363,19 @@ def _recovery_comparison(baseline: Sequence[CoachDailyRecord], latest: Sequence[
     Returns:
         Descriptive baseline comparisons with a cautious combined interpretation.
     """
-    comparisons = [_metric_deviation(baseline, latest, name) for name in ("hrv", "resting_hr", "sleep_score")]
-    unfavorable_count = sum(1 for _, unfavorable in comparisons if unfavorable)
+    metrics = ("hrv", "resting_hr", "sleep_score", "sleep_duration_h")
+    comparisons = {name: _metric_deviation(baseline, latest, name) for name in metrics}
+    unfavorable_count = (
+        int(comparisons["hrv"][1])
+        + int(comparisons["resting_hr"][1])
+        + int(comparisons["sleep_score"][1] or comparisons["sleep_duration_h"][1])
+    )
     status = (
         "multiple trends warrant attention"
         if unfavorable_count >= MULTI_SIGNAL_COUNT
         else "interpret trends alongside symptoms"
     )
-    return f"Recovery (7d vs prior 56d): {'; '.join(value for value, _ in comparisons)}; {status}."
+    return f"Recovery (7d vs prior 56d): {'; '.join(comparisons[name][0] for name in metrics)}; {status}."
 
 
 def _signal_for_day(record: CoachDailyRecord, records: Sequence[CoachDailyRecord]) -> str:
@@ -380,7 +389,10 @@ def _signal_for_day(record: CoachDailyRecord, records: Sequence[CoachDailyRecord
     past = [item for item in records if item.date <= record.date]
     baseline, recent = _split_recovery_windows(past)
     unfavorable_count = sum(
-        _metric_deviation(baseline, recent, field)[1] for field in ("hrv", "resting_hr", "sleep_score")
+        _metric_deviation(baseline, recent, field)[1] for field in ("hrv", "resting_hr")
+    ) + int(
+        _metric_deviation(baseline, recent, "sleep_score")[1]
+        or _metric_deviation(baseline, recent, "sleep_duration_h")[1]
     )
     if unfavorable_count >= MULTI_SIGNAL_COUNT:
         return "recovery_watch"
@@ -474,6 +486,7 @@ def _parse_record(record: DailyRecordInput) -> CoachDailyRecord | None:
         cycling_training_stress=cycling_tss,
         cycling_sessions=cycling_sessions,
         sleep_quality=_to_optional_float(record.get("sleep_quality")),
+        sleep_duration_h=_to_optional_float(record.get("sleep_duration_h")),
         fatigue=_to_optional_float(record.get("fatigue")),
         soreness=_to_optional_float(record.get("soreness")),
         stress=_to_optional_float(record.get("stress")),
