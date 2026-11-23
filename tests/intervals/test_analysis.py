@@ -47,7 +47,6 @@ def fixture_wellness_data() -> list[ParsedWellness]:
             hrv=60.0,
             resting_hr=50,
             sleep_score=None,
-            sleep_quality=None,
             fatigue=None,
             soreness=None,
             stress=None,
@@ -59,7 +58,6 @@ def fixture_wellness_data() -> list[ParsedWellness]:
             hrv=70.0,
             resting_hr=48,
             sleep_score=None,
-            sleep_quality=None,
             fatigue=None,
             soreness=None,
             stress=None,
@@ -90,7 +88,7 @@ def test_compute_analysis_exposes_daily_records(activities: list[ParsedActivity]
             hrv=60.0,
             resting_hr=50,
             sleep_score=60,
-            sleep_quality=4,
+            sleep_duration_h=7.5,
             fatigue=2,
             soreness=2,
             stress=2,
@@ -107,6 +105,8 @@ def test_compute_analysis_exposes_daily_records(activities: list[ParsedActivity]
     assert analysis.daily_records
     assert analysis.daily_records[0]["date"] == "2026-04-01"
     assert analysis.daily_records[0]["sleep_score"] == 60
+    assert analysis.daily_records[0]["sleep_duration_h"] == 7.5
+    assert "sleep_quality" not in analysis.daily_records[0]
     assert analysis.to_dict()["daily_records"][0]["date"] == "2026-04-01"
 
 
