@@ -19,6 +19,7 @@ from app.models.plan import TrainingPlan
 from app.planning.llm import LLMRole, generate_plan
 from app.planning.providers.registry import registry
 from app.services.coach_context import build_coach_context
+from app.services.cycling_intensity import cycling_intensity_evidence
 from app.services.long_term_planner import (
     derive_weekly_brief,
     get_current_long_term_plan_artifact,
@@ -93,7 +94,8 @@ async def _fresh_revision_context(
         f"- {row.date}: {row.activity_type}, {row.load_label()}" for row in coach.daily_ledger if row.date > cutoff
     )
     calendar = await run_in_threadpool(load_week_commitments, client, week_start=week_start, today=today)
-    return f"{coach.brief_context}\nLast recorded 7 days:\n{rows or '- No completed activity records.'}\n{calendar}"
+    intensity = cycling_intensity_evidence(analysis.daily_records, as_of=today)
+    return f"{coach.brief_context}\n{intensity}\nLast recorded 7 days:\n{rows or '- No completed activity records.'}\n{calendar}"
 
 
 async def update_training_plan(  # ruff: ignore[too-many-arguments]
@@ -275,6 +277,7 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
             week_start=week_start,
         )
         specialist_text = await registry.get_specialist_context(analysis.provider_results)
+        intensity_text = cycling_intensity_evidence(analysis.daily_records, as_of=datetime.now(UTC).date())
         full_summary = build_prompt_summary(
             PromptSummaryContext(
                 user=user,
@@ -293,7 +296,7 @@ async def generate_weekly_plan(  # ruff: ignore[too-many-arguments]
                         ),
                     )
                 ),
-                specialist_text=specialist_text,
+                specialist_text=f"{specialist_text}\n\n{intensity_text}",
                 task_prompt=settings.USER_PROMPT,
             )
         )
