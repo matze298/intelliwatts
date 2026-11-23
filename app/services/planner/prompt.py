@@ -13,6 +13,24 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
+CYCLING_VOLUME_GUIDANCE = (
+    "Cycling volume objective: Use as much available cycling time as can be trained productively and "
+    "sustainably. When recent cycling history and recovery support it, plan close to available cycling hours, "
+    "usually adding easy aerobic duration rather than unnecessary intensity. If current capacity "
+    "is lower, progressively build toward available time without abrupt jumps. Account for other sports, "
+    "competition, fatigue and tapering, but never count their hours against cycling limits. State planned "
+    "versus available cycling hours in plan_markdown and provide a specific coaching reason for a substantial "
+    "gap (for example, planning 2 of 5 available hours), rather than defaulting to conservatism or treating "
+    "missing data as evidence of poor recovery. Respect cycling hours, sessions and available-day limits."
+)
+
+SLEEP_EVIDENCE_GUIDANCE = (
+    "Sleep evidence: interpret recorded sleep duration and sleep score against personal trends, alongside "
+    "HRV, resting heart rate, training execution and symptoms. Device scores have limitations; neither a "
+    "single low score nor missing data automatically requires reducing training. Persistent symptoms and "
+    "illness still warrant attention."
+)
+
 FTP_PLANNING_GUIDANCE = (
     "Relative cycling prescription: generate a useful plan even if FTP is unknown, stale or unchanged; "
     "a recent FTP test is not required. Use %FTP targets, recent workload, interval execution and recovery "

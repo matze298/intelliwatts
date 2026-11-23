@@ -70,7 +70,6 @@ def coach_daily_records() -> list[dict[str, object]]:
             "hrv": 56.0 if offset < 28 else 46.0,
             "resting_hr": 48 if offset < 28 else 53,
             "sleep_score": 84 if offset < 28 else 61,
-            "sleep_quality": 4 if offset < 28 else 2,
             "fatigue": 2 if offset < 28 else 4,
             "soreness": 2 if offset < 28 else 4,
             "stress": 2 if offset < 28 else 4,
@@ -102,7 +101,8 @@ def test_build_coach_context_produces_weekly_and_daily_sections(
     assert context.daily_ledger[0].weekday in {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
     assert "recovery" in context.brief_context.lower() or "load" in context.brief_context.lower()
     assert "FTP Trajectory" not in context.render()
-    assert "Athlete-reported check-ins" in context.brief_context
+    assert "Optional wellness check-ins" in context.brief_context
+    assert "sleep_quality=" not in context.brief_context
     assert "2026-05-12:" in context.brief_context
     assert "2026-05-05:" not in context.brief_context
     assert "fatigue=4" in context.brief_context
@@ -250,6 +250,43 @@ def test_stale_checkins_not_treated_as_current(
     )
 
     # THEN no stale subjective score or false zero recent volume appears
-    assert "Athlete-reported check-ins" not in context.brief_context
+    assert "Optional wellness check-ins" not in context.brief_context
     assert "no dated observations; training unknown" in context.brief_context
     assert "Observations through 2026-05-12" in context.brief_context
+
+
+def test_coach_uses_sleep_duration_but_not_uninterpreted_quality(coach_phase: TrainingPhase) -> None:
+    """Keep valid sleep duration and omit the ambiguous sleepQuality category."""
+    # GIVEN dated sleep data with both explicit duration and the inverted quality category
+    records = [
+        {
+            "date": (date(2026, 5, 1) + timedelta(days=index)).isoformat(),
+            "types": ["Ride"],
+            "activity_durations": [1.0],
+            "activity_tss": [40],
+            "training_stress": 40,
+            "duration_h": 1.0,
+            "sleep_score": 80,
+            "sleep_quality": 4,
+            "sleep_duration_h": 8.0 if index < 16 else 6.0,
+            "hrv": 55,
+            "resting_hr": 50,
+        }
+        for index in range(21)
+    ]
+
+    # WHEN building coach evidence
+    context = coach_context.build_coach_context(
+        daily_records=records,
+        phase=coach_phase,
+        artifact=None,
+        week_start=date(2026, 5, 25),
+        as_of=date(2026, 5, 21),
+    )
+    rendered = context.render() + context.brief_context
+
+    # THEN duration is visible, quality category absent, and one sleep domain is not multiple signals
+    assert "sleep duration 6.0h" in rendered
+    assert "sleep_duration_h 6.6 vs baseline 8.0" in rendered
+    assert "sleep_quality=" not in rendered
+    assert "multiple trends warrant attention" not in rendered

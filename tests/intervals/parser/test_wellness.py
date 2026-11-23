@@ -1,6 +1,7 @@
 """Tests for the wellness parser."""
 
 import logging
+from math import inf, nan
 from typing import TYPE_CHECKING
 
 from app.intervals.parser.wellness import ParsedWellness, parse_wellness, parse_wellness_list
@@ -18,6 +19,7 @@ def test_parse_wellness() -> None:
         "restingHR": 52,
         "sleepScore": 85,
         "sleepQuality": 4,
+        "sleepSecs": 27900,
         "fatigue": 3,
         "soreness": 2,
         "stress": 2,
@@ -35,7 +37,8 @@ def test_parse_wellness() -> None:
     assert parsed.hrv == 65.0
     assert parsed.resting_hr == 52
     assert parsed.sleep_score == 85
-    assert parsed.sleep_quality == 4
+    assert not hasattr(parsed, "sleep_quality")  # Legacy upstream field is deliberately not normalized.
+    assert parsed.sleep_duration_h == 7.75
     assert parsed.fatigue == 3
     assert parsed.soreness == 2
     assert parsed.stress == 2
@@ -54,6 +57,7 @@ def test_parse_wellness_minimal() -> None:
     # THEN the parsed data has None for missing fields
     assert parsed.date == "2026-04-20"
     assert parsed.hrv is None
+    assert parsed.sleep_duration_h is None
 
 
 def test_parse_wellness_list_skips_malformed_records(caplog: LogCaptureFixture) -> None:
@@ -86,3 +90,16 @@ def test_parse_wellness_list_keeps_valid_metrics_when_one_is_invalid() -> None:
 
     # THEN both dates are retained and the malformed optional metric is treated as missing
     assert parsed == [ParsedWellness(date="2026-04-01", hrv=60.0), ParsedWellness(date="2026-04-02")]
+
+
+def test_sleep_duration_is_optional_and_rejects_invalid_seconds() -> None:
+    """Sleep duration is interpreted as time only when it is a valid finite number."""
+    # GIVEN optional Intervals.icu sleepSecs values
+
+    # WHEN parsing valid, missing and malformed values
+    cases = ((28800, 8.0), (0, None), (-1, None), (86401, None), (True, None), ("8h", None), (nan, None), (inf, None))
+    for raw, expected in cases:
+        wellness = parse_wellness({"id": "2026-05-01", "sleepSecs": raw})
+
+        # THEN do not invent duration or treat seconds as hours
+        assert wellness.sleep_duration_h == expected

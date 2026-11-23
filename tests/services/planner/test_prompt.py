@@ -6,7 +6,13 @@ from unittest.mock import MagicMock, patch
 
 from app.models.plan import TrainingPhase
 from app.models.user import User
-from app.services.planner.prompt import PromptSummaryContext, build_prompt_summary, workout_date_guidance
+from app.services.planner.prompt import (
+    CYCLING_VOLUME_GUIDANCE,
+    SLEEP_EVIDENCE_GUIDANCE,
+    PromptSummaryContext,
+    build_prompt_summary,
+    workout_date_guidance,
+)
 
 
 @patch("app.services.planner.prompt.user_prompt")
@@ -121,3 +127,24 @@ def test_existing_phase_start_uses_today_when_later() -> None:
     assert "long-term training phase starts on 2026-10-12" in guidance
     assert "earliest date for NEW workouts is 2026-11-07" in guidance
     assert "existing workouts already assigned to past dates may be retained unchanged" in guidance
+
+
+def test_budget_guidance_treats_available_time_as_a_training_opportunity() -> None:
+    """Available time is a goal to develop toward, not merely a limit to avoid crossing."""
+    # GIVEN a five-hour cycling opportunity after an earlier two-hour plan
+
+    # THEN seek the full sustainable dose, but require an evidence-based reason to stay lower
+    assert "Use as much available cycling time as can be trained productively" in CYCLING_VOLUME_GUIDANCE
+    assert "plan close to available cycling hours" in CYCLING_VOLUME_GUIDANCE
+    assert "easy aerobic duration" in CYCLING_VOLUME_GUIDANCE
+    assert "progressively build toward available time" in CYCLING_VOLUME_GUIDANCE
+    assert "planning 2 of 5 available hours" in CYCLING_VOLUME_GUIDANCE
+    assert "specific coaching reason" in CYCLING_VOLUME_GUIDANCE
+    assert "Respect cycling hours, sessions and available-day limits" in CYCLING_VOLUME_GUIDANCE
+
+
+def test_sleep_guidance_uses_observations_without_low_score_veto() -> None:
+    """Sleep is descriptive context; unsupported quality categories are not part of planning."""
+    assert "recorded sleep duration and sleep score" in SLEEP_EVIDENCE_GUIDANCE
+    assert "single low score nor missing data automatically" in SLEEP_EVIDENCE_GUIDANCE
+    assert "sleepQuality" not in SLEEP_EVIDENCE_GUIDANCE
