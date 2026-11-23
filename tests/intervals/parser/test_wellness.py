@@ -1,6 +1,7 @@
 """Tests for the wellness parser."""
 
 import logging
+from math import inf, nan
 from typing import TYPE_CHECKING
 
 from app.intervals.parser.wellness import ParsedWellness, parse_wellness, parse_wellness_list
@@ -94,11 +95,9 @@ def test_parse_wellness_list_keeps_valid_metrics_when_one_is_invalid() -> None:
 def test_sleep_duration_is_optional_and_rejects_invalid_seconds() -> None:
     """Sleep duration is interpreted as time only when it is a valid finite number."""
     # GIVEN optional Intervals.icu sleepSecs values
-    from math import inf, nan
 
     # WHEN parsing valid, missing and malformed values
-    cases = ((28800, 8.0), (0, None), (-1, None), (86401, None), (True, None),
-             ("8h", None), (nan, None), (inf, None))
+    cases = ((28800, 8.0), (0, None), (-1, None), (86401, None), (True, None), ("8h", None), (nan, None), (inf, None))
     for raw, expected in cases:
         wellness = parse_wellness({"id": "2026-05-01", "sleepSecs": raw})
 

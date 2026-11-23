@@ -388,9 +388,7 @@ def _signal_for_day(record: CoachDailyRecord, records: Sequence[CoachDailyRecord
         return "rest_day"
     past = [item for item in records if item.date <= record.date]
     baseline, recent = _split_recovery_windows(past)
-    unfavorable_count = sum(
-        _metric_deviation(baseline, recent, field)[1] for field in ("hrv", "resting_hr")
-    ) + int(
+    unfavorable_count = sum(_metric_deviation(baseline, recent, field)[1] for field in ("hrv", "resting_hr")) + int(
         _metric_deviation(baseline, recent, "sleep_score")[1]
         or _metric_deviation(baseline, recent, "sleep_duration_h")[1]
     )

@@ -6,7 +6,13 @@ from unittest.mock import MagicMock, patch
 
 from app.models.plan import TrainingPhase
 from app.models.user import User
-from app.services.planner.prompt import PromptSummaryContext, build_prompt_summary, workout_date_guidance
+from app.services.planner.prompt import (
+    CYCLING_VOLUME_GUIDANCE,
+    SLEEP_EVIDENCE_GUIDANCE,
+    PromptSummaryContext,
+    build_prompt_summary,
+    workout_date_guidance,
+)
 
 
 @patch("app.services.planner.prompt.user_prompt")
@@ -126,7 +132,6 @@ def test_existing_phase_start_uses_today_when_later() -> None:
 def test_budget_guidance_prefers_productive_time_not_forced_maximum() -> None:
     """A ceiling is not a mandatory quota, but unused time requires a reason."""
     # GIVEN shared coaching rules
-    from app.services.planner.prompt import CYCLING_VOLUME_GUIDANCE, SLEEP_EVIDENCE_GUIDANCE
 
     # THEN empty or stale FTP and poor device scores cannot suppress sensible cycling time
     assert "upper bounds, not minimum quotas" in CYCLING_VOLUME_GUIDANCE
