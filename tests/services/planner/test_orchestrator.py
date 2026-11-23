@@ -426,7 +426,7 @@ async def test_fresh_revision_context_uses_latest_completed_activity_and_calenda
         }
         for index in range(65)
     ]
-    analysis.daily_records[-1] = {**analysis.daily_records[-1], "activity_tss": [None]}
+    analysis.daily_records[-1].update({"activity_tss": [None]})
     analysis.daily_records[-1]["training_stress"] = 0.0
     analysis.daily_records[-2] = {"date": analysis.daily_records[-2]["date"], "training_stress": 0.0}
     client = MagicMock()
