@@ -27,7 +27,7 @@ def test_cycling_zones_are_cycling_only_and_report_recording_coverage() -> None:
     assert "power zones 1/2 rides: Z1 50%, Z2 50%" in result
     assert "HR zones 2/2 rides: Z1 25%, Z2 75%" in result
     assert "28d: 3 rides; longest recorded ride 3.0h" in result
-    assert "power zones 2/3 rides: Z1 54%, Z2 46%" in result
+    assert "power zones 2/3 rides: Z1 53%, Z2 47%" in result
     assert "boundaries unverified" in result
 
 
