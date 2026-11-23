@@ -66,7 +66,8 @@ def compute_analysis(
             pl.col("activity_count").fill_null(0),
             pl.col("missing_load_count").fill_null(0),
             pl.col("training_stress").fill_null(0),
-            pl.when(pl.col("activity_count") > 0)
+            pl
+            .when(pl.col("activity_count") > 0)
             .then(pl.col("missing_load_count") == 0)
             .otherwise(None)
             .alias("load_complete"),
