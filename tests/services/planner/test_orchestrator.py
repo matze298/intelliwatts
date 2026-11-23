@@ -155,7 +155,7 @@ async def test_generate_weekly_plan(  # ruff: ignore[too-many-arguments, too-man
     assert messages[1]["content"] == result["summary"]
     assert "2026-06-01 to 2026-06-07" in messages[1]["content"]
     assert "a recent FTP test is not required" in messages[1]["content"]
-    assert "Cycling volume utilization" in messages[1]["content"]
+    assert "Cycling volume objective" in messages[1]["content"]
     assert "Sleep evidence" in messages[1]["content"]
     assert "Do not create, move, or schedule any NEW workout" in messages[1]["content"]
     assert "long-term training phase starts on 2026-05-05" in messages[1]["content"]
@@ -334,7 +334,7 @@ async def test_update_training_plan_uses_history(
     assert passed_messages[3]["content"].startswith("make it harder\n\nLatest recorded context")
     assert "Soccer yesterday; HRV below personal baseline" in passed_messages[3]["content"]
     assert "a recent FTP test is not required" in passed_messages[3]["content"]
-    assert "Cycling volume utilization" in passed_messages[3]["content"]
+    assert "Cycling volume objective" in passed_messages[3]["content"]
     assert "Sleep evidence" in passed_messages[3]["content"]
     assert "Today's date is 2026-04-21" in passed_messages[3]["content"]
     assert "2026-04-20 to 2026-04-26" in passed_messages[3]["content"]
