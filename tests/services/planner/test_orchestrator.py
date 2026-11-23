@@ -420,13 +420,13 @@ async def test_fresh_revision_context_uses_latest_completed_activity_and_calenda
             "training_stress": 70 if index % 7 == 2 else 30,
             "duration_h": 1.5 if index % 7 == 2 else 0.5,
             "types": ["Soccer"] if index % 7 == 2 else ["Ride"],
+            "activity_tss": [None] if index == 64 else [70.0 if index % 7 == 2 else 30.0],
             "sleep_score": 81,
             "hrv": 59.0,
             "resting_hr": 49.0,
         }
         for index in range(65)
     ]
-    analysis.daily_records[-1].update({"activity_tss": [None]})
     analysis.daily_records[-1]["training_stress"] = 0.0
     analysis.daily_records[-2] = {"date": analysis.daily_records[-2]["date"], "training_stress": 0.0}
     client = MagicMock()
