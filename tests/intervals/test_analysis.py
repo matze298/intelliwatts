@@ -2,6 +2,7 @@
 
 import logging
 import math
+from dataclasses import replace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
@@ -402,3 +403,77 @@ def test_compute_load_no_pmc() -> None:
     # THEN returns zero load
     assert load.chronic == 0.0
     assert load.acute == 0.0
+
+
+def test_analysis_preserves_invalid_optional_load(activities: list[ParsedActivity]) -> None:
+    """Invalid source load does not discard a valid activity or its duration."""
+    # GIVEN a valid activity with a nonfinite load at the analysis boundary
+    item = replace(activities[0], training_stress=float("nan"), activity_id="invalid-load")
+
+    # WHEN computing analysis directly without going through the upstream parser
+    result = compute_analysis([item])
+
+    # THEN the session is retained and its load is explicitly unknown
+    record = result.daily_records[0]
+    assert record["activity_count"] == 1
+    assert record["missing_load_count"] == 1
+    assert record["load_complete"] is False
+    assert record["activity_ids"] == ["invalid-load"]
+    assert record["activity_tss"] == [None]
+
+
+def test_compute_analysis_keeps_unknown_load_and_aligned_identity(activities: list[ParsedActivity]) -> None:
+    """Unknown load remains distinct from zero through daily aggregation and dashboard providers."""
+    # GIVEN two same-day activities, one lacking load, and an explicit zero on a later day
+    ride = replace(activities[0], type="Ride", activity_id="i-ride")
+    strength = replace(ride, type="WeightTraining", training_stress=None, activity_id="i-strength")
+    zero = replace(ride, date="2026-04-03", training_stress=0.0, activity_id="i-zero")
+
+    # WHEN computing all providers
+    result = compute_analysis([ride, strength, zero])
+
+    # THEN the subtotal, aligned data and missing counts are distinct
+    first, gap, last = result.daily_records
+    assert first["activity_ids"] == ["i-ride", "i-strength"]
+    assert first["activity_tss"] == [50.0, None]
+    assert first["training_stress"] == 50.0
+    assert first["missing_load_count"] == 1
+    assert first["load_complete"] is False
+    assert gap["activity_count"] == 0
+    assert gap["load_complete"] is None
+    assert last["activity_tss"] == [0.0]
+    assert last["missing_load_count"] == 0
+    assert last["load_complete"] is True
+    history = result.provider_results["activity_history"]
+    assert len(history.activities) == 3
+    assert any(item.training_stress is None for item in history.activities)
+    weekly = result.provider_results["weekly_volume"]
+    assert weekly.duration_by_type["WeightTraining"] == [0.5]
+    assert weekly.missing_load_by_type["WeightTraining"] == [1]
+    assert result.provider_results["pmc"].missing_load_count == 1
+
+
+def test_compute_analysis_only_unknown_load(activities: list[ParsedActivity]) -> None:
+    """All-null load columns still support the provider registry, without losing activity volume."""
+    # GIVEN a valid activity lacking load and optional power/heart-rate values
+    item = replace(activities[0], training_stress=None, distance_km=None, ftp=None, hr_zone_times=None)
+
+    # WHEN computing analysis
+    result = compute_analysis([item])
+
+    # THEN recorded duration survives without inventing a per-activity load
+    assert result.daily_records[0]["activity_tss"] == [None]
+    assert result.daily_records[0]["missing_load_count"] == 1
+    assert result.provider_results["activity_history"].activities[0].training_stress is None
+
+
+def test_compute_analysis_wellness_only(wellness_data: list[ParsedWellness]) -> None:
+    """Wellness-only records should survive without synthesizing activities."""
+    # GIVEN wellness data but no activities
+    # WHEN computing provider analysis
+    result = compute_analysis([], wellness_data=wellness_data)
+
+    # THEN wellness is preserved and no activities are reported
+    assert len(result.daily_records) == len(wellness_data)
+    assert all(record["activity_count"] == 0 for record in result.daily_records)
+    assert result.provider_results["activity_history"].has_data is False

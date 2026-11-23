@@ -87,14 +87,12 @@ async def _fresh_revision_context(
         week_start=week_start,
         as_of=datetime.now(UTC).date(),
     )
-    recent_rows = coach.daily_ledger[-7:]
+    today = datetime.now(UTC).date()
+    cutoff = (today - timedelta(days=7)).isoformat()
     rows = "\n".join(
-        f"- {row.date}: {row.activity_type}, {row.duration_h:.1f}h, {row.training_stress:.0f} TSS"
-        for row in recent_rows
+        f"- {row.date}: {row.activity_type}, {row.load_label()}" for row in coach.daily_ledger if row.date > cutoff
     )
-    calendar = await run_in_threadpool(
-        load_week_commitments, client, week_start=week_start, today=datetime.now(UTC).date()
-    )
+    calendar = await run_in_threadpool(load_week_commitments, client, week_start=week_start, today=today)
     return f"{coach.brief_context}\nLast recorded 7 days:\n{rows or '- No completed activity records.'}\n{calendar}"
 
 

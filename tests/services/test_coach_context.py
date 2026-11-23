@@ -255,6 +255,51 @@ def test_stale_checkins_not_treated_as_current(
     assert "Observations through 2026-05-12" in context.brief_context
 
 
+def test_coach_reports_load_gaps_and_calendar_coverage(coach_phase: TrainingPhase) -> None:
+    """A missing load or unlogged day is not a rest day or a zero-load session."""
+    # GIVEN mixed recorded load, a gap, an all-null load ride and a true zero-load session
+    records = [
+        {
+            "date": "2026-05-01",
+            "types": ["Ride", "WeightTraining"],
+            "duration_h": 2.0,
+            "training_stress": 60.0,
+            "activity_durations": [1.0, 1.0],
+            "activity_tss": [60.0, None],
+        },
+        {"date": "2026-05-02", "training_stress": 0.0},
+        {
+            "date": "2026-05-04",
+            "types": ["Ride"],
+            "duration_h": 1.0,
+            "activity_tss": [None],
+        },
+        {
+            "date": "2026-05-05",
+            "types": ["Ride"],
+            "duration_h": 0.5,
+            "activity_tss": [0.0],
+        },
+    ]
+
+    # WHEN building the coach packet using the observation date
+    context = coach_context.build_coach_context(
+        daily_records=records, phase=coach_phase, artifact=None, week_start=date(2026, 5, 11), as_of=date(2026, 5, 6)
+    )
+
+    # THEN gaps and unknown stress are distinguished from real recorded zeros
+    rendered = context.render()
+    assert "60 recorded TSS (+1 unknown)" in rendered
+    assert "no activity recorded; actual training unknown" in rendered
+    assert "TSS unavailable (1 without TSS)" in rendered
+    assert "0.5h, 0 TSS" in rendered
+    assert "4/14 dated context rows" in context.brief_context
+    assert "Last recorded activity: 2026-05-05" in context.brief_context
+    assert "3 sessions, 1 without TSS" in context.brief_context
+    assert context.weekly_summaries[-1].missing_load_count == 1
+    assert context.weekly_summaries[-1].sessions == 3
+
+
 def test_coach_uses_sleep_duration_but_not_uninterpreted_quality(coach_phase: TrainingPhase) -> None:
     """Keep valid sleep duration and omit the ambiguous sleepQuality category."""
     # GIVEN dated sleep data with both explicit duration and the inverted quality category
