@@ -22,7 +22,7 @@ def _zone_seconds(value: object, *, power: bool) -> list[float] | None:
         return None
     seconds: list[float] = []
     for zone in value:
-        raw = zone.get("secs") if power and isinstance(zone, dict) else zone
+        raw = zone.get("secs") if isinstance(zone, dict) and power else zone
         number = _number(raw)
         if number is None:
             return None
