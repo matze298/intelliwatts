@@ -23,7 +23,6 @@ class ParsedWellness:
     hrv: float | None = None
     resting_hr: int | float | None = None
     sleep_score: int | float | None = None
-    sleep_quality: int | float | None = None
     sleep_duration_h: float | None = None
     fatigue: int | float | None = None
     soreness: int | float | None = None
@@ -53,7 +52,6 @@ def parse_wellness(w: dict[str, Any]) -> ParsedWellness:
         hrv=_number(w.get("hrv")),
         resting_hr=_number(w.get("restingHR")),
         sleep_score=_number(w.get("sleepScore")),
-        sleep_quality=_number(w.get("sleepQuality")),
         sleep_duration_h=_sleep_hours(w.get("sleepSecs")),
         fatigue=_number(w.get("fatigue")),
         soreness=_number(w.get("soreness")),
