@@ -37,7 +37,7 @@ def test_parse_wellness() -> None:
     assert parsed.hrv == 65.0
     assert parsed.resting_hr == 52
     assert parsed.sleep_score == 85
-    assert parsed.sleep_quality == 4
+    assert not hasattr(parsed, "sleep_quality")  # Legacy upstream field is deliberately not normalized.
     assert parsed.sleep_duration_h == 7.75
     assert parsed.fatigue == 3
     assert parsed.soreness == 2
