@@ -5,7 +5,7 @@ classification is inferred without the athlete's zone definitions.
 """
 
 from collections.abc import Mapping, Sequence
-from datetime import date, timedelta
+from datetime import date
 from math import isfinite
 
 from app.intervals.models import CYCLING_TYPES
