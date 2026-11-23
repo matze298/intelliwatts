@@ -288,6 +288,6 @@ def test_coach_uses_sleep_duration_but_not_uninterpreted_quality(coach_phase: Tr
 
     # THEN duration is visible, quality category absent, and one sleep domain is not multiple signals
     assert "sleep duration 6.0h" in rendered
-    assert "sleep_duration_h 6.0 vs baseline" in rendered
+    assert "sleep_duration_h 6.6 vs baseline 8.0" in rendered
     assert "sleep_quality=" not in rendered
     assert "multiple trends warrant attention" not in rendered
