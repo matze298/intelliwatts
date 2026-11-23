@@ -56,7 +56,6 @@ class DailyRecordField(StrEnum):
     HRV = "hrv"
     RESTING_HR = "resting_hr"
     SLEEP_SCORE = "sleep_score"
-    SLEEP_QUALITY = "sleep_quality"
     SLEEP_DURATION_H = "sleep_duration_h"
     FATIGUE = "fatigue"
     SORENESS = "soreness"
